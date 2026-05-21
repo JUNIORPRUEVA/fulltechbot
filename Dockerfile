@@ -4,14 +4,14 @@ WORKDIR /app
 
 RUN apk add --no-cache openssl ca-certificates
 
-COPY backend/package*.json ./
+COPY package*.json ./
 
 RUN npm ci
 
-COPY backend/prisma ./prisma
-COPY backend/src ./src
-COPY backend/prisma.config.ts ./prisma.config.ts
-COPY backend/entrypoint.sh ./entrypoint.sh
+COPY prisma ./prisma
+COPY src ./src
+COPY prisma.config.ts ./prisma.config.ts
+COPY entrypoint.sh ./entrypoint.sh
 
 RUN chmod +x ./entrypoint.sh
 

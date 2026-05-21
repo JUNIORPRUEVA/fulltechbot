@@ -3,18 +3,14 @@ frondend/
 
 # Ignorar node_modules
 node_modules
-backend/node_modules
 
 # Ignorar archivos de entorno
 .env
-backend/.env
 .env.example
-backend/.env.example
 
 # Ignorar git
 .git
 .gitignore
-backend/.gitignore
 .gitattributes
 
 # Ignorar IDE
