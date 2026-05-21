@@ -12,3 +12,11 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+*.backup
+backend/prisma/schema.prisma.backup
+backend/.env
+backend/node_modules
+backend/.dockerignore
+backend/Dockerfile
+backend/README.md
+backend/.gitignore
