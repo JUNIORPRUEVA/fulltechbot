@@ -1,18 +1,18 @@
 #!/bin/sh
 set -e
 
-echo "Iniciando backend FULLTECH BOT..."
+echo "🚀 Iniciando backend FULLTECH BOT..."
 
 if [ -z "$DATABASE_URL" ]; then
-  echo "ERROR: DATABASE_URL no está configurada"
+  echo "❌ ERROR: DATABASE_URL no está configurada"
   exit 1
 fi
 
-echo "Generando Prisma Client..."
+echo "🔧 Generando Prisma Client..."
 npx prisma generate
 
-echo "Ejecutando migraciones..."
+echo "📦 Ejecutando migraciones Prisma..."
 npx prisma migrate deploy
 
-echo "Iniciando servidor..."
+echo "✅ Iniciando servidor..."
 npm run start
