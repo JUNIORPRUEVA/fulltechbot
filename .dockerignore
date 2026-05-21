@@ -1,7 +1,7 @@
 # Ignorar frontend completo
 frondend/
 
-# Ignorar node_modules (tanto raíz como backend)
+# Ignorar node_modules
 node_modules
 backend/node_modules
 
@@ -26,17 +26,13 @@ backend/.gitignore
 logs/
 npm-debug.log
 
-# Ignorar archivos de documentación
-*.md
-README.md
-DEPLOY.md
-
 # Ignorar archivos de sistema
 .DS_Store
 Thumbs.db
 
 # Ignorar docker-compose (EasyPanel no lo necesita)
 docker-compose.yml
+Dockerfile.dev
 
 # Ignorar builds locales
 dist

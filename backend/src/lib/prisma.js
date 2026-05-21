@@ -1,4 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
+ffffffffconst { PrismaClient } = require('@prisma/client');
 const { PrismaPg } = require('@prisma/adapter-pg');
 
 const adapter = new PrismaPg({
