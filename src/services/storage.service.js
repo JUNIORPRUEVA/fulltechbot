@@ -1,4 +1,9 @@
-const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+  GetObjectCommand,
+} = require('@aws-sdk/client-s3');
 const crypto = require('crypto');
 const path = require('path');
 
@@ -102,16 +107,73 @@ async function subirArchivo(file) {
   };
 }
 
-async function eliminarArchivo(key) {
+function normalizarKeyArchivo(value) {
+  if (!value) {
+    return null;
+  }
+
+  const trimmedValue = value.trim();
+
+  if (!trimmedValue) {
+    return null;
+  }
+
+  try {
+    const parsedUrl = new URL(trimmedValue);
+    const cleanPath = parsedUrl.pathname.replace(/^\/+/, '');
+
+    if (!cleanPath) {
+      return null;
+    }
+
+    if (cleanPath.startsWith('api/storage/file/')) {
+      return cleanPath.replace(/^api\/storage\/file\//, '');
+    }
+
+    return cleanPath;
+  } catch (error) {
+    return trimmedValue.replace(/^\/+/, '');
+  }
+}
+
+async function obtenerArchivo(keyOrUrl) {
   validarVariablesStorage();
+
+  const key = normalizarKeyArchivo(keyOrUrl);
 
   if (!key) {
     throw new Error('La key del archivo es obligatoria');
   }
 
-  const command = new DeleteObjectCommand({
+  const command = new GetObjectCommand({
     Bucket: process.env.STORAGE_BUCKET,
     Key: key,
+  });
+
+  const response = await storageClient.send(command);
+
+  return {
+    key,
+    body: response.Body,
+    contentType: response.ContentType || 'application/octet-stream',
+    contentLength: response.ContentLength,
+    etag: response.ETag,
+    lastModified: response.LastModified,
+  };
+}
+
+async function eliminarArchivo(key) {
+  validarVariablesStorage();
+
+  const normalizedKey = normalizarKeyArchivo(key);
+
+  if (!normalizedKey) {
+    throw new Error('La key del archivo es obligatoria');
+  }
+
+  const command = new DeleteObjectCommand({
+    Bucket: process.env.STORAGE_BUCKET,
+    Key: normalizedKey,
   });
 
   await storageClient.send(command);
@@ -121,5 +183,7 @@ async function eliminarArchivo(key) {
 
 module.exports = {
   subirArchivo,
+  obtenerArchivo,
   eliminarArchivo,
+  normalizarKeyArchivo,
 };

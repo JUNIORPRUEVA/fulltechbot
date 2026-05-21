@@ -1,12 +1,54 @@
 const catalogoService = require('../services/catalogo.service');
+const storageService = require('../services/storage.service');
+
+function construirBaseUrl(req) {
+  const forwardedProto = req.headers['x-forwarded-proto'];
+  const protocol = forwardedProto || req.protocol || 'https';
+
+  return `${protocol}://${req.get('host')}`;
+}
+
+function normalizarMediaUrl(req, value) {
+  if (!value || typeof value !== 'string') {
+    return value;
+  }
+
+  const trimmedValue = value.trim();
+
+  if (!trimmedValue) {
+    return null;
+  }
+
+  if (/^https?:\/\//i.test(trimmedValue)) {
+    return trimmedValue;
+  }
+
+  const key = storageService.normalizarKeyArchivo(trimmedValue);
+
+  return key ? `${construirBaseUrl(req)}/api/storage/file/${key}` : trimmedValue;
+}
+
+function normalizarProducto(req, producto) {
+  if (!producto) {
+    return producto;
+  }
+
+  return {
+    ...producto,
+    imagen1: normalizarMediaUrl(req, producto.imagen1),
+    imagen2: normalizarMediaUrl(req, producto.imagen2),
+    imagen3: normalizarMediaUrl(req, producto.imagen3),
+    video: normalizarMediaUrl(req, producto.video),
+  };
+}
 
 function validarProducto(data) {
   if (!data.titulo || String(data.titulo).trim() === '') {
-    return 'El título es obligatorio';
+    return 'El titulo es obligatorio';
   }
 
   if (!data.categoria || String(data.categoria).trim() === '') {
-    return 'La categoría es obligatoria';
+    return 'La categoria es obligatoria';
   }
 
   if (data.precio === undefined || data.precio === null || data.precio === '') {
@@ -14,7 +56,7 @@ function validarProducto(data) {
   }
 
   if (Number.isNaN(Number(data.precio)) || Number(data.precio) <= 0) {
-    return 'El precio debe ser un número mayor que 0';
+    return 'El precio debe ser un numero mayor que 0';
   }
 
   if (
@@ -22,7 +64,7 @@ function validarProducto(data) {
     data.precioMinimo !== '' &&
     Number(data.precioMinimo) < 0
   ) {
-    return 'El precio mínimo no puede ser negativo';
+    return 'El precio minimo no puede ser negativo';
   }
 
   if (
@@ -50,13 +92,13 @@ async function listar(req, res) {
 
     res.json({
       ok: true,
-      message: 'Catálogo listado correctamente',
-      data: productos,
+      message: 'Catalogo listado correctamente',
+      data: productos.map((producto) => normalizarProducto(req, producto)),
     });
   } catch (error) {
     res.status(500).json({
       ok: false,
-      message: 'Error al listar el catálogo',
+      message: 'Error al listar el catalogo',
       error: error.message,
     });
   }
@@ -68,8 +110,8 @@ async function listarActivos(req, res) {
 
     res.json({
       ok: true,
-      message: 'Catálogo activo listado correctamente',
-      data: productos,
+      message: 'Catalogo activo listado correctamente',
+      data: productos.map((producto) => normalizarProducto(req, producto)),
     });
   } catch (error) {
     res.status(500).json({
@@ -96,7 +138,7 @@ async function obtenerPorId(req, res) {
     res.json({
       ok: true,
       message: 'Producto encontrado',
-      data: producto,
+      data: normalizarProducto(req, producto),
     });
   } catch (error) {
     res.status(500).json({
@@ -125,7 +167,7 @@ async function crear(req, res) {
     res.status(201).json({
       ok: true,
       message: 'Producto creado correctamente',
-      data: producto,
+      data: normalizarProducto(req, producto),
     });
   } catch (error) {
     res.status(500).json({
@@ -164,7 +206,7 @@ async function actualizar(req, res) {
     res.json({
       ok: true,
       message: 'Producto actualizado correctamente',
-      data: producto,
+      data: normalizarProducto(req, producto),
     });
   } catch (error) {
     res.status(500).json({
@@ -185,7 +227,7 @@ async function cambiarEstado(req, res) {
     if (!estado || !estadosPermitidos.includes(estado)) {
       return res.status(400).json({
         ok: false,
-        message: 'Estado inválido. Usa: activo, inactivo o agotado',
+        message: 'Estado invalido. Usa: activo, inactivo o agotado',
       });
     }
 
@@ -203,7 +245,7 @@ async function cambiarEstado(req, res) {
     res.json({
       ok: true,
       message: 'Estado actualizado correctamente',
-      data: producto,
+      data: normalizarProducto(req, producto),
     });
   } catch (error) {
     res.status(500).json({

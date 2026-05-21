@@ -119,7 +119,9 @@ class ClienteModel {
       ultimoSeguimientoAt: _toDateTime(json['ultimo_seguimiento_at']),
       botPausado: json['bot_pausado'] ?? false,
       humanoTomoControl: json['humano_tomo_control'] ?? false,
-      metadata: json['metadata'] is Map ? Map<String, dynamic>.from(json['metadata']) : {},
+      metadata: json['metadata'] is Map
+          ? Map<String, dynamic>.from(json['metadata'])
+          : {},
       creadoEn: _toDateTime(json['creado_en']),
       actualizadoEn: _toDateTime(json['actualizado_en']),
     );
@@ -167,10 +169,10 @@ class ClienteModel {
     return int.tryParse(value.toString()) ?? 0;
   }
 
-  static double _toDouble(dynamic value) {
-    if (value == null) return 0;
+  static double? _toDouble(dynamic value) {
+    if (value == null) return null;
     if (value is num) return value.toDouble();
-    return double.tryParse(value.toString()) ?? 0;
+    return double.tryParse(value.toString());
   }
 
   static DateTime? _toDateTime(dynamic value) {

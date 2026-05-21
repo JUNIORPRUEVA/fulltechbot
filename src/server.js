@@ -31,6 +31,10 @@ app.get('/', (req, res) => {
 // Rutas del catálogo y storage (se mantienen)
 app.use('/api/catalogo', catalogoRoutes);
 app.use('/api/storage', storageRoutes);
+app.use('/catalogo', (req, res, next) => {
+  req.url = `/file/catalogo${req.url}`;
+  next();
+}, storageRoutes);
 
 // Nuevas rutas para bot (clientes, conversaciones, cotizaciones)
 app.use('/api/bot/clients', botClientRoutes);

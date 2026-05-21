@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/services/local_storage_service.dart';
 import '../models/cliente_model.dart';
 import '../services/clientes_api_service.dart';
 
@@ -18,10 +19,22 @@ class ClientesProvider extends ChangeNotifier {
     _setLoading(true);
 
     try {
+      // 1. Primero cargar datos locales para mostrar inmediatamente
+      await _cargarClientesLocales();
+
+      // 2. Luego obtener datos frescos de la API
       _clientes = await _apiService.listarClientes();
+
+      // 3. Guardar en almacenamiento local
+      final jsonList = _clientes.map((c) => c.toJson()).toList();
+      await LocalStorageService.guardarClientes(jsonList);
+
       _error = null;
     } catch (e) {
-      _error = e.toString();
+      // Si falla la API, ya tenemos los datos locales cargados
+      if (_clientes.isEmpty) {
+        _error = e.toString();
+      }
     }
 
     _setLoading(false);
@@ -69,6 +82,14 @@ class ClientesProvider extends ChangeNotifier {
   void limpiarError() {
     _error = null;
     notifyListeners();
+  }
+
+  Future<void> _cargarClientesLocales() async {
+    final data = await LocalStorageService.cargarClientes();
+    if (data != null && data.isNotEmpty) {
+      _clientes = data.map((json) => ClienteModel.fromJson(json)).toList();
+      notifyListeners();
+    }
   }
 
   void _setLoading(bool value) {

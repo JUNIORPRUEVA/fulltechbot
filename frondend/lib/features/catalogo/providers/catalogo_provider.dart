@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/services/local_storage_service.dart';
 import '../models/catalogo_model.dart';
 import '../services/catalogo_api_service.dart';
 
@@ -18,10 +19,22 @@ class CatalogoProvider extends ChangeNotifier {
     _setLoading(true);
 
     try {
+      // 1. Primero cargar datos locales para mostrar inmediatamente
+      await _cargarProductosLocales();
+
+      // 2. Luego obtener datos frescos de la API
       _productos = await _apiService.listarProductos();
+
+      // 3. Guardar en almacenamiento local
+      final jsonList = _productos.map((p) => p.toJson()).toList();
+      await LocalStorageService.guardarProductos(jsonList);
+
       _error = null;
     } catch (e) {
-      _error = e.toString();
+      // Si falla la API, ya tenemos los datos locales cargados
+      if (_productos.isEmpty) {
+        _error = e.toString();
+      }
     }
 
     _setLoading(false);
@@ -85,6 +98,14 @@ class CatalogoProvider extends ChangeNotifier {
   void limpiarError() {
     _error = null;
     notifyListeners();
+  }
+
+  Future<void> _cargarProductosLocales() async {
+    final data = await LocalStorageService.cargarProductos();
+    if (data != null && data.isNotEmpty) {
+      _productos = data.map((json) => CatalogoModel.fromJson(json)).toList();
+      notifyListeners();
+    }
   }
 
   void _setLoading(bool value) {

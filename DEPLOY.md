@@ -33,6 +33,8 @@ Estas variables deben configurarse en la seccion `Entorno` de EasyPanel. No depe
 
 `STORAGE_PUBLIC_URL` debe ser la URL publica del bucket o del CDN de R2. No debe ser el dominio del backend en EasyPanel.
 
+Si no tienes el bucket publico listo todavia, la app ya puede servir los archivos a traves del backend usando rutas como `/api/storage/file/<key>`. Aun asi, deja `STORAGE_PUBLIC_URL` bien configurada para evitar confusiones operativas.
+
 ## Lo que hace el contenedor
 
 Al iniciar, el contenedor:

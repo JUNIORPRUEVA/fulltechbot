@@ -13,6 +13,7 @@ const upload = multer({
 });
 
 router.post('/upload', upload.single('file'), storageController.subirArchivo);
+router.get(/^\/file\/(.+)$/, storageController.obtenerArchivo);
 router.delete('/delete', storageController.eliminarArchivo);
 
 module.exports = router;

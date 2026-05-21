@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/services/local_storage_service.dart';
 import '../models/conversacion_model.dart';
 import '../services/conversaciones_api_service.dart';
 
@@ -22,9 +23,20 @@ class ConversacionesProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // 1. Primero cargar datos locales para mostrar inmediatamente
+      await _cargarConversacionesLocales();
+
+      // 2. Luego obtener datos frescos de la API
       _conversaciones = await _apiService.listarConversaciones();
+
+      // 3. Guardar en almacenamiento local
+      final jsonList = _conversaciones.map((c) => c.toJson()).toList();
+      await LocalStorageService.guardarConversaciones(jsonList);
     } catch (e) {
-      _error = e.toString();
+      // Si falla la API, ya tenemos los datos locales cargados
+      if (_conversaciones.isEmpty) {
+        _error = e.toString();
+      }
     }
 
     _cargando = false;
@@ -37,9 +49,19 @@ class ConversacionesProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // 1. Primero cargar mensajes locales
+      await _cargarMensajesLocales(sessionId);
+
+      // 2. Luego obtener datos frescos de la API
       _mensajesActuales = await _apiService.listarPorSessionId(sessionId);
+
+      // 3. Guardar en almacenamiento local
+      final jsonList = _mensajesActuales.map((m) => m.toJson()).toList();
+      await LocalStorageService.guardarMensajes(sessionId, jsonList);
     } catch (e) {
-      _error = e.toString();
+      if (_mensajesActuales.isEmpty) {
+        _error = e.toString();
+      }
     }
 
     _cargando = false;
@@ -66,5 +88,21 @@ class ConversacionesProvider extends ChangeNotifier {
 
     _cargando = false;
     notifyListeners();
+  }
+
+  Future<void> _cargarConversacionesLocales() async {
+    final data = await LocalStorageService.cargarConversaciones();
+    if (data != null && data.isNotEmpty) {
+      _conversaciones = data.map((json) => ConversacionModel.fromJson(json)).toList();
+      notifyListeners();
+    }
+  }
+
+  Future<void> _cargarMensajesLocales(String sessionId) async {
+    final data = await LocalStorageService.cargarMensajes(sessionId);
+    if (data != null && data.isNotEmpty) {
+      _mensajesActuales = data.map((json) => ConversacionModel.fromJson(json)).toList();
+      notifyListeners();
+    }
   }
 }
