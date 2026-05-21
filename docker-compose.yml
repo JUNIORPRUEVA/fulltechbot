@@ -1,0 +1,44 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: fulltechbot-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-fulltech_bot}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-y3xec8akxwgewxuca4sb}
+      POSTGRES_DB: ${DB_NAME:-fulltech_bot}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-fulltech_bot} -d ${DB_NAME:-fulltech_bot}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fulltechbot-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: "postgres://${DB_USER:-fulltech_bot}:${DB_PASSWORD:-y3xec8akxwgewxuca4sb}@postgres:5432/${DB_NAME:-fulltech_bot}?sslmode=disable"
+      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT}
+      STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY_ID}
+      STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY}
+      STORAGE_BUCKET: ${STORAGE_BUCKET:-fulltechbot}
+      STORAGE_PUBLIC_URL: ${STORAGE_PUBLIC_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
