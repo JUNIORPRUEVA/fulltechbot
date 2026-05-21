@@ -1,67 +1,60 @@
-# 🚀 Despliegue en EasyPanel
+# Deploy en EasyPanel
 
-## ⚠️ Diagnóstico del error
+## Configuracion recomendada
 
-Tu error actual:
-
-```
-path "/etc/easypanel/projects/fulltech_bot/fulltechbot_app/code/backend" not found
-```
-
-**Causa**: Tienes EasyPanel configurado con `Build context = ./backend`, pero la carpeta `backend/` no existe en tu repositorio remoto de GitHub (aunque sí existe localmente).
-
-**Solución**: Cambia la configuración en EasyPanel a:
+Usa el repositorio raiz y el `Dockerfile` de la raiz.
 
 | Campo | Valor |
 |-------|-------|
-| **Build context** | `./` (raíz del repositorio) |
-| **Dockerfile path** | `./Dockerfile` |
-| **Puerto interno** | `3000` |
-| **Healthcheck path** | `/api/health` |
+| Source | GitHub |
+| Owner | Tu usuario u organizacion |
+| Repository | El repo que realmente contiene estos cambios |
+| Branch | La rama donde hiciste push de estos cambios |
+| Build path | `/` |
+| Builder | `Dockerfile` |
+| Dockerfile file | `Dockerfile` |
+| Internal port | `3000` |
+| Healthcheck path | `/api/health` |
 
-El `Dockerfile` en la raíz ya está preparado para copiar todo desde `backend/`.
+## Variables de entorno
 
-## Estructura del Proyecto
+Estas variables deben configurarse en la seccion `Entorno` de EasyPanel. No dependas de `build args` para esto.
 
-```
-FULLTECH_BOT/              ← Este es el repositorio en GitHub
-├── Dockerfile             ← ✅ EasyPanel usará este (contexto raíz)
-├── .dockerignore          ← Ignora frontend, .env, node_modules
-├── backend/               ← Código del backend
-│   ├── entrypoint.sh
-│   ├── src/
-│   ├── prisma/
-│   ├── prisma.config.ts
-│   └── package.json
-├── frondend/              ← Frontend (ignorado por Docker)
-└── .env.example
-```
-
-## Variables de Entorno en EasyPanel
-
-| Variable | Descripción |
-|----------|-------------|
+| Variable | Ejemplo |
+|----------|---------|
 | `PORT` | `3000` |
-| `DATABASE_URL` | `postgres://usuario:password@host:5432/fulltech_bot?sslmode=disable` |
-| `STORAGE_ENDPOINT` | Endpoint de Cloudflare R2 |
-| `STORAGE_ACCESS_KEY_ID` | Access Key de R2 |
-| `STORAGE_SECRET_ACCESS_KEY` | Secret Key de R2 |
+| `NODE_ENV` | `production` |
+| `DATABASE_URL` | `postgres://fulltech_bot:password@bot_db_pogres:5432/fulltech_bot?sslmode=disable` |
+| `STORAGE_ENDPOINT` | `https://<account>.r2.cloudflarestorage.com` |
+| `STORAGE_ACCESS_KEY_ID` | `...` |
+| `STORAGE_SECRET_ACCESS_KEY` | `...` |
 | `STORAGE_BUCKET` | `fulltechbot` |
-| `STORAGE_PUBLIC_URL` | URL pública del bucket R2 |
+| `STORAGE_PUBLIC_URL` | `https://<public-bucket-or-cdn-domain>` |
 
-## Probar Localmente
+`STORAGE_PUBLIC_URL` debe ser la URL publica del bucket o del CDN de R2. No debe ser el dominio del backend en EasyPanel.
+
+## Lo que hace el contenedor
+
+Al iniciar, el contenedor:
+
+1. valida que `DATABASE_URL` exista
+2. ejecuta `prisma generate`
+3. ejecuta `prisma migrate deploy`
+4. inicia el servidor en `PORT`
+
+## Verificacion rapida
+
+Cuando el deploy termine, prueba:
 
 ```bash
-# Desde la RAÍZ del proyecto
-docker build -t fulltechbot-backend .
-docker run -p 3000:3000 -e DATABASE_URL="postgres://..." fulltechbot-backend
-curl http://localhost:3000/api/health
+curl https://tu-dominio/api/health
 ```
+
+Debes recibir un JSON con `ok: true`.
 
 ## Notas
 
-- ✅ Migraciones automáticas al iniciar
-- ✅ Usuario no-root por seguridad
-- ✅ Health check cada 30s
-- ✅ Sin docker-compose
-- ✅ Frontend no incluido en la imagen
+- El frontend `frondend/` no entra en la imagen.
+- El `Dockerfile` ya incluye `HEALTHCHECK`.
+- La app corre como usuario `node`, no como root.
+- Si EasyPanel sigue mostrando un `Dockerfile` con `RUN npx prisma generate` durante el build, entonces esta construyendo un commit viejo o un repositorio distinto.
