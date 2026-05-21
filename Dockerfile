@@ -13,9 +13,6 @@ RUN npm ci
 COPY backend/prisma ./prisma/
 COPY backend/prisma.config.ts ./
 
-# Generar Prisma Client
-RUN npx prisma generate
-
 # ---- Production Stage ----
 FROM node:20-alpine AS production
 
