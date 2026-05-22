@@ -4,8 +4,8 @@ class BotCampaignController {
   async listar(req, res) {
     try {
       const { botId } = req.params;
-      const { active, campaign_status, search } = req.query;
-      const campaigns = await botCampaignService.listar(botId, { active, campaign_status, search });
+      const { active, search } = req.query;
+      const campaigns = await botCampaignService.listar(botId, { active, search });
       res.json({ ok: true, data: campaigns });
     } catch (error) {
       res.status(500).json({ ok: false, message: error.message });

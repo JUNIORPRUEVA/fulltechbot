@@ -129,7 +129,6 @@ class BotCampaignProvider extends ChangeNotifier {
 
   void _sortCampaigns() {
     _campaigns.sort((a, b) {
-      if (b.priority != a.priority) return b.priority.compareTo(a.priority);
       return a.campaignName.compareTo(b.campaignName);
     });
   }

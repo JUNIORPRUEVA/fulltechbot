@@ -1,28 +1,5 @@
 const prisma = require('../lib/prisma');
 
-const DEFAULT_TRIGGER_PHRASES = [
-  'quiero mas informacion',
-  'mas informacion',
-  'me interesa',
-  'precio',
-  'quiero precio',
-  'necesito informacion',
-  'informacion',
-  'cotizacion',
-  'cuanto cuesta',
-  'quiero saber',
-  'quisiera saber',
-  'me gustaria saber',
-  'dame informacion',
-  'quiero contratar',
-  'quiero comprar',
-  'me puedes cotizar',
-  'me puede cotizar',
-  'a cuanto',
-  'precio de',
-  'precio del',
-];
-
 class BotCampaignService {
   normalizeText(text = '') {
     return text
@@ -49,24 +26,17 @@ class BotCampaignService {
       where.active = filtros.active === true || filtros.active === 'true';
     }
 
-    if (filtros.campaign_status) {
-      where.campaign_status = filtros.campaign_status;
-    }
-
     if (filtros.search) {
       where.OR = [
         { campaign_name: { contains: filtros.search, mode: 'insensitive' } },
         { campaign_code: { contains: filtros.search, mode: 'insensitive' } },
-        { product_name: { contains: filtros.search, mode: 'insensitive' } },
+        { campaign_context: { contains: filtros.search, mode: 'insensitive' } },
       ];
     }
 
     return prisma.botCampaign.findMany({
       where,
-      orderBy: [
-        { priority: 'desc' },
-        { created_at: 'desc' },
-      ],
+      orderBy: [{ created_at: 'desc' }],
     });
   }
 
@@ -83,26 +53,19 @@ class BotCampaignService {
       where: {
         bot_id: botId,
         active: true,
-        campaign_status: 'activa',
       },
-      orderBy: [
-        { priority: 'desc' },
-        { created_at: 'desc' },
-      ],
+      orderBy: [{ created_at: 'desc' }],
     });
   }
 
   async crear(data) {
-    const payload = this._sanitizeCampaignPayload(data, { requireRequiredFields: true });
-
-    return prisma.botCampaign.create({
-      data: payload,
-    });
+    const payload = this._sanitizeCampaignPayload(data, true);
+    return prisma.botCampaign.create({ data: payload });
   }
 
   async actualizar(id, data) {
     await this.obtenerPorId(id);
-    const payload = this._sanitizeCampaignPayload(data, { partial: true });
+    const payload = this._sanitizeCampaignPayload(data, false);
 
     if (Object.keys(payload).length === 0) {
       throw new Error('No hay campos para actualizar');
@@ -130,15 +93,17 @@ class BotCampaignService {
 
   async duplicar(id, nuevoCodigo) {
     const original = await this.obtenerPorId(id);
-
     return prisma.botCampaign.create({
       data: {
-        ...this._sanitizeCampaignPayload({
-          ...original,
-          campaign_code: nuevoCodigo || `${original.campaign_code}_copia`,
-          campaign_name: `${original.campaign_name} (copia)`,
-          active: false,
-        }, { requireRequiredFields: true }),
+        bot_id: original.bot_id,
+        campaign_code: nuevoCodigo || `${original.campaign_code}_copia`,
+        campaign_name: `${original.campaign_name} (copia)`,
+        keywords: original.keywords || [],
+        trigger_phrases: original.trigger_phrases || [],
+        initial_message: original.initial_message,
+        campaign_context: original.campaign_context,
+        media_urls: original.media_urls || [],
+        active: false,
       },
     });
   }
@@ -193,9 +158,6 @@ class BotCampaignService {
 
     candidates.sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
-      if ((b.campaign.priority || 0) !== (a.campaign.priority || 0)) {
-        return (b.campaign.priority || 0) - (a.campaign.priority || 0);
-      }
       return (b.matchedKeyword?.length || 0) - (a.matchedKeyword?.length || 0);
     });
 
@@ -221,9 +183,15 @@ class BotCampaignService {
       route: 'CAMPAIGN',
       campaign: {
         id: winner.campaign.id,
+        bot_id: winner.campaign.bot_id,
         campaign_code: winner.campaign.campaign_code,
         campaign_name: winner.campaign.campaign_name,
-        product_name: winner.campaign.product_name,
+        keywords: winner.campaign.keywords,
+        trigger_phrases: winner.campaign.trigger_phrases,
+        initial_message: winner.campaign.initial_message,
+        campaign_context: winner.campaign.campaign_context,
+        media_urls: winner.campaign.media_urls,
+        active: winner.campaign.active,
       },
       matched_keyword: winner.matchedKeyword,
       matched_trigger_phrase: winner.matchedTriggerPhrase,
@@ -240,9 +208,7 @@ class BotCampaignService {
         conversation_id: conversationId,
         ...(botId ? { bot_id: botId } : {}),
       },
-      include: {
-        campaign: true,
-      },
+      include: { campaign: true },
       orderBy: { created_at: 'desc' },
     });
   }
@@ -253,26 +219,13 @@ class BotCampaignService {
         conversation_id: conversationId,
         ...(botId ? { bot_id: botId } : {}),
       },
-      include: {
-        campaign: true,
-      },
+      include: { campaign: true },
       orderBy: { created_at: 'desc' },
-    });
-  }
-
-  async actualizarEstadoContexto(id, status) {
-    return prisma.conversationCampaignContext.update({
-      where: { id },
-      data: {
-        status,
-        updated_at: new Date(),
-      },
     });
   }
 
   async cambiarCampanaManual(botId, conversationId, campaignId, customerId) {
     const campaign = await this.obtenerPorId(campaignId);
-
     const existingContext = await this.obtenerContextoConversacion(conversationId, botId);
 
     if (existingContext) {
@@ -286,9 +239,7 @@ class BotCampaignService {
           status: 'manual',
           updated_at: new Date(),
         },
-        include: {
-          campaign: true,
-        },
+        include: { campaign: true },
       });
     }
 
@@ -310,30 +261,16 @@ class BotCampaignService {
 
   async obtenerDatosParaAgente(campaignId) {
     const campaign = await this.obtenerPorId(campaignId);
-
     return {
-      campaign_name: campaign.campaign_name,
+      bot_id: campaign.bot_id,
       campaign_code: campaign.campaign_code,
-      product_name: campaign.product_name,
-      product_id: campaign.product_id,
-      normal_price: campaign.normal_price,
-      offer_price: campaign.offer_price,
-      currency: campaign.currency,
+      campaign_name: campaign.campaign_name,
+      keywords: campaign.keywords || [],
+      trigger_phrases: campaign.trigger_phrases || [],
       initial_message: campaign.initial_message,
-      agent_context: campaign.agent_context,
-      sales_instructions: campaign.sales_instructions,
-      negotiation_rules: campaign.negotiation_rules,
-      objection_handling: campaign.objection_handling,
-      closing_questions: campaign.closing_questions,
-      extra_camera_price: campaign.extra_camera_price,
-      minimum_extra_camera_price: campaign.minimum_extra_camera_price,
-      location_rules: campaign.location_rules,
-      warranty_info: campaign.warranty_info,
-      installation_info: campaign.installation_info,
-      media_urls: campaign.media_urls,
-      crm_initial_status: campaign.crm_initial_status,
-      crm_tag: campaign.crm_tag,
-      priority: campaign.priority,
+      campaign_context: campaign.campaign_context,
+      media_urls: campaign.media_urls || [],
+      active: campaign.active,
     };
   }
 
@@ -344,11 +281,11 @@ class BotCampaignService {
     customer_id,
     customer_message,
   }) {
-    const [bot, campaign, latestContext, customer] = await Promise.all([
+    const [bot, latestContext, customer, campaignData] = await Promise.all([
       prisma.bot.findUnique({ where: { id: bot_id } }),
-      this.obtenerPorId(campaign_id),
       conversation_id ? this.obtenerContextoConversacion(conversation_id, bot_id) : null,
       this._findCustomer(bot_id, customer_id, conversation_id),
+      this.obtenerDatosParaAgente(campaign_id),
     ]);
 
     if (!bot) {
@@ -356,18 +293,11 @@ class BotCampaignService {
     }
 
     const shouldSendInitialMessage = !latestContext?.initial_message_sent_at;
-    const shouldRespond = !customer?.bot_pausado;
-
-    const campaignData = await this.obtenerDatosParaAgente(campaign_id);
-    const prompt = this.generarPromptCampania(bot, campaignData, customer_message, {
-      shouldSendInitialMessage,
-      customer,
-    });
 
     return {
       agent_name: 'AGENTE_CAMPAÑA',
       route: 'CAMPAIGN',
-      should_respond: shouldRespond,
+      should_respond: !customer?.bot_pausado,
       should_send_initial_message: shouldSendInitialMessage,
       customer_paused: Boolean(customer?.bot_pausado),
       bot: {
@@ -387,7 +317,9 @@ class BotCampaignService {
         : null,
       conversation_context: latestContext,
       campaign: campaignData,
-      prompt,
+      prompt: this.generarPromptCampania(bot, campaignData, customer_message, {
+        shouldSendInitialMessage,
+      }),
     };
   }
 
@@ -409,9 +341,7 @@ class BotCampaignService {
       context = await this.obtenerContextoConversacion(conversation_id, bot_id);
     }
 
-    if (!context) {
-      return null;
-    }
+    if (!context) return null;
 
     return prisma.conversationCampaignContext.update({
       where: { id: context.id },
@@ -432,49 +362,20 @@ class BotCampaignService {
     return `
 Eres ${botData.nombre || 'Asesor'}, asesor de ventas de ${botData.tipoNegocio || botData.nombre || 'la empresa'}.
 
-Estás atendiendo a un cliente que escribió desde una campaña publicitaria o mensaje prellenado.
-
 MENSAJE DEL CLIENTE:
 ${customerMessage}
 
 CAMPAÑA DETECTADA:
 ${campaignData.campaign_name}
 
-PRODUCTO RELACIONADO:
-${campaignData.product_name || 'No especificado'}
-
-PRECIO NORMAL:
-${campaignData.normal_price || 0} ${campaignData.currency || 'DOP'}
-
-PRECIO OFERTA:
-${campaignData.offer_price || 0} ${campaignData.currency || 'DOP'}
-
 MENSAJE INICIAL CONFIGURADO:
 ${campaignData.initial_message || 'No hay mensaje inicial configurado.'}
 
 CONTEXTO DE LA CAMPAÑA:
-${campaignData.agent_context || 'No hay contexto adicional.'}
+${campaignData.campaign_context || 'No hay contexto adicional.'}
 
-INSTRUCCIONES DE VENTA:
-${campaignData.sales_instructions || 'No hay instrucciones específicas.'}
-
-REGLAS DE NEGOCIACIÓN:
-${this._stringifyField(campaignData.negotiation_rules)}
-
-GARANTÍA:
-${campaignData.warranty_info || 'No especificada'}
-
-INSTALACIÓN:
-${campaignData.installation_info || 'No especificada'}
-
-REGLAS DE UBICACIÓN:
-${this._stringifyField(campaignData.location_rules)}
-
-OBJECIONES FRECUENTES:
-${this._stringifyField(campaignData.objection_handling)}
-
-PREGUNTAS DE CIERRE:
-${this._stringifyField(campaignData.closing_questions)}
+RECURSOS MULTIMEDIA:
+${this._stringifyField(campaignData.media_urls)}
 
 ESTADO DE LA PRIMERA RESPUESTA:
 ${shouldSendInitialMessage ? 'Es la primera respuesta de campaña en esta conversación.' : 'Ya se envió la primera respuesta de campaña anteriormente. No la repitas textual.'}
@@ -485,7 +386,7 @@ INSTRUCCIONES:
 3. No respondas de forma genérica.
 4. No preguntes "¿cómo puedo ayudarte?" si ya sabes la campaña.
 5. Usa el mensaje inicial configurado como base solo si esta es la primera respuesta.
-6. No inventes precios, descuentos, garantías ni condiciones.
+6. No inventes precios, garantías, descuentos ni condiciones fuera del contexto.
 7. Si falta información, haz una sola pregunta útil para avanzar la venta.
 8. Mantén la respuesta corta, clara y persuasiva.
 9. Usa tono dominicano profesional, sin exagerar emojis.
@@ -494,21 +395,11 @@ INSTRUCCIONES:
   }
 
   _scoreCampaignMatch(campaign, normalizedMessage) {
-    const triggerPhrases = Array.from(new Set([
-      ...DEFAULT_TRIGGER_PHRASES,
-      ...this.normalizeList(campaign.trigger_phrases),
-    ]));
-
-    const rawKeywords = Array.isArray(campaign.keywords) ? campaign.keywords : [];
-    const fallbackKeywords = [
-      campaign.campaign_name,
-      campaign.product_name,
-    ].filter(Boolean);
-
+    const triggerPhrases = this.normalizeList(campaign.trigger_phrases);
     const keywords = Array.from(new Set([
-      ...this.normalizeList(rawKeywords),
-      ...this.normalizeList(fallbackKeywords),
-    ])).filter((keyword) => keyword.length >= 3);
+      ...this.normalizeList(campaign.keywords),
+      this.normalizeText(campaign.campaign_name),
+    ])).filter(Boolean);
 
     let matchedTriggerPhrase = null;
     let matchedKeyword = null;
@@ -537,29 +428,14 @@ INSTRUCCIONES:
       };
     }
 
-    const keywordTokenCount = matchedKeyword.split(' ').filter(Boolean).length;
-    const keywordLengthRatio = Math.min(matchedKeyword.length / Math.max(normalizedMessage.length, 1), 0.45);
-
-    let score = 0.45 + keywordLengthRatio;
-
-    if (keywordTokenCount >= 2) {
-      score += 0.12;
-    }
-
-    if (matchedTriggerPhrase) {
-      score += 0.25;
-    } else if (keywordTokenCount >= 3 || matchedKeyword.length >= 14) {
-      score += 0.08;
-    }
-
-    score += Math.min((campaign.priority || 0) * 0.01, 0.08);
+    let score = 0.7;
+    if (matchedKeyword.split(' ').length >= 2) score += 0.1;
+    if (matchedTriggerPhrase) score += 0.15;
     score = Number(Math.min(score, 0.99).toFixed(2));
-
-    const detectable = matchedTriggerPhrase ? score >= 0.55 : score >= 0.68;
 
     return {
       campaign,
-      detectable,
+      detectable: matchedTriggerPhrase ? score >= 0.75 : score >= 0.8,
       score,
       matchedKeyword,
       matchedTriggerPhrase,
@@ -568,23 +444,8 @@ INSTRUCCIONES:
 
   async _guardarContextoDetectado(data) {
     return prisma.conversationCampaignContext.create({
-      data: {
-        bot_id: data.bot_id,
-        conversation_id: data.conversation_id || '',
-        customer_id: data.customer_id || null,
-        campaign_id: data.campaign_id || null,
-        campaign_code: data.campaign_code || null,
-        campaign_name: data.campaign_name || null,
-        matched_keyword: data.matched_keyword || null,
-        matched_trigger_phrase: data.matched_trigger_phrase || null,
-        customer_message: data.customer_message || null,
-        detection_confidence: data.detection_confidence || 0,
-        source_channel: data.source_channel || 'whatsapp',
-        status: data.status || 'detectada',
-      },
-      include: {
-        campaign: true,
-      },
+      data,
+      include: { campaign: true },
     });
   }
 
@@ -616,93 +477,41 @@ INSTRUCCIONES:
     });
   }
 
-  _sanitizeCampaignPayload(data, options = {}) {
-    const requireRequiredFields = options.requireRequiredFields === true;
-    const partial = options.partial === true;
-    const payload = {};
-
-    const assign = (key, value) => {
-      if (value !== undefined) {
-        payload[key] = value;
-      }
-    };
-
+  _sanitizeCampaignPayload(data, requireRequiredFields = false) {
     if (requireRequiredFields) {
       if (!data.bot_id || !data.campaign_code || !data.campaign_name) {
         throw new Error('bot_id, campaign_code y campaign_name son obligatorios');
       }
     }
 
-    assign('bot_id', partial ? undefined : data.bot_id);
-    assign('campaign_code', data.campaign_code);
-    assign('campaign_name', data.campaign_name);
-    assign('campaign_description', data.campaign_description ?? null);
-    assign('product_name', data.product_name ?? null);
-    assign('product_id', data.product_id ?? null);
-    assign('normal_price', data.normal_price !== undefined ? Number(data.normal_price) : undefined);
-    assign('offer_price', data.offer_price !== undefined ? Number(data.offer_price) : undefined);
-    assign('currency', data.currency);
-    assign('campaign_status', data.campaign_status);
-    assign('trigger_phrases', Array.isArray(data.trigger_phrases) ? data.trigger_phrases : data.trigger_phrases === undefined ? undefined : []);
-    assign('keywords', Array.isArray(data.keywords) ? data.keywords : data.keywords === undefined ? undefined : []);
-    assign('initial_message', data.initial_message ?? null);
-    assign('agent_context', data.agent_context ?? null);
-    assign('sales_instructions', data.sales_instructions ?? null);
-    assign('negotiation_rules', this._normalizeJsonInput(data.negotiation_rules, {}));
-    assign('objection_handling', this._normalizeJsonInput(data.objection_handling, []));
-    assign('closing_questions', this._normalizeJsonInput(data.closing_questions, []));
-    assign('extra_camera_price', data.extra_camera_price !== undefined ? Number(data.extra_camera_price) : undefined);
-    assign('minimum_extra_camera_price', data.minimum_extra_camera_price !== undefined ? Number(data.minimum_extra_camera_price) : undefined);
-    assign('location_rules', this._normalizeJsonInput(data.location_rules, {}));
-    assign('warranty_info', data.warranty_info ?? null);
-    assign('installation_info', data.installation_info ?? null);
-    assign('media_urls', this._normalizeJsonInput(data.media_urls, []));
-    assign('crm_initial_status', data.crm_initial_status);
-    assign('crm_tag', data.crm_tag ?? null);
-    assign('priority', data.priority !== undefined ? Number(data.priority) : undefined);
-    assign('active', data.active !== undefined ? Boolean(data.active) : undefined);
+    const payload = {};
 
-    if (!partial) {
-      payload.normal_price ??= 0;
-      payload.offer_price ??= 0;
-      payload.currency ??= 'DOP';
-      payload.campaign_status ??= 'activa';
-      payload.trigger_phrases ??= [];
+    if (data.bot_id !== undefined) payload.bot_id = data.bot_id;
+    if (data.campaign_code !== undefined) payload.campaign_code = data.campaign_code;
+    if (data.campaign_name !== undefined) payload.campaign_name = data.campaign_name;
+    if (data.keywords !== undefined) payload.keywords = Array.isArray(data.keywords) ? data.keywords : [];
+    if (data.trigger_phrases !== undefined) {
+      payload.trigger_phrases = Array.isArray(data.trigger_phrases) ? data.trigger_phrases : [];
+    }
+    if (data.initial_message !== undefined) payload.initial_message = data.initial_message ?? null;
+    if (data.campaign_context !== undefined) payload.campaign_context = data.campaign_context ?? null;
+    if (data.media_urls !== undefined) payload.media_urls = Array.isArray(data.media_urls) ? data.media_urls : [];
+    if (data.active !== undefined) payload.active = Boolean(data.active);
+
+    if (requireRequiredFields) {
       payload.keywords ??= [];
-      payload.negotiation_rules ??= {};
-      payload.objection_handling ??= [];
-      payload.closing_questions ??= [];
-      payload.extra_camera_price ??= 0;
-      payload.minimum_extra_camera_price ??= 0;
-      payload.location_rules ??= {};
+      payload.trigger_phrases ??= [];
       payload.media_urls ??= [];
-      payload.crm_initial_status ??= 'Nuevo interesado';
-      payload.priority ??= 0;
       payload.active ??= true;
     }
 
     return payload;
   }
 
-  _normalizeJsonInput(value, fallback) {
-    if (value === undefined) return undefined;
-    if (value === null) return fallback;
-    if (typeof value === 'string') {
-      try {
-        return JSON.parse(value);
-      } catch {
-        return fallback;
-      }
-    }
-    return value;
-  }
-
   _stringifyField(value) {
     if (value === null || value === undefined) return 'No especificado';
     if (typeof value === 'string') return value;
-    if (Array.isArray(value)) {
-      return value.length > 0 ? value.join('\n') : 'No especificado';
-    }
+    if (Array.isArray(value)) return value.length ? value.join('\n') : 'No especificado';
     return JSON.stringify(value, null, 2);
   }
 }

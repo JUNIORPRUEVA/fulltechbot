@@ -215,45 +215,25 @@ model BotOrder {
 }
 
 model BotCampaign {
-  id                       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  bot_id                   String
-  campaign_code            String
-  campaign_name            String
-  campaign_description     String?
-  product_name             String?
-  product_id               String?
-  normal_price             Float    @default(0)
-  offer_price              Float    @default(0)
-  currency                 String   @default("DOP")
-  campaign_status          String   @default("activa")
-  trigger_phrases          Json     @default("[]")
-  keywords                 Json     @default("[]")
-  initial_message          String?
-  agent_context            String?
-  sales_instructions       String?
-  negotiation_rules        Json     @default("{}")
-  objection_handling       Json     @default("[]")
-  closing_questions        Json     @default("[]")
-  extra_camera_price       Float    @default(0)
-  minimum_extra_camera_price Float  @default(0)
-  location_rules           Json     @default("{}")
-  warranty_info            String?
-  installation_info        String?
-  media_urls               Json     @default("[]")
-  crm_initial_status       String   @default("Nuevo interesado")
-  crm_tag                  String?
-  priority                 Int      @default(0)
-  active                   Boolean  @default(true)
-  created_at               DateTime @default(now()) @db.Timestamptz(6)
-  updated_at               DateTime @default(now()) @db.Timestamptz(6)
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bot_id           String
+  campaign_code    String
+  campaign_name    String
+  keywords         Json     @default("[]")
+  trigger_phrases  Json     @default("[]")
+  initial_message  String?
+  campaign_context String?
+  media_urls       Json     @default("[]")
+  active           Boolean  @default(true)
+  created_at       DateTime @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime @default(now()) @db.Timestamptz(6)
 
-  bot                      Bot      @relation(fields: [bot_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  contextos                ConversationCampaignContext[]
+  bot              Bot      @relation(fields: [bot_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  contextos        ConversationCampaignContext[]
 
   @@unique([bot_id, campaign_code], map: "uq_campaign_bot_code")
   @@index([bot_id], map: "idx_bot_campaigns_bot_id")
   @@index([active], map: "idx_bot_campaigns_active")
-  @@index([priority(sort: Desc)], map: "idx_bot_campaigns_priority")
   @@map("bot_campaigns")
 }
 

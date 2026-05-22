@@ -288,10 +288,6 @@ class _CampaignCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final offerText = campaign.offerPrice > 0
-        ? '${campaign.currency} ${campaign.offerPrice.toStringAsFixed(0)}'
-        : 'Sin oferta';
-
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Card(
@@ -336,36 +332,18 @@ class _CampaignCard extends StatelessWidget {
                   ),
                 ],
               ),
-              if ((campaign.productName ?? '').isNotEmpty) ...[
-                const SizedBox(height: 10),
-                Text(
-                  campaign.productName!,
-                  style: TextStyle(
-                    color: Colors.grey.shade800,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
               const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
                   _InfoChip(
-                    icon: Icons.local_offer_outlined,
-                    label: offerText,
-                  ),
-                  _InfoChip(
-                    icon: Icons.priority_high_rounded,
-                    label: 'Prioridad ${campaign.priority}',
-                  ),
-                  _InfoChip(
-                    icon: Icons.sell_outlined,
-                    label: campaign.crmInitialStatus,
-                  ),
-                  _InfoChip(
                     icon: Icons.key_rounded,
                     label: '${campaign.keywords.length} keywords',
+                  ),
+                  _InfoChip(
+                    icon: Icons.flash_on_outlined,
+                    label: '${campaign.triggerPhrases.length} triggers',
                   ),
                 ],
               ),
@@ -377,6 +355,19 @@ class _CampaignCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13,
                     color: Colors.grey.shade700,
+                  ),
+                ),
+              ],
+              if ((campaign.campaignContext ?? '').isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text(
+                  campaign.campaignContext!,
+                  maxLines: 4,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey.shade700,
+                    height: 1.35,
                   ),
                 ),
               ],

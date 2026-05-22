@@ -1,43 +1,23 @@
--- Tabla de campañas por bot
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 CREATE TABLE IF NOT EXISTS bot_campaigns (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   bot_id TEXT NOT NULL,
   campaign_code TEXT NOT NULL,
   campaign_name TEXT NOT NULL,
-  campaign_description TEXT,
-  product_name TEXT,
-  product_id TEXT,
-  normal_price DOUBLE PRECISION DEFAULT 0,
-  offer_price DOUBLE PRECISION DEFAULT 0,
-  currency TEXT DEFAULT 'DOP',
-  campaign_status TEXT DEFAULT 'activa',
-  trigger_phrases JSONB DEFAULT '[]',
-  keywords JSONB DEFAULT '[]',
+  keywords JSONB NOT NULL DEFAULT '[]'::jsonb,
+  trigger_phrases JSONB NOT NULL DEFAULT '[]'::jsonb,
   initial_message TEXT,
-  agent_context TEXT,
-  sales_instructions TEXT,
-  negotiation_rules JSONB DEFAULT '{}',
-  objection_handling JSONB DEFAULT '[]',
-  closing_questions JSONB DEFAULT '[]',
-  extra_camera_price DOUBLE PRECISION DEFAULT 0,
-  minimum_extra_camera_price DOUBLE PRECISION DEFAULT 0,
-  location_rules JSONB DEFAULT '{}',
-  warranty_info TEXT,
-  installation_info TEXT,
-  media_urls JSONB DEFAULT '[]',
-  crm_initial_status TEXT DEFAULT 'Nuevo interesado',
-  crm_tag TEXT,
-  priority INTEGER DEFAULT 0,
-  active BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-
+  campaign_context TEXT,
+  media_urls JSONB NOT NULL DEFAULT '[]'::jsonb,
+  active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT uq_campaign_bot_code UNIQUE (bot_id, campaign_code)
 );
 
-CREATE INDEX idx_bot_campaigns_bot_id ON bot_campaigns(bot_id);
-CREATE INDEX idx_bot_campaigns_active ON bot_campaigns(active);
-CREATE INDEX idx_bot_campaigns_priority ON bot_campaigns(priority DESC);
+CREATE INDEX IF NOT EXISTS idx_bot_campaigns_bot_id ON bot_campaigns(bot_id);
+CREATE INDEX IF NOT EXISTS idx_bot_campaigns_active ON bot_campaigns(active);
 
 ALTER TABLE bot_campaigns
   DROP CONSTRAINT IF EXISTS bot_campaigns_bot_id_fkey;
@@ -46,7 +26,6 @@ ALTER TABLE bot_campaigns
   ADD CONSTRAINT bot_campaigns_bot_id_fkey
   FOREIGN KEY (bot_id) REFERENCES bots(id) ON DELETE CASCADE ON UPDATE CASCADE;
 
--- Tabla de contexto de campaña detectada en conversaciones
 CREATE TABLE IF NOT EXISTS conversation_campaign_context (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   bot_id TEXT NOT NULL,
@@ -67,11 +46,11 @@ CREATE TABLE IF NOT EXISTS conversation_campaign_context (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_conv_campaign_bot_id ON conversation_campaign_context(bot_id);
-CREATE INDEX idx_conv_campaign_conversation_id ON conversation_campaign_context(conversation_id);
-CREATE INDEX idx_conv_campaign_campaign_id ON conversation_campaign_context(campaign_id);
-CREATE INDEX idx_conv_campaign_status ON conversation_campaign_context(status);
-CREATE INDEX idx_conv_campaign_created_at ON conversation_campaign_context(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_conv_campaign_bot_id ON conversation_campaign_context(bot_id);
+CREATE INDEX IF NOT EXISTS idx_conv_campaign_conversation_id ON conversation_campaign_context(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_conv_campaign_campaign_id ON conversation_campaign_context(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_conv_campaign_status ON conversation_campaign_context(status);
+CREATE INDEX IF NOT EXISTS idx_conv_campaign_created_at ON conversation_campaign_context(created_at DESC);
 
 ALTER TABLE conversation_campaign_context
   DROP CONSTRAINT IF EXISTS conversation_campaign_context_bot_id_fkey;

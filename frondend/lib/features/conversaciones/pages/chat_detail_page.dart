@@ -115,7 +115,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                   borderRadius: BorderRadius.circular(14),
                 ),
                 title: Text(campaign.campaignName),
-                subtitle: Text(campaign.productName ?? campaign.campaignCode),
+                subtitle: Text(campaign.campaignCode),
                 trailing: _campaignContext?.campaignId == campaign.id
                     ? const Icon(Icons.check_circle, color: Colors.green)
                     : null,
