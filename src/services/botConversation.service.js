@@ -9,9 +9,12 @@ async function listarConversaciones(botId = null) {
   });
 }
 
-async function obtenerPorSessionId(sessionId) {
+async function obtenerPorSessionId(sessionId, botId = null) {
   return prisma.botConversation.findMany({
-    where: { session_id: sessionId },
+    where: {
+      session_id: sessionId,
+      ...(botId ? { botId } : {}),
+    },
     orderBy: { created_at: 'asc' },
   });
 }
@@ -41,7 +44,7 @@ async function crearConversacion(data) {
  * Elimina todas las conversaciones de un sessionId en una transacción.
  * También limpia datos relacionados si es necesario.
  */
-async function eliminarPorSessionId(sessionId) {
+async function eliminarPorSessionId(sessionId, botId = null) {
   if (!sessionId) {
     throw new Error('El sessionId es obligatorio');
   }
@@ -49,7 +52,10 @@ async function eliminarPorSessionId(sessionId) {
   return prisma.$transaction(async (tx) => {
     // Eliminar todas las conversaciones con ese session_id
     const deleted = await tx.botConversation.deleteMany({
-      where: { session_id: sessionId },
+      where: {
+        session_id: sessionId,
+        ...(botId ? { botId } : {}),
+      },
     });
 
     return deleted;

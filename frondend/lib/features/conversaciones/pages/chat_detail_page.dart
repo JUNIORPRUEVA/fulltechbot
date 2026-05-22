@@ -35,7 +35,11 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     super.initState();
     final conversacionesProvider = context.read<ConversacionesProvider>();
     Future.microtask(() async {
-      await conversacionesProvider.listarMensajes(widget.sessionId);
+      final botId = context.read<BotProvider>().botSeleccionado?.id;
+      await conversacionesProvider.listarMensajes(
+        widget.sessionId,
+        botId: botId,
+      );
       if (mounted) {
         await _loadCampaignContext();
       }
@@ -153,9 +157,11 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   void _enviarMensaje() {
     final texto = _mensajeController.text.trim();
     if (texto.isEmpty) return;
+    final botId = context.read<BotProvider>().botSeleccionado?.id;
 
     context.read<ConversacionesProvider>().enviarMensaje(
           sessionId: widget.sessionId,
+          botId: botId,
           message: {
             'role': 'admin',
             'content': texto,
@@ -238,7 +244,11 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             onPressed: () async {
-              await context.read<ConversacionesProvider>().listarMensajes(widget.sessionId);
+              final botId = context.read<BotProvider>().botSeleccionado?.id;
+              await context.read<ConversacionesProvider>().listarMensajes(
+                widget.sessionId,
+                botId: botId,
+              );
               if (mounted) {
                 await _loadCampaignContext();
               }

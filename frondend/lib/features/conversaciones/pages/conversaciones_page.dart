@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../bots/providers/bot_provider.dart';
 import '../../clientes/models/cliente_model.dart';
 import '../../clientes/providers/clientes_provider.dart';
 import '../models/conversacion_model.dart';
@@ -28,8 +29,9 @@ class _ConversacionesPageState extends State<ConversacionesPage> {
   void initState() {
     super.initState();
     Future.microtask(() {
-      context.read<ConversacionesProvider>().listarConversaciones();
-      context.read<ClientesProvider>().cargarClientes();
+      final bot = context.read<BotProvider>().botSeleccionado;
+      context.read<ConversacionesProvider>().listarConversaciones(botId: bot?.id);
+      context.read<ClientesProvider>().cargarClientes(botId: bot?.id);
     });
   }
 
@@ -64,8 +66,13 @@ class _ConversacionesPageState extends State<ConversacionesPage> {
             onPressed: conversacionesProvider.cargando
                 ? null
                 : () {
-                    context.read<ConversacionesProvider>().listarConversaciones();
-                    context.read<ClientesProvider>().cargarClientes();
+                    final bot = context.read<BotProvider>().botSeleccionado;
+                    context.read<ConversacionesProvider>().listarConversaciones(
+                          botId: bot?.id,
+                        );
+                    context.read<ClientesProvider>().cargarClientes(
+                          botId: bot?.id,
+                        );
                   },
             icon: const Icon(Icons.refresh_rounded),
           ),
@@ -112,8 +119,8 @@ class _ConversacionesPageState extends State<ConversacionesPage> {
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: Colors.red.shade200),
               ),
-              child: Row(
-                children: [
+                    child: Row(
+                        children: [
                   Icon(Icons.error_outline_rounded, color: Colors.red.shade400, size: 20),
                   const SizedBox(width: 10),
                   Expanded(
@@ -124,7 +131,10 @@ class _ConversacionesPageState extends State<ConversacionesPage> {
                   ),
                   IconButton(
                     onPressed: () {
-                      context.read<ConversacionesProvider>().listarConversaciones();
+                      final bot = context.read<BotProvider>().botSeleccionado;
+                      context.read<ConversacionesProvider>().listarConversaciones(
+                            botId: bot?.id,
+                          );
                     },
                     icon: Icon(Icons.close_rounded, size: 18, color: Colors.red.shade400),
                   ),
@@ -144,8 +154,13 @@ class _ConversacionesPageState extends State<ConversacionesPage> {
                     ? _buildEmptyState(conversaciones.isEmpty)
                     : RefreshIndicator(
                         onRefresh: () async {
-                          await context.read<ConversacionesProvider>().listarConversaciones();
-                          await context.read<ClientesProvider>().cargarClientes();
+                          final bot = context.read<BotProvider>().botSeleccionado;
+                          await context.read<ConversacionesProvider>().listarConversaciones(
+                                botId: bot?.id,
+                              );
+                          await context.read<ClientesProvider>().cargarClientes(
+                                botId: bot?.id,
+                              );
                         },
                         child: ListView.builder(
                           padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
@@ -385,6 +400,8 @@ class _ConversacionesPageState extends State<ConversacionesPage> {
     BuildContext context, String sessionId, ClienteModel? cliente,
   ) async {
     final provider = context.read<ConversacionesProvider>();
+    final botId =
+        context.read<BotProvider>().botSeleccionado?.id ?? cliente?.botId;
     final messenger = ScaffoldMessenger.of(context);
 
     // Mostrar loading
@@ -406,7 +423,11 @@ class _ConversacionesPageState extends State<ConversacionesPage> {
     );
 
     try {
-      await provider.eliminarConversaciones(sessionId, userRole: _userRole);
+      await provider.eliminarConversaciones(
+        sessionId,
+        botId: botId,
+        userRole: _userRole,
+      );
 
       // Cerrar loading y mostrar éxito
       messenger.hideCurrentSnackBar();

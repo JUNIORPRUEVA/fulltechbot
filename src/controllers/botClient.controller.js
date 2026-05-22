@@ -13,8 +13,9 @@ async function listar(req, res) {
 
 async function obtenerPorTelefono(req, res) {
   try {
+    const { botId } = req.params;
     const { telefono } = req.params;
-    const cliente = await botClientService.obtenerClientePorTelefono(telefono);
+    const cliente = await botClientService.obtenerClientePorTelefono(telefono, botId);
     if (!cliente) {
       return res.status(404).json({ ok: false, message: 'Cliente no encontrado' });
     }
@@ -27,8 +28,9 @@ async function obtenerPorTelefono(req, res) {
 
 async function obtenerPorChatId(req, res) {
   try {
+    const { botId } = req.params;
     const { chatid } = req.params;
-    const cliente = await botClientService.obtenerClientePorChatId(chatid);
+    const cliente = await botClientService.obtenerClientePorChatId(chatid, botId);
     if (!cliente) {
       return res.status(404).json({ ok: false, message: 'Cliente no encontrado' });
     }
@@ -53,8 +55,9 @@ async function buscarOCrear(req, res) {
 
 async function actualizar(req, res) {
   try {
+    const { botId } = req.params;
     const { telefono } = req.params;
-    const cliente = await botClientService.actualizarCliente(telefono, req.body);
+    const cliente = await botClientService.actualizarCliente(telefono, req.body, botId);
     if (!cliente) {
       return res.status(404).json({ ok: false, message: 'Cliente no encontrado' });
     }
@@ -102,16 +105,17 @@ async function pausarBot(req, res) {
  */
 async function eliminar(req, res) {
   try {
+    const { botId } = req.params;
     const { telefono } = req.params;
 
     // Verificar que el cliente existe
-    const existente = await botClientService.obtenerClientePorTelefono(telefono);
+    const existente = await botClientService.obtenerClientePorTelefono(telefono, botId);
     if (!existente) {
       return res.status(404).json({ ok: false, message: 'Cliente no encontrado' });
     }
 
     // Eliminar en transacción (servicio maneja todas las dependencias)
-    const clienteEliminado = await botClientService.eliminarCliente(telefono);
+    const clienteEliminado = await botClientService.eliminarCliente(telefono, botId);
 
     console.log(`[AUDITORÍA] Cliente eliminado por ${req.userRole || 'desconocido'}:`, {
       telefono: clienteEliminado.telefono,

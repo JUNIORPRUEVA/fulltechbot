@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../bots/providers/bot_provider.dart';
 import '../../conversaciones/models/conversacion_model.dart';
 import '../../conversaciones/pages/chat_detail_page.dart';
 import '../../conversaciones/providers/conversaciones_provider.dart';
@@ -32,8 +33,11 @@ class _ClienteDetailPageState extends State<ClienteDetailPage> {
   void _cargarConversaciones() {
     Future.microtask(() {
       if (!mounted) return;
+      final botId =
+          context.read<BotProvider>().botSeleccionado?.id ?? _cliente.botId;
       context.read<ConversacionesProvider>().listarMensajes(
         _cliente.chatid ?? _cliente.telefono,
+        botId: botId,
       );
     });
   }
@@ -56,9 +60,14 @@ class _ClienteDetailPageState extends State<ClienteDetailPage> {
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
+              final botId =
+                  context.read<BotProvider>().botSeleccionado?.id ??
+                  _cliente.botId;
               await context.read<ClientesProvider>().eliminarCliente(
                 _cliente.telefono,
+                botId: botId,
                 chatid: _cliente.chatid,
+                userRole: 'admin',
               );
               if (context.mounted) {
                 Navigator.pop(context);

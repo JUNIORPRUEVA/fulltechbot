@@ -11,29 +11,33 @@ class ConversacionesProvider extends ChangeNotifier {
   List<ConversacionModel> _mensajesActuales = [];
   bool _cargando = false;
   String? _error;
+  String? _currentBotId;
 
   List<ConversacionModel> get conversaciones => _conversaciones;
   List<ConversacionModel> get mensajesActuales => _mensajesActuales;
   bool get cargando => _cargando;
   String? get error => _error;
+  String? get currentBotId => _currentBotId;
 
-  Future<void> listarConversaciones() async {
+  Future<void> listarConversaciones({String? botId}) async {
+    if (botId == null || botId.isEmpty) {
+      _error = 'Debes seleccionar un bot para ver sus conversaciones.';
+      notifyListeners();
+      return;
+    }
+
+    _currentBotId = botId;
     _cargando = true;
     _error = null;
     notifyListeners();
 
     try {
-      // 1. Primero cargar datos locales para mostrar inmediatamente
       await _cargarConversacionesLocales();
+      _conversaciones = await _apiService.listarConversaciones(botId);
 
-      // 2. Luego obtener datos frescos de la API
-      _conversaciones = await _apiService.listarConversaciones();
-
-      // 3. Guardar en almacenamiento local
       final jsonList = _conversaciones.map((c) => c.toJson()).toList();
       await LocalStorageService.guardarConversaciones(jsonList);
     } catch (e) {
-      // Si falla la API, ya tenemos los datos locales cargados
       if (_conversaciones.isEmpty) {
         _error = e.toString();
       }
@@ -43,19 +47,26 @@ class ConversacionesProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> listarMensajes(String sessionId) async {
+  Future<void> listarMensajes(String sessionId, {String? botId}) async {
+    final resolvedBotId = botId ?? _currentBotId;
+    if (resolvedBotId == null || resolvedBotId.isEmpty) {
+      _error = 'Debes seleccionar un bot para ver los mensajes.';
+      notifyListeners();
+      return;
+    }
+
+    _currentBotId = resolvedBotId;
     _cargando = true;
     _error = null;
     notifyListeners();
 
     try {
-      // 1. Primero cargar mensajes locales
       await _cargarMensajesLocales(sessionId);
+      _mensajesActuales = await _apiService.listarPorSessionId(
+        resolvedBotId,
+        sessionId,
+      );
 
-      // 2. Luego obtener datos frescos de la API
-      _mensajesActuales = await _apiService.listarPorSessionId(sessionId);
-
-      // 3. Guardar en almacenamiento local
       final jsonList = _mensajesActuales.map((m) => m.toJson()).toList();
       await LocalStorageService.guardarMensajes(sessionId, jsonList);
     } catch (e) {
@@ -71,44 +82,61 @@ class ConversacionesProvider extends ChangeNotifier {
   Future<void> enviarMensaje({
     required String sessionId,
     required Map<String, dynamic> message,
+    String? botId,
   }) async {
+    final resolvedBotId = botId ?? _currentBotId;
+    if (resolvedBotId == null || resolvedBotId.isEmpty) {
+      throw Exception('No hay un bot seleccionado para enviar mensajes.');
+    }
+
+    _currentBotId = resolvedBotId;
     _cargando = true;
     _error = null;
     notifyListeners();
 
     try {
       await _apiService.crearConversacion(
+        botId: resolvedBotId,
         sessionId: sessionId,
         message: message,
       );
-      await listarMensajes(sessionId);
+      await listarMensajes(sessionId, botId: resolvedBotId);
     } catch (e) {
       _error = e.toString();
+      rethrow;
+    } finally {
+      _cargando = false;
+      notifyListeners();
     }
-
-    _cargando = false;
-    notifyListeners();
   }
 
-  /// Elimina todas las conversaciones de un sessionId.
-  /// 1. Elimina del backend (con transacción)
-  /// 2. Elimina de la lista local inmediatamente
-  /// 3. Limpia caché local
-  /// 4. Recarga desde servidor
-  Future<void> eliminarConversaciones(String sessionId, {String? userRole}) async {
+  Future<void> eliminarConversaciones(
+    String sessionId, {
+    String? botId,
+    String? userRole,
+  }) async {
+    final resolvedBotId = botId ?? _currentBotId;
+    if (resolvedBotId == null || resolvedBotId.isEmpty) {
+      throw Exception(
+        'No hay un bot seleccionado para eliminar la conversación.',
+      );
+    }
+
+    _currentBotId = resolvedBotId;
     _cargando = true;
     _error = null;
     notifyListeners();
 
     try {
-      // 1. Eliminar del backend (con transacción)
-      await _apiService.eliminarPorSessionId(sessionId, userRole: userRole);
+      await _apiService.eliminarPorSessionId(
+        resolvedBotId,
+        sessionId,
+        userRole: userRole,
+      );
 
-      // 2. Eliminar de la lista local en memoria
       _conversaciones.removeWhere((c) => c.sessionId == sessionId);
       _mensajesActuales = [];
 
-      // 3. Limpiar almacenamiento local
       final jsonList = _conversaciones.map((c) => c.toJson()).toList();
       await LocalStorageService.guardarConversaciones(jsonList);
       await LocalStorageService.limpiarCacheConversacion(sessionId);
@@ -116,16 +144,19 @@ class ConversacionesProvider extends ChangeNotifier {
       _error = null;
     } catch (e) {
       _error = e.toString();
+      rethrow;
+    } finally {
+      _cargando = false;
+      notifyListeners();
     }
-
-    _cargando = false;
-    notifyListeners();
   }
 
   Future<void> _cargarConversacionesLocales() async {
     final data = await LocalStorageService.cargarConversaciones();
     if (data != null && data.isNotEmpty) {
-      _conversaciones = data.map((json) => ConversacionModel.fromJson(json)).toList();
+      _conversaciones = data
+          .map((json) => ConversacionModel.fromJson(json))
+          .toList();
       notifyListeners();
     }
   }
@@ -133,7 +164,9 @@ class ConversacionesProvider extends ChangeNotifier {
   Future<void> _cargarMensajesLocales(String sessionId) async {
     final data = await LocalStorageService.cargarMensajes(sessionId);
     if (data != null && data.isNotEmpty) {
-      _mensajesActuales = data.map((json) => ConversacionModel.fromJson(json)).toList();
+      _mensajesActuales = data
+          .map((json) => ConversacionModel.fromJson(json))
+          .toList();
       notifyListeners();
     }
   }

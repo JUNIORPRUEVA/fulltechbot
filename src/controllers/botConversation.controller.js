@@ -13,8 +13,9 @@ async function listar(req, res) {
 
 async function obtenerPorSessionId(req, res) {
   try {
+    const { botId } = req.params;
     const { sessionId } = req.params;
-    const conversaciones = await botConversationService.obtenerPorSessionId(sessionId);
+    const conversaciones = await botConversationService.obtenerPorSessionId(sessionId, botId);
     res.json({ ok: true, data: conversaciones });
   } catch (error) {
     console.error('Error al obtener conversaciones:', error);
@@ -41,6 +42,7 @@ async function crear(req, res) {
  */
 async function eliminarPorSessionId(req, res) {
   try {
+    const { botId } = req.params;
     const { sessionId } = req.params;
 
     if (!sessionId) {
@@ -48,13 +50,13 @@ async function eliminarPorSessionId(req, res) {
     }
 
     // Verificar que existen conversaciones para ese sessionId
-    const existentes = await botConversationService.obtenerPorSessionId(sessionId);
+    const existentes = await botConversationService.obtenerPorSessionId(sessionId, botId);
     if (!existentes || existentes.length === 0) {
       return res.status(404).json({ ok: false, message: 'No se encontraron conversaciones para este sessionId' });
     }
 
     // Eliminar en transacción
-    const resultado = await botConversationService.eliminarPorSessionId(sessionId);
+    const resultado = await botConversationService.eliminarPorSessionId(sessionId, botId);
 
     console.log(`[AUDITORÍA] Conversaciones eliminadas por ${req.userRole || 'desconocido'}:`, {
       sessionId,

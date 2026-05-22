@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -6,25 +7,47 @@ import '../../../core/constants/api_config.dart';
 import '../models/conversacion_model.dart';
 
 class ConversacionesApiService {
-  /// Obtiene los headers incluyendo el rol del usuario para autorización.
+  static const Duration _timeout = Duration(seconds: 15);
+
   Map<String, String> _getHeaders({String? userRole}) {
     final headers = <String, String>{
       'Content-Type': 'application/json',
     };
-    if (userRole != null) {
+    if (userRole != null && userRole.isNotEmpty) {
       headers['X-User-Role'] = userRole;
     }
     return headers;
   }
 
-  Future<List<ConversacionModel>> listarConversaciones() async {
-    final response = await http.get(
-      Uri.parse(ApiConfig.botConversationEndpoint),
+  Future<Map<String, dynamic>> _request(
+    Future<http.Response> Function() requestFn,
+  ) async {
+    try {
+      final response = await requestFn().timeout(_timeout);
+      if (response.body.isEmpty) {
+        throw Exception('Respuesta vacía del servidor');
+      }
+
+      final body = jsonDecode(response.body);
+      if (body is! Map<String, dynamic>) {
+        throw Exception('Formato de respuesta inválido');
+      }
+
+      return body;
+    } on TimeoutException {
+      throw Exception('La solicitud tardó demasiado. Verifica tu conexión.');
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Error de conexión: $e');
+    }
+  }
+
+  Future<List<ConversacionModel>> listarConversaciones(String botId) async {
+    final body = await _request(
+      () => http.get(Uri.parse(ApiConfig.botConversationsEndpoint(botId))),
     );
 
-    final body = jsonDecode(response.body);
-
-    if (response.statusCode == 200 && body['ok'] == true) {
+    if (body['ok'] == true) {
       final List data = body['data'] ?? [];
       return data.map((item) => ConversacionModel.fromJson(item)).toList();
     }
@@ -32,14 +55,17 @@ class ConversacionesApiService {
     throw Exception(body['message'] ?? 'Error al listar conversaciones');
   }
 
-  Future<List<ConversacionModel>> listarPorSessionId(String sessionId) async {
-    final response = await http.get(
-      Uri.parse('${ApiConfig.botConversationEndpoint}/$sessionId'),
+  Future<List<ConversacionModel>> listarPorSessionId(
+    String botId,
+    String sessionId,
+  ) async {
+    final body = await _request(
+      () => http.get(
+        Uri.parse(ApiConfig.botConversationBySessionEndpoint(botId, sessionId)),
+      ),
     );
 
-    final body = jsonDecode(response.body);
-
-    if (response.statusCode == 200 && body['ok'] == true) {
+    if (body['ok'] == true) {
       final List data = body['data'] ?? [];
       return data.map((item) => ConversacionModel.fromJson(item)).toList();
     }
@@ -48,39 +74,41 @@ class ConversacionesApiService {
   }
 
   Future<ConversacionModel> crearConversacion({
+    required String botId,
     required String sessionId,
     required Map<String, dynamic> message,
   }) async {
-    final response = await http.post(
-      Uri.parse(ApiConfig.botConversationEndpoint),
-      headers: _getHeaders(),
-      body: jsonEncode({
-        'session_id': sessionId,
-        'message': message,
-      }),
+    final body = await _request(
+      () => http.post(
+        Uri.parse(ApiConfig.botConversationsEndpoint(botId)),
+        headers: _getHeaders(),
+        body: jsonEncode({
+          'session_id': sessionId,
+          'message': message,
+        }),
+      ),
     );
 
-    final body = jsonDecode(response.body);
-
-    if ((response.statusCode == 200 || response.statusCode == 201) &&
-        body['ok'] == true) {
+    if (body['ok'] == true) {
       return ConversacionModel.fromJson(body['data']);
     }
 
     throw Exception(body['message'] ?? 'Error al crear conversación');
   }
 
-  /// Elimina todas las conversaciones de un sessionId.
-  /// Requiere rol admin/owner (se envía en header X-User-Role).
-  Future<void> eliminarPorSessionId(String sessionId, {String? userRole}) async {
-    final response = await http.delete(
-      Uri.parse('${ApiConfig.botConversationEndpoint}/$sessionId'),
-      headers: _getHeaders(userRole: userRole),
+  Future<void> eliminarPorSessionId(
+    String botId,
+    String sessionId, {
+    String? userRole,
+  }) async {
+    final body = await _request(
+      () => http.delete(
+        Uri.parse(ApiConfig.botConversationBySessionEndpoint(botId, sessionId)),
+        headers: _getHeaders(userRole: userRole),
+      ),
     );
 
-    final body = jsonDecode(response.body);
-
-    if (response.statusCode == 200 && body['ok'] == true) {
+    if (body['ok'] == true) {
       return;
     }
 

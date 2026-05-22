@@ -55,7 +55,10 @@ class _ClientesPageState extends State<ClientesPage> {
             tooltip: 'Actualizar',
             onPressed: provider.isLoading
                 ? null
-                : () => context.read<ClientesProvider>().cargarClientes(),
+                : () {
+                    final bot = context.read<BotProvider>().botSeleccionado;
+                    context.read<ClientesProvider>().cargarClientes(botId: bot?.id);
+                  },
             icon: const Icon(Icons.refresh_rounded),
           ),
         ],
@@ -132,7 +135,12 @@ class _ClientesPageState extends State<ClientesPage> {
                 : clientesFiltrados.isEmpty
                     ? _buildEmptyState(provider.clientes.isEmpty)
                     : RefreshIndicator(
-                        onRefresh: () => context.read<ClientesProvider>().cargarClientes(),
+                        onRefresh: () {
+                          final bot = context.read<BotProvider>().botSeleccionado;
+                          return context.read<ClientesProvider>().cargarClientes(
+                                botId: bot?.id,
+                              );
+                        },
                         child: ListView.builder(
                           padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
                           itemCount: clientesFiltrados.length,
@@ -313,6 +321,7 @@ class _ClientesPageState extends State<ClientesPage> {
   /// Ejecuta la eliminación del cliente con feedback visual.
   Future<void> _ejecutarEliminacion(BuildContext context, ClienteModel cliente) async {
     final provider = context.read<ClientesProvider>();
+    final botId = context.read<BotProvider>().botSeleccionado?.id ?? cliente.botId;
     final messenger = ScaffoldMessenger.of(context);
 
     // Mostrar loading
@@ -336,6 +345,7 @@ class _ClientesPageState extends State<ClientesPage> {
     try {
       await provider.eliminarCliente(
         cliente.telefono,
+        botId: botId,
         chatid: cliente.chatid,
         userRole: _userRole,
       );

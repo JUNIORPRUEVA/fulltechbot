@@ -10,15 +10,24 @@ async function listarClientes(botId = null) {
   });
 }
 
-async function obtenerClientePorTelefono(telefono) {
+async function obtenerClientePorTelefono(telefono, botId = null) {
+  if (botId) {
+    return prisma.botClient.findFirst({
+      where: { telefono, botId },
+    });
+  }
+
   return prisma.botClient.findUnique({
     where: { telefono },
   });
 }
 
-async function obtenerClientePorChatId(chatid) {
+async function obtenerClientePorChatId(chatid, botId = null) {
   return prisma.botClient.findFirst({
-    where: { chatid },
+    where: {
+      chatid,
+      ...(botId ? { botId } : {}),
+    },
   });
 }
 
@@ -99,10 +108,8 @@ async function buscarOCrearCliente(data) {
   });
 }
 
-async function actualizarCliente(telefono, data) {
-  const existente = await prisma.botClient.findUnique({
-    where: { telefono },
-  });
+async function actualizarCliente(telefono, data, botId = null) {
+  const existente = await obtenerClientePorTelefono(telefono, botId);
 
   if (!existente) {
     return null;
@@ -120,9 +127,7 @@ async function actualizarCliente(telefono, data) {
 }
 
 async function actualizarEstado(telefono, estado) {
-  const existente = await prisma.botClient.findUnique({
-    where: { telefono },
-  });
+  const existente = await obtenerClientePorTelefono(telefono);
 
   if (!existente) {
     return null;
@@ -138,9 +143,7 @@ async function actualizarEstado(telefono, estado) {
 }
 
 async function pausarBot(telefono, pausado) {
-  const existente = await prisma.botClient.findUnique({
-    where: { telefono },
-  });
+  const existente = await obtenerClientePorTelefono(telefono);
 
   if (!existente) {
     return null;
@@ -173,10 +176,8 @@ async function pausarBot(telefono, pausado) {
  *   - audit_logs (logs de auditoría)
  * Se deben agregar aquí en el orden correcto.
  */
-async function eliminarCliente(telefono) {
-  const existente = await prisma.botClient.findUnique({
-    where: { telefono },
-  });
+async function eliminarCliente(telefono, botId = null) {
+  const existente = await obtenerClientePorTelefono(telefono, botId);
 
   if (!existente) {
     return null;
@@ -192,20 +193,34 @@ async function eliminarCliente(telefono) {
     // 1. Eliminar conversaciones del bot por session_id
     if (sessionIds.length > 0) {
       await tx.botConversation.deleteMany({
-        where: { session_id: { in: sessionIds } },
+        where: {
+          session_id: { in: sessionIds },
+          ...(botId ? { botId } : {}),
+        },
       });
     }
 
     // 2. Eliminar cotizaciones del bot asociadas al cliente
     await tx.botQuotation.deleteMany({
-      where: { telefono_cliente: telefono },
+      where: {
+        telefono_cliente: telefono,
+        ...(botId ? { botId } : {}),
+      },
     });
 
     // 3. Eliminar órdenes del bot asociadas al cliente
-    await tx.$executeRawUnsafe(
-      `DELETE FROM bot_orders WHERE telefono_cliente = $1`,
-      telefono
-    );
+    if (botId) {
+      await tx.$executeRawUnsafe(
+        `DELETE FROM bot_orders WHERE telefono_cliente = $1 AND bot_id = $2`,
+        telefono,
+        botId
+      );
+    } else {
+      await tx.$executeRawUnsafe(
+        `DELETE FROM bot_orders WHERE telefono_cliente = $1`,
+        telefono
+      );
+    }
 
     // 4. Intentar eliminar cotizaciones globales si la tabla existe
     try {

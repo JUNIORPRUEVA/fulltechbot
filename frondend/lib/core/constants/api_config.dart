@@ -17,6 +17,24 @@ class ApiConfig {
   static String botCampaignsEndpoint(String botId) =>
       '$baseUrl/api/bots/$botId/campaigns';
 
+  static String botClientsEndpoint(String botId) =>
+      '$baseUrl/api/bots/$botId/clients';
+
+  static String botClientByPhoneEndpoint(String botId, String telefono) =>
+      '${botClientsEndpoint(botId)}/$telefono';
+
+  static String botClientByChatIdEndpoint(String botId, String chatId) =>
+      '${botClientsEndpoint(botId)}/by-chatid/$chatId';
+
+  static String botClientByPhoneLookupEndpoint(String botId, String telefono) =>
+      '${botClientsEndpoint(botId)}/by-phone/$telefono';
+
+  static String botConversationsEndpoint(String botId) =>
+      '$baseUrl/api/bots/$botId/conversations';
+
+  static String botConversationBySessionEndpoint(String botId, String sessionId) =>
+      '${botConversationsEndpoint(botId)}/$sessionId';
+
   static String botCampaignByIdEndpoint(String botId, String campaignId) =>
       '${botCampaignsEndpoint(botId)}/$campaignId';
 

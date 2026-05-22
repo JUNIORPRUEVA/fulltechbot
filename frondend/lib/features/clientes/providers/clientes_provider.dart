@@ -11,21 +11,29 @@ class ClientesProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool _isLoadingMore = false;
   String? _error;
+  String? _currentBotId;
 
   List<ClienteModel> get clientes => _clientes;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  String? get currentBotId => _currentBotId;
 
   Future<void> cargarClientes({String? botId}) async {
     if (_isLoadingMore) return;
-    _isLoadingMore = true;
+    if (botId == null || botId.isEmpty) {
+      _error = 'Debes seleccionar un bot para ver sus clientes.';
+      notifyListeners();
+      return;
+    }
 
+    _isLoadingMore = true;
+    _currentBotId = botId;
     _setLoading(true);
+
     try {
       _clientes = await _apiService.listarClientes(botId: botId);
       _error = null;
 
-      // Actualizar caché local
       final clientesJson = _clientes.map((c) => c.toJson()).toList();
       await LocalStorageService.guardarClientes(clientesJson);
     } catch (e, st) {
@@ -35,83 +43,103 @@ class ClientesProvider extends ChangeNotifier {
       debugPrint('[ClientesProvider] Error cargando clientes: $e');
       debugPrint('$st');
     }
+
     _isLoadingMore = false;
     _setLoading(false);
   }
 
-  Future<void> crearCliente(ClienteModel cliente) async {
+  Future<void> crearCliente(ClienteModel cliente, {String? botId}) async {
+    final resolvedBotId = botId ?? _currentBotId ?? cliente.botId;
+    if (resolvedBotId == null || resolvedBotId.isEmpty) {
+      throw Exception('No hay un bot seleccionado para crear el cliente.');
+    }
+
     if (_isLoadingMore) return;
     _isLoadingMore = true;
-
     _setLoading(true);
+
     try {
-      await _apiService.crearCliente(cliente);
-      await cargarClientes();
+      await _apiService.crearCliente(resolvedBotId, cliente);
+      await cargarClientes(botId: resolvedBotId);
       _error = null;
     } catch (e, st) {
       _error = e.toString();
       debugPrint('[ClientesProvider] Error creando cliente: $e');
       debugPrint('$st');
+      rethrow;
+    } finally {
       _isLoadingMore = false;
       _setLoading(false);
     }
   }
 
-  Future<void> actualizarCliente(ClienteModel cliente) async {
+  Future<void> actualizarCliente(ClienteModel cliente, {String? botId}) async {
+    final resolvedBotId = botId ?? _currentBotId ?? cliente.botId;
+    if (resolvedBotId == null || resolvedBotId.isEmpty) {
+      throw Exception('No hay un bot seleccionado para actualizar el cliente.');
+    }
+
     if (_isLoadingMore) return;
     _isLoadingMore = true;
-
     _setLoading(true);
+
     try {
-      await _apiService.actualizarCliente(cliente);
-      await cargarClientes();
+      await _apiService.actualizarCliente(resolvedBotId, cliente);
+      await cargarClientes(botId: resolvedBotId);
       _error = null;
     } catch (e, st) {
       _error = e.toString();
       debugPrint('[ClientesProvider] Error actualizando cliente: $e');
       debugPrint('$st');
+      rethrow;
+    } finally {
       _isLoadingMore = false;
       _setLoading(false);
     }
   }
 
-  /// Elimina un cliente de forma permanente.
-  /// 1. Llama al API (que elimina en BD con transacción)
-  /// 2. Elimina de la lista local inmediatamente
-  /// 3. Limpia la caché local
-  /// 4. Recarga desde el servidor para asegurar consistencia
-  Future<void> eliminarCliente(String telefono, {String? chatid, String? userRole}) async {
+  Future<void> eliminarCliente(
+    String telefono, {
+    String? botId,
+    String? chatid,
+    String? userRole,
+  }) async {
+    final resolvedBotId = botId ?? _currentBotId;
+    if (resolvedBotId == null || resolvedBotId.isEmpty) {
+      throw Exception('No hay un bot seleccionado para eliminar el cliente.');
+    }
+
     if (_isLoadingMore) return;
     _isLoadingMore = true;
-
     _setLoading(true);
-    try {
-      // 1. Eliminar en backend (transacción con todas las dependencias)
-      await _apiService.eliminarCliente(telefono, userRole: userRole);
 
-      // 2. Eliminar de la lista local inmediatamente (respuesta visual instantánea)
+    try {
+      await _apiService.eliminarCliente(
+        resolvedBotId,
+        telefono,
+        userRole: userRole,
+      );
+
       _clientes.removeWhere((c) => c.telefono == telefono);
 
-      // 3. Limpiar caché local de conversaciones y mensajes asociados
       await LocalStorageService.limpiarCacheCliente(telefono);
       if (chatid != null && chatid != telefono) {
         await LocalStorageService.limpiarCacheCliente(chatid);
+        await LocalStorageService.limpiarCacheConversacion(chatid);
       }
+      await LocalStorageService.limpiarCacheConversacion(telefono);
 
-      // 4. Actualizar caché de clientes
       final clientesJson = _clientes.map((c) => c.toJson()).toList();
       await LocalStorageService.guardarClientes(clientesJson);
 
       _error = null;
-      _isLoadingMore = false;
-      _setLoading(false);
-
-      // 5. Recargar desde servidor para asegurar consistencia
-      await cargarClientes();
+      await cargarClientes(botId: resolvedBotId);
     } catch (e, st) {
       _error = e.toString();
       debugPrint('[ClientesProvider] Error eliminando cliente: $e');
       debugPrint('$st');
+      rethrow;
+    } finally {
       _isLoadingMore = false;
       _setLoading(false);
     }
