@@ -1,5 +1,19 @@
 const prisma = require('../lib/prisma');
 
+let botOrdersColumnsPromise;
+
+async function getBotOrdersColumns() {
+  if (!botOrdersColumnsPromise) {
+    botOrdersColumnsPromise = prisma.$queryRawUnsafe(`
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'bot_orders'
+    `).then((rows) => new Set(rows.map((row) => row.column_name)));
+  }
+
+  return botOrdersColumnsPromise;
+}
+
 async function listarClientes(botId = null) {
   const where = {};
   if (botId) where.botId = botId;
@@ -209,17 +223,24 @@ async function eliminarCliente(telefono, botId = null) {
     });
 
     // 3. Eliminar órdenes del bot asociadas al cliente
-    if (botId) {
-      await tx.$executeRawUnsafe(
-        `DELETE FROM bot_orders WHERE telefono_cliente = $1 AND bot_id = $2`,
-        telefono,
-        botId
-      );
-    } else {
-      await tx.$executeRawUnsafe(
-        `DELETE FROM bot_orders WHERE telefono_cliente = $1`,
-        telefono
-      );
+    try {
+      const botOrdersColumns = await getBotOrdersColumns();
+      const canFilterByBot = botId && botOrdersColumns.has('bot_id');
+
+      if (canFilterByBot) {
+        await tx.$executeRawUnsafe(
+          `DELETE FROM bot_orders WHERE telefono_cliente = $1 AND bot_id = $2`,
+          telefono,
+          botId
+        );
+      } else {
+        await tx.$executeRawUnsafe(
+          `DELETE FROM bot_orders WHERE telefono_cliente = $1`,
+          telefono
+        );
+      }
+    } catch (e) {
+      console.log('[eliminarCliente] No se pudieron eliminar órdenes del bot, ignorando.', e.message);
     }
 
     // 4. Intentar eliminar cotizaciones globales si la tabla existe
