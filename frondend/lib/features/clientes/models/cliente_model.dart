@@ -90,6 +90,9 @@ class ClienteModel {
       telefono: json['telefono']?.toString() ?? '',
       chatid: json['chatid']?.toString(),
       nombre: json['nombre']?.toString(),
+      botId: json['bot_id']?.toString() ?? json['botId']?.toString(),
+      sourceBotId:
+          json['source_bot_id']?.toString() ?? json['sourceBotId']?.toString(),
       usuarioWhatsapp: json['usuario_whatsapp']?.toString(),
       direccion: json['direccion']?.toString(),
       ciudad: json['ciudad']?.toString(),

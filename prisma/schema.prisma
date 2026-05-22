@@ -110,14 +110,10 @@ model BotClient {
   actualizado_en            DateTime  @default(now()) @db.Timestamptz(6)
 
   botId                     String?   @map("bot_id")
-  sourceBotId               String?   @map("source_bot_id")
-  ultimaInstanciaWhatsapp   String?   @map("ultima_instancia_whatsapp")
-  origen                    String?
 
   bot                       Bot?      @relation(fields: [botId], references: [id])
 
   @@index([botId], map: "idx_bot_clients_bot_id")
-  @@index([sourceBotId], map: "idx_bot_clients_source_bot_id")
   @@index([estado_cliente], map: "idx_bot_clients_estado_cliente")
   @@index([etapa], map: "idx_bot_clients_etapa")
   @@index([producto_servicio_interes], map: "idx_bot_clients_interes")

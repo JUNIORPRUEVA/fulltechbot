@@ -3,6 +3,7 @@ const prisma = require('../lib/prisma');
 async function listarClientes(botId = null) {
   const where = {};
   if (botId) where.botId = botId;
+
   return prisma.botClient.findMany({
     where,
     orderBy: { ultima_interaccion_at: 'desc' },
@@ -23,16 +24,15 @@ async function obtenerClientePorChatId(chatid) {
 
 async function buscarOCrearCliente(data) {
   const { telefono, chatid, botId } = data;
+
   if (!telefono) {
-    throw new Error('El teléfono es obligatorio');
+    throw new Error('El telefono es obligatorio');
   }
 
-  // Buscar por teléfono primero
   let existente = await prisma.botClient.findUnique({
     where: { telefono },
   });
 
-  // Si no se encuentra por teléfono pero hay chatid, buscar por chatid
   if (!existente && chatid) {
     existente = await prisma.botClient.findFirst({
       where: { chatid },
@@ -40,7 +40,6 @@ async function buscarOCrearCliente(data) {
   }
 
   if (existente) {
-    // Actualizar datos si existe
     const updateData = {
       nombre: data.nombre ?? existente.nombre,
       chatid: data.chatid ?? existente.chatid,
@@ -58,11 +57,8 @@ async function buscarOCrearCliente(data) {
       ultima_interaccion_at: new Date(),
       dias_sin_responder: 0,
       actualizado_en: new Date(),
-      // Guardar sourceBotId si viene en la petición (no sobrescribir botId original)
-      ...(botId ? { sourceBotId: botId } : {}),
     };
 
-    // Si se pasa metadata, mergearla
     if (data.metadata) {
       const existingMetadata = typeof existente.metadata === 'object' ? existente.metadata : {};
       updateData.metadata = { ...existingMetadata, ...data.metadata };
@@ -74,7 +70,6 @@ async function buscarOCrearCliente(data) {
     });
   }
 
-  // Crear nuevo cliente
   return prisma.botClient.create({
     data: {
       telefono,
@@ -113,7 +108,6 @@ async function actualizarCliente(telefono, data) {
     return null;
   }
 
-  // No permitir cambiar el teléfono (PK)
   const { telefono: _, ...updateData } = data;
 
   return prisma.botClient.update({
