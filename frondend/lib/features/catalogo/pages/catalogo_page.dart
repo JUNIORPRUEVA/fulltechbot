@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../bots/models/bot_model.dart';
 import '../../bots/providers/bot_provider.dart';
 import '../models/catalogo_model.dart';
 import '../providers/catalogo_provider.dart';
@@ -14,22 +15,43 @@ class CatalogoPage extends StatefulWidget {
   State<CatalogoPage> createState() => _CatalogoPageState();
 }
 
-class _CatalogoPageState extends State<CatalogoPage> {
+class _CatalogoPageState extends State<CatalogoPage> with WidgetsBindingObserver {
   final _searchController = TextEditingController();
   String _searchQuery = '';
+  String? _lastBotId;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _cargarProductos();
+      _cargarSiHayBot();
     });
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _verificarCambioDeBot();
+  }
+
+  void _verificarCambioDeBot() {
+    final botId = _botId;
+    if (botId != null && botId != _lastBotId) {
+      _lastBotId = botId;
+      _cargarProductos();
+    } else if (botId == null && _lastBotId != null) {
+      // Se limpió la selección de bot
+      _lastBotId = null;
+      context.read<CatalogoProvider>().cargarProductos(botId: null);
+    }
   }
 
   String? get _botId {
@@ -37,6 +59,14 @@ class _CatalogoPageState extends State<CatalogoPage> {
       return context.read<BotProvider>().botSeleccionado?.id;
     } catch (_) {
       return null;
+    }
+  }
+
+  void _cargarSiHayBot() {
+    final botId = _botId;
+    if (botId != null) {
+      _lastBotId = botId;
+      context.read<CatalogoProvider>().cargarProductos(botId: botId);
     }
   }
 
@@ -60,8 +90,15 @@ class _CatalogoPageState extends State<CatalogoPage> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<CatalogoProvider>();
-    final productosFiltrados = _filtrarProductos(provider.productos);
+    final botProvider = context.watch<BotProvider>();
+    final catalogoProvider = context.watch<CatalogoProvider>();
+    final bot = botProvider.botSeleccionado;
+    final productosFiltrados = _filtrarProductos(catalogoProvider.productos);
+
+    // Si no hay bot seleccionado, mostrar mensaje
+    if (bot == null) {
+      return _buildSinBotSeleccionado();
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -70,7 +107,7 @@ class _CatalogoPageState extends State<CatalogoPage> {
         actions: [
           IconButton(
             tooltip: 'Actualizar',
-            onPressed: provider.isLoading
+            onPressed: catalogoProvider.isLoading
                 ? null
                 : _cargarProductos,
             icon: const Icon(Icons.refresh_rounded),
@@ -83,8 +120,10 @@ class _CatalogoPageState extends State<CatalogoPage> {
       ),
       body: Column(
         children: [
+          // Banner del bot actual
+          _BotBanner(bot: bot),
           // Error banner
-          if (provider.error != null)
+          if (catalogoProvider.error != null)
             Container(
               width: double.infinity,
               margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -100,7 +139,7 @@ class _CatalogoPageState extends State<CatalogoPage> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      provider.error!,
+                      catalogoProvider.error!,
                       style: TextStyle(color: Colors.red.shade700, fontSize: 13),
                     ),
                   ),
@@ -144,7 +183,7 @@ class _CatalogoPageState extends State<CatalogoPage> {
           ),
 
           // Estadísticas rápidas
-          if (provider.productos.isNotEmpty && _searchQuery.isEmpty)
+          if (catalogoProvider.productos.isNotEmpty && _searchQuery.isEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
               child: SizedBox(
@@ -154,19 +193,19 @@ class _CatalogoPageState extends State<CatalogoPage> {
                   children: [
                     _StatChip(
                       icon: Icons.inventory_2_rounded,
-                      label: '${provider.productos.length} total',
+                      label: '${catalogoProvider.productos.length} total',
                       color: Colors.blue,
                     ),
                     const SizedBox(width: 8),
                     _StatChip(
                       icon: Icons.check_circle_rounded,
-                      label: '${provider.productos.where((p) => p.estado == 'activo').length} activos',
+                      label: '${catalogoProvider.productos.where((p) => p.estado == 'activo').length} activos',
                       color: Colors.green,
                     ),
                     const SizedBox(width: 8),
                     _StatChip(
                       icon: Icons.shopping_cart_rounded,
-                      label: '${provider.productos.where((p) => p.estado == 'agotado').length} agotados',
+                      label: '${catalogoProvider.productos.where((p) => p.estado == 'agotado').length} agotados',
                       color: Colors.orange,
                     ),
                   ],
@@ -176,9 +215,9 @@ class _CatalogoPageState extends State<CatalogoPage> {
 
           // Lista de productos
           Expanded(
-            child: provider.isLoading && provider.productos.isEmpty
+            child: catalogoProvider.isLoading && catalogoProvider.productos.isEmpty
                 ? const Center(child: CircularProgressIndicator(strokeWidth: 3))
-                : provider.productos.isEmpty
+                : catalogoProvider.productos.isEmpty
                     ? _EmptyCatalogo(onAdd: () => _abrirFormulario(context))
                     : productosFiltrados.isEmpty
                         ? Center(
@@ -219,6 +258,49 @@ class _CatalogoPageState extends State<CatalogoPage> {
                           ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSinBotSeleccionado() {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Catálogo'),
+        centerTitle: false,
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Icon(
+                  Icons.inventory_2_outlined,
+                  size: 40,
+                  color: Colors.orange.shade300,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Selecciona un bot',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Selecciona un bot antes de administrar el catálogo.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -265,6 +347,63 @@ class _CatalogoPageState extends State<CatalogoPage> {
     if (confirmar == true && context.mounted) {
       await context.read<CatalogoProvider>().eliminarProducto(producto.id, botId: _botId);
     }
+  }
+}
+
+class _BotBanner extends StatelessWidget {
+  final BotModel bot;
+
+  const _BotBanner({required this.bot});
+
+  @override
+  Widget build(BuildContext context) {
+    final isActive = bot.estado == 'activo';
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.smart_toy_outlined, size: 18, color: Colors.blue.shade600),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Catálogo de: ${bot.nombre}',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.blue.shade700,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: isActive ? Colors.green.shade50 : Colors.red.shade50,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: isActive ? Colors.green.shade200 : Colors.red.shade200,
+              ),
+            ),
+            child: Text(
+              isActive ? 'Activo' : 'Inactivo',
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                color: isActive ? Colors.green.shade700 : Colors.red.shade700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

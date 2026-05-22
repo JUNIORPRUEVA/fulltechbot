@@ -32,7 +32,7 @@ class _BotSelectorPageState extends State<BotSelectorPage> {
         centerTitle: false,
         actions: [
           IconButton(
-            tooltip: 'Actualizar',
+            tooltip: 'Actualizar lista',
             onPressed: provider.isLoading
                 ? null
                 : () => context.read<BotProvider>().cargarBots(),
@@ -40,9 +40,10 @@ class _BotSelectorPageState extends State<BotSelectorPage> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _abrirFormulario(context),
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add, size: 20),
+        label: const Text('Crear bot'),
       ),
       body: _buildBody(provider),
     );
@@ -126,14 +127,14 @@ class _BotSelectorPageState extends State<BotSelectorPage> {
     return RefreshIndicator(
       onRefresh: () => context.read<BotProvider>().cargarBots(),
       child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
         itemCount: provider.bots.length,
         itemBuilder: (context, index) {
           final bot = provider.bots[index];
-          return _BotCard(
+          return _BotCardProfesional(
             bot: bot,
             isSelected: provider.botSeleccionado?.id == bot.id,
-            onTap: () {
+            onEntrar: () {
               provider.seleccionarBot(bot);
               Navigator.pop(context, bot);
             },
@@ -158,17 +159,17 @@ class _BotSelectorPageState extends State<BotSelectorPage> {
   }
 }
 
-class _BotCard extends StatelessWidget {
+class _BotCardProfesional extends StatelessWidget {
   final BotModel bot;
   final bool isSelected;
-  final VoidCallback onTap;
+  final VoidCallback onEntrar;
   final VoidCallback onEdit;
   final VoidCallback onToggleStatus;
 
-  const _BotCard({
+  const _BotCardProfesional({
     required this.bot,
     required this.isSelected,
-    required this.onTap,
+    required this.onEntrar,
     required this.onEdit,
     required this.onToggleStatus,
   });
@@ -176,129 +177,205 @@ class _BotCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isActive = bot.estado == 'activo';
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            color: isSelected ? Colors.blue.shade50 : Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isSelected ? Colors.blue.shade300 : Colors.grey.shade200,
-              width: isSelected ? 2 : 1,
-            ),
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Card(
+        elevation: isSelected ? 2 : 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: isSelected
+                ? colorScheme.primary
+                : Colors.grey.shade200,
+            width: isSelected ? 2 : 1,
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                // Icono
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: isActive ? Colors.green.shade50 : Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(12),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Fila superior: icono + info + estado
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Icono del bot
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: isActive
+                          ? Colors.green.shade50
+                          : Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(
+                      Icons.smart_toy_outlined,
+                      color: isActive
+                          ? Colors.green.shade600
+                          : Colors.grey.shade400,
+                      size: 26,
+                    ),
                   ),
-                  child: Icon(
-                    Icons.smart_toy_outlined,
-                    color: isActive ? Colors.green.shade600 : Colors.grey.shade400,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                // Info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        bot.nombre,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        bot.slug,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade500,
-                        ),
-                      ),
-                      if (bot.tipoNegocio != null) ...[
-                        const SizedBox(height: 2),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
-                            borderRadius: BorderRadius.circular(6),
+                  const SizedBox(width: 14),
+                  // Nombre, tipo, descripción
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          bot.nombre,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
                           ),
-                          child: Text(
-                            bot.tipoNegocio!,
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.blue.shade600,
-                              fontWeight: FontWeight.w600,
+                        ),
+                        if (bot.tipoNegocio != null) ...[
+                          const SizedBox(height: 2),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade50,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              bot.tipoNegocio!,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.blue.shade600,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
-                        ),
+                        ],
+                        if (bot.descripcion != null &&
+                            bot.descripcion!.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            bot.descripcion!,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey.shade600,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ],
-                    ],
-                  ),
-                ),
-                // Estado
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: isActive ? Colors.green.shade50 : Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isActive ? Colors.green.shade200 : Colors.red.shade200,
                     ),
                   ),
-                  child: Text(
-                    isActive ? 'Activo' : 'Inactivo',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: isActive ? Colors.green.shade700 : Colors.red.shade700,
+                  const SizedBox(width: 8),
+                  // Badge de estado
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
                     ),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                // Menú
-                PopupMenuButton<String>(
-                  tooltip: 'Opciones',
-                  onSelected: (value) {
-                    if (value == 'edit') onEdit();
-                    else if (value == 'toggle') onToggleStatus();
-                  },
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  itemBuilder: (_) => [
-                    PopupMenuItem(
-                      value: 'toggle',
-                      child: Text(isActive ? 'Desactivar' : 'Activar'),
-                    ),
-                    const PopupMenuDivider(),
-                    const PopupMenuItem(
-                      value: 'edit',
-                      child: ListTile(
-                        leading: Icon(Icons.edit_outlined, size: 20),
-                        title: Text('Editar'),
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
+                    decoration: BoxDecoration(
+                      color: isActive
+                          ? Colors.green.shade50
+                          : Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isActive
+                            ? Colors.green.shade200
+                            : Colors.red.shade200,
                       ),
                     ),
-                  ],
-                  icon: Icon(Icons.more_vert, size: 18, color: Colors.grey.shade400),
-                ),
-              ],
-            ),
+                    child: Text(
+                      isActive ? 'Activo' : 'Inactivo',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: isActive
+                            ? Colors.green.shade700
+                            : Colors.red.shade700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              // Slug
+              Row(
+                children: [
+                  Icon(Icons.link, size: 13, color: Colors.grey.shade400),
+                  const SizedBox(width: 4),
+                  Text(
+                    bot.slug,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade500,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              // Botones de acción
+              Row(
+                children: [
+                  // Botón Entrar
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: onEntrar,
+                      icon: const Icon(Icons.login_rounded, size: 18),
+                      label: const Text('Entrar'),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  // Botón Editar
+                  OutlinedButton.icon(
+                    onPressed: onEdit,
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    label: const Text('Editar'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 16,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  // Menú de opciones
+                  PopupMenuButton<String>(
+                    tooltip: 'Más opciones',
+                    onSelected: (value) {
+                      if (value == 'toggle') onToggleStatus();
+                    },
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    itemBuilder: (_) => [
+                      PopupMenuItem(
+                        value: 'toggle',
+                        child: Text(
+                          isActive ? 'Desactivar bot' : 'Activar bot',
+                        ),
+                      ),
+                    ],
+                    icon: Icon(
+                      Icons.more_vert,
+                      size: 20,
+                      color: Colors.grey.shade500,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),

@@ -1,15 +1,8 @@
-const { PrismaClient } = require('@prisma/client');
-const { PrismaPg } = require('@prisma/adapter-pg');
-
-const adapter = new PrismaPg(process.env.DATABASE_URL);
-
-const prisma = new PrismaClient({
-  adapter,
-});
+const prisma = require('../lib/prisma');
 
 async function listarCatalogo(botId = null) {
   const where = {};
-  if (botId) where.bot_id = botId;
+  if (botId) where.botId = botId;
   return prisma.catalogo.findMany({
     where,
     orderBy: {
@@ -22,7 +15,7 @@ async function listarCatalogoActivo(botId = null) {
   const where = {
     estado: 'activo',
   };
-  if (botId) where.bot_id = botId;
+  if (botId) where.botId = botId;
   return prisma.catalogo.findMany({
     where,
     orderBy: {
@@ -67,7 +60,7 @@ async function crearProducto(data) {
       palabrasClave: data.palabrasClave || null,
       reglasNegociacion: data.reglasNegociacion || null,
       estado: data.estado || 'activo',
-      bot_id: data.bot_id || null,
+      botId: data.botId || null,
     },
   });
 }
@@ -103,7 +96,7 @@ async function actualizarProducto(id, data) {
       palabrasClave: data.palabrasClave || null,
       reglasNegociacion: data.reglasNegociacion || null,
       estado: data.estado || 'activo',
-      bot_id: data.bot_id !== undefined ? data.bot_id : undefined,
+      botId: data.botId !== undefined ? data.botId : undefined,
     },
   });
 }

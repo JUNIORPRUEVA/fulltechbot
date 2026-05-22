@@ -87,7 +87,7 @@ async function buscarOCrear(req, res) {
       });
     }
 
-    const bot_id = req.params.botId || null;
+    const botId = req.params.botId || null;
 
     const cliente = await botClientService.buscarOCrearCliente({
       telefono,
@@ -104,7 +104,7 @@ async function buscarOCrear(req, res) {
       presupuesto_estimado,
       ultimo_mensaje,
       metadata,
-      bot_id,
+      botId,
     });
 
     const esNuevo = cliente.total_mensajes === 1;

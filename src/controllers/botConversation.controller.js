@@ -41,7 +41,7 @@ async function obtenerPorSessionId(req, res) {
 async function crear(req, res) {
   try {
     const { session_id, message } = req.body;
-    const bot_id = req.params.botId || null;
+    const botId = req.params.botId || null;
 
     if (!session_id) {
       return res.status(400).json({
@@ -60,7 +60,7 @@ async function crear(req, res) {
     const conversacion = await botConversationService.crearConversacion({
       session_id,
       message,
-      bot_id,
+      botId,
     });
 
     res.status(201).json({

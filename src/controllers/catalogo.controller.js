@@ -156,7 +156,7 @@ async function crear(req, res) {
     const data = req.body;
     // Si viene de ruta anidada, asignar botId automáticamente
     if (req.params.botId) {
-      data.bot_id = req.params.botId;
+      data.botId = req.params.botId;
     }
 
     const errorValidacion = validarProducto(data);

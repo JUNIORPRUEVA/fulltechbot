@@ -48,7 +48,7 @@ async function obtenerPorId(req, res) {
 async function crear(req, res) {
   try {
     const data = req.body;
-    const bot_id = req.params.botId || null;
+    const botId = req.params.botId || null;
 
     if (!data.numero_cotizacion) {
       return res.status(400).json({
@@ -66,7 +66,7 @@ async function crear(req, res) {
 
     const cotizacion = await botQuotationService.crearCotizacion({
       ...data,
-      bot_id,
+      botId,
     });
 
     res.status(201).json({

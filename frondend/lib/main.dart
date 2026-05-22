@@ -8,6 +8,8 @@ import 'features/clientes/providers/clientes_provider.dart';
 import 'features/bots/providers/bot_provider.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
   runApp(
     MultiProvider(
       providers: [

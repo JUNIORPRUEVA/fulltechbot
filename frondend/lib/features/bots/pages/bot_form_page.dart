@@ -29,6 +29,8 @@ class _BotFormPageState extends State<BotFormPage> {
   late final TextEditingController _instanciaWhatsappController;
   late final TextEditingController _telefonoWhatsappController;
 
+  String _estado = 'activo';
+
   bool get _isEditing => widget.bot != null;
 
   @override
@@ -46,6 +48,7 @@ class _BotFormPageState extends State<BotFormPage> {
     _reglasNegocioController = TextEditingController(text: bot?.reglasNegocio ?? '');
     _instanciaWhatsappController = TextEditingController(text: bot?.instanciaWhatsapp ?? '');
     _telefonoWhatsappController = TextEditingController(text: bot?.telefonoWhatsapp ?? '');
+    _estado = bot?.estado ?? 'activo';
   }
 
   @override
@@ -96,6 +99,8 @@ class _BotFormPageState extends State<BotFormPage> {
                           label: 'Slug (identificador único)',
                           requiredField: true,
                           helperText: 'Ej: fulltech-seguridad, emagryfit-rd',
+                          onChanged: _onSlugChanged,
+                          validator: _validarSlug,
                         ),
                         _TextFieldApp(
                           controller: _descripcionController,
@@ -106,6 +111,29 @@ class _BotFormPageState extends State<BotFormPage> {
                           controller: _tipoNegocioController,
                           label: 'Tipo de negocio',
                           helperText: 'Ej: seguridad, punto-venta, herramientas, suplementos',
+                        ),
+                        DropdownButtonFormField<String>(
+                          value: _estado,
+                          decoration: const InputDecoration(
+                            labelText: 'Estado',
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'activo',
+                              child: Text('Activo'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'inactivo',
+                              child: Text('Inactivo'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() {
+                                _estado = value;
+                              });
+                            }
+                          },
                         ),
                       ],
                     ),
@@ -192,6 +220,31 @@ class _BotFormPageState extends State<BotFormPage> {
     );
   }
 
+  void _onSlugChanged(String value) {
+    // Auto-formatear slug: minúsculas, sin espacios, guiones
+    final formateado = value
+        .toLowerCase()
+        .replaceAll(RegExp(r'\s+'), '-')
+        .replaceAll(RegExp(r'[^a-z0-9\-]'), '');
+    if (formateado != value) {
+      _slugController.value = TextEditingValue(
+        text: formateado,
+        selection: TextSelection.collapsed(offset: formateado.length),
+      );
+    }
+  }
+
+  String? _validarSlug(String? value) {
+    final text = value?.trim() ?? '';
+    if (text.isEmpty) return 'El slug es obligatorio';
+    if (text.contains(' ')) return 'El slug no debe contener espacios';
+    if (text != text.toLowerCase()) return 'El slug debe estar en minúsculas';
+    if (!RegExp(r'^[a-z0-9\-]+$').hasMatch(text)) {
+      return 'Solo letras minúsculas, números y guiones';
+    }
+    return null;
+  }
+
   Future<void> _guardarBot() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -200,6 +253,7 @@ class _BotFormPageState extends State<BotFormPage> {
       'slug': _slugController.text.trim(),
       'descripcion': _emptyToNull(_descripcionController.text),
       'tipoNegocio': _emptyToNull(_tipoNegocioController.text),
+      'estado': _estado,
       'promptBase': _emptyToNull(_promptBaseController.text),
       'tono': _emptyToNull(_tonoController.text),
       'instrucciones': _emptyToNull(_instruccionesController.text),
@@ -305,6 +359,8 @@ class _TextFieldApp extends StatelessWidget {
   final bool requiredField;
   final int maxLines;
   final String? helperText;
+  final ValueChanged<String>? onChanged;
+  final FormFieldValidator<String>? validator;
 
   const _TextFieldApp({
     required this.controller,
@@ -312,6 +368,8 @@ class _TextFieldApp extends StatelessWidget {
     this.requiredField = false,
     this.maxLines = 1,
     this.helperText,
+    this.onChanged,
+    this.validator,
   });
 
   @override
@@ -319,11 +377,12 @@ class _TextFieldApp extends StatelessWidget {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
+      onChanged: onChanged,
       decoration: InputDecoration(
         labelText: requiredField ? '$label *' : label,
         helperText: helperText,
       ),
-      validator: (value) {
+      validator: validator ?? (value) {
         final text = value?.trim() ?? '';
         if (requiredField && text.isEmpty) {
           return 'Este campo es obligatorio';

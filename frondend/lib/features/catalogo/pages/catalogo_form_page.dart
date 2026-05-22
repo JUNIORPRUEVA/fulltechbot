@@ -24,10 +24,10 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
 
   final StorageApiService _storageApiService = StorageApiService();
 
-bool _subiendoImagen1 = false;
-bool _subiendoImagen2 = false;
-bool _subiendoImagen3 = false;
-bool _subiendoVideo = false;
+  bool _subiendoImagen1 = false;
+  bool _subiendoImagen2 = false;
+  bool _subiendoImagen3 = false;
+  bool _subiendoVideo = false;
 
   late final TextEditingController _tituloController;
   late final TextEditingController _categoriaController;
@@ -53,6 +53,22 @@ bool _subiendoVideo = false;
       return context.read<BotProvider>().botSeleccionado?.id;
     } catch (_) {
       return null;
+    }
+  }
+
+  String? get _botNombre {
+    try {
+      return context.read<BotProvider>().botSeleccionado?.nombre;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool get _hayBotSeleccionado {
+    try {
+      return context.read<BotProvider>().hayBotSeleccionado;
+    } catch (_) {
+      return false;
     }
   }
 
@@ -118,6 +134,8 @@ bool _subiendoVideo = false;
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<CatalogoProvider>();
+    final botNombre = _botNombre;
+    final hayBot = _hayBotSeleccionado;
 
     return Scaffold(
       appBar: AppBar(
@@ -135,6 +153,55 @@ bool _subiendoVideo = false;
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Banner del bot actual
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: hayBot
+                            ? Colors.blue.shade50
+                            : Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: hayBot
+                              ? Colors.blue.shade200
+                              : Colors.orange.shade200,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            hayBot
+                                ? Icons.smart_toy_outlined
+                                : Icons.warning_amber_rounded,
+                            size: 18,
+                            color: hayBot
+                                ? Colors.blue.shade600
+                                : Colors.orange.shade600,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              hayBot
+                                  ? 'Producto para: $botNombre'
+                                  : 'No hay bot seleccionado. Selecciona un bot primero.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: hayBot
+                                    ? Colors.blue.shade700
+                                    : Colors.orange.shade700,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     _SectionCard(
                       title: 'Información principal',
                       children: [
@@ -190,62 +257,62 @@ bool _subiendoVideo = false;
                     ),
                     const SizedBox(height: 16),
                     _SectionCard(
-  title: 'Multimedia',
-  children: [
-    _UploadFieldApp(
-      controller: _imagen1Controller,
-      label: 'Imagen 1 URL',
-      isLoading: _subiendoImagen1,
-      icon: Icons.image_outlined,
-      onUpload: () {
-        _seleccionarYSubirArchivo(
-          controller: _imagen1Controller,
-          tipo: 'imagen',
-          setLoading: (value) => _subiendoImagen1 = value,
-        );
-      },
-    ),
-    _UploadFieldApp(
-      controller: _imagen2Controller,
-      label: 'Imagen 2 URL',
-      isLoading: _subiendoImagen2,
-      icon: Icons.image_outlined,
-      onUpload: () {
-        _seleccionarYSubirArchivo(
-          controller: _imagen2Controller,
-          tipo: 'imagen',
-          setLoading: (value) => _subiendoImagen2 = value,
-        );
-      },
-    ),
-    _UploadFieldApp(
-      controller: _imagen3Controller,
-      label: 'Imagen 3 URL',
-      isLoading: _subiendoImagen3,
-      icon: Icons.image_outlined,
-      onUpload: () {
-        _seleccionarYSubirArchivo(
-          controller: _imagen3Controller,
-          tipo: 'imagen',
-          setLoading: (value) => _subiendoImagen3 = value,
-        );
-      },
-    ),
-    _UploadFieldApp(
-      controller: _videoController,
-      label: 'Video URL',
-      isLoading: _subiendoVideo,
-      icon: Icons.video_file_outlined,
-      onUpload: () {
-        _seleccionarYSubirArchivo(
-          controller: _videoController,
-          tipo: 'video',
-          setLoading: (value) => _subiendoVideo = value,
-        );
-      },
-    ),
-  ],
-),
+                      title: 'Multimedia',
+                      children: [
+                        _UploadFieldApp(
+                          controller: _imagen1Controller,
+                          label: 'Imagen 1 URL',
+                          isLoading: _subiendoImagen1,
+                          icon: Icons.image_outlined,
+                          onUpload: () {
+                            _seleccionarYSubirArchivo(
+                              controller: _imagen1Controller,
+                              tipo: 'imagen',
+                              setLoading: (value) => _subiendoImagen1 = value,
+                            );
+                          },
+                        ),
+                        _UploadFieldApp(
+                          controller: _imagen2Controller,
+                          label: 'Imagen 2 URL',
+                          isLoading: _subiendoImagen2,
+                          icon: Icons.image_outlined,
+                          onUpload: () {
+                            _seleccionarYSubirArchivo(
+                              controller: _imagen2Controller,
+                              tipo: 'imagen',
+                              setLoading: (value) => _subiendoImagen2 = value,
+                            );
+                          },
+                        ),
+                        _UploadFieldApp(
+                          controller: _imagen3Controller,
+                          label: 'Imagen 3 URL',
+                          isLoading: _subiendoImagen3,
+                          icon: Icons.image_outlined,
+                          onUpload: () {
+                            _seleccionarYSubirArchivo(
+                              controller: _imagen3Controller,
+                              tipo: 'imagen',
+                              setLoading: (value) => _subiendoImagen3 = value,
+                            );
+                          },
+                        ),
+                        _UploadFieldApp(
+                          controller: _videoController,
+                          label: 'Video URL',
+                          isLoading: _subiendoVideo,
+                          icon: Icons.video_file_outlined,
+                          onUpload: () {
+                            _seleccionarYSubirArchivo(
+                              controller: _videoController,
+                              tipo: 'video',
+                              setLoading: (value) => _subiendoVideo = value,
+                            );
+                          },
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 16),
                     _SectionCard(
                       title: 'Datos para el bot',
@@ -303,8 +370,9 @@ bool _subiendoVideo = false;
                         const SizedBox(width: 12),
                         Expanded(
                           child: FilledButton.icon(
-                            onPressed:
-                                provider.isLoading ? null : _guardarProducto,
+                            onPressed: provider.isLoading || !hayBot
+                                ? null
+                                : _guardarProducto,
                             icon: provider.isLoading
                                 ? const SizedBox(
                                     width: 18,
@@ -321,6 +389,18 @@ bool _subiendoVideo = false;
                         ),
                       ],
                     ),
+                    if (!hayBot)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          'Debes seleccionar un bot antes de guardar un producto.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.orange.shade700,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -331,69 +411,81 @@ bool _subiendoVideo = false;
     );
   }
 
- Future<void> _seleccionarYSubirArchivo({
-  required TextEditingController controller,
-  required String tipo,
-  required void Function(bool value) setLoading,
-}) async {
-  try {
-    final XTypeGroup typeGroup = tipo == 'video'
-        ? const XTypeGroup(
-            label: 'Videos',
-            extensions: ['mp4', 'webm', 'mov'],
-          )
-        : const XTypeGroup(
-            label: 'Imágenes',
-            extensions: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
-          );
+  Future<void> _seleccionarYSubirArchivo({
+    required TextEditingController controller,
+    required String tipo,
+    required void Function(bool value) setLoading,
+  }) async {
+    try {
+      final XTypeGroup typeGroup = tipo == 'video'
+          ? const XTypeGroup(
+              label: 'Videos',
+              extensions: ['mp4', 'webm', 'mov'],
+            )
+          : const XTypeGroup(
+              label: 'Imágenes',
+              extensions: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
+            );
 
-    final XFile? file = await openFile(
-      acceptedTypeGroups: [typeGroup],
-    );
+      final XFile? file = await openFile(
+        acceptedTypeGroups: [typeGroup],
+      );
 
-    if (file == null) {
-      return;
-    }
+      if (file == null) {
+        return;
+      }
 
-    setState(() {
-      setLoading(true);
-    });
-
-    final uploadResult = await _storageApiService.subirArchivo(file);
-
-    controller.text = uploadResult.url;
-
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          tipo == 'video'
-              ? 'Video subido correctamente'
-              : 'Imagen subida correctamente',
-        ),
-      ),
-    );
-  } catch (e) {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Error al subir archivo: $e'),
-        backgroundColor: Colors.red,
-      ),
-    );
-  } finally {
-    if (mounted) {
       setState(() {
-        setLoading(false);
+        setLoading(true);
       });
+
+      final uploadResult = await _storageApiService.subirArchivo(file);
+
+      controller.text = uploadResult.url;
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            tipo == 'video'
+                ? 'Video subido correctamente'
+                : 'Imagen subida correctamente',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al subir archivo: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          setLoading(false);
+        });
+      }
     }
   }
-}
 
   Future<void> _guardarProducto() async {
     if (!_formKey.currentState!.validate()) return;
+
+    final botId = _botId;
+    if (botId == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No hay bot seleccionado. Selecciona un bot primero.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
 
     final producto = CatalogoModel(
       id: widget.producto?.id ?? '',
@@ -415,8 +507,6 @@ bool _subiendoVideo = false;
       creadoEn: widget.producto?.creadoEn,
       actualizadoEn: widget.producto?.actualizadoEn,
     );
-
-    final botId = _botId;
 
     try {
       if (_isEditing) {
