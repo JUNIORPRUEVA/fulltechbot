@@ -155,6 +155,24 @@ async function pausarBot(telefono, pausado) {
   });
 }
 
+/**
+ * Elimina un cliente y TODOS sus datos relacionados en una transacción.
+ * 
+ * ORDEN DE ELIMINACIÓN (de dependencias a principal):
+ * 1. Conversaciones (bot_conversations) por session_id (chatid o telefono)
+ * 2. Cotizaciones del bot (bot_quotations) por telefono_cliente
+ * 3. Órdenes del bot (bot_orders) por telefono_cliente
+ * 4. Cotizaciones globales (quotations) por telefono_cliente - si existe la tabla
+ * 5. Órdenes globales (orders) por telefono_cliente - si existe la tabla
+ * 6. Cliente (bot_clients)
+ * 
+ * NOTA: Si en el futuro se agregan tablas como:
+ *   - bot_memories (memorias del bot)
+ *   - bot_history (historial del bot)
+ *   - bot_media (archivos multimedia)
+ *   - audit_logs (logs de auditoría)
+ * Se deben agregar aquí en el orden correcto.
+ */
 async function eliminarCliente(telefono) {
   const existente = await prisma.botClient.findUnique({
     where: { telefono },
@@ -164,8 +182,99 @@ async function eliminarCliente(telefono) {
     return null;
   }
 
-  return prisma.botClient.delete({
-    where: { telefono },
+  // Determinar sessionIds a eliminar (chatid y/o telefono)
+  const sessionIds = [telefono];
+  if (existente.chatid && existente.chatid !== telefono) {
+    sessionIds.push(existente.chatid);
+  }
+
+  return prisma.$transaction(async (tx) => {
+    // 1. Eliminar conversaciones del bot por session_id
+    if (sessionIds.length > 0) {
+      await tx.botConversation.deleteMany({
+        where: { session_id: { in: sessionIds } },
+      });
+    }
+
+    // 2. Eliminar cotizaciones del bot asociadas al cliente
+    await tx.botQuotation.deleteMany({
+      where: { telefono_cliente: telefono },
+    });
+
+    // 3. Eliminar órdenes del bot asociadas al cliente
+    await tx.$executeRawUnsafe(
+      `DELETE FROM bot_orders WHERE telefono_cliente = $1`,
+      telefono
+    );
+
+    // 4. Intentar eliminar cotizaciones globales si la tabla existe
+    try {
+      await tx.$executeRawUnsafe(
+        `DELETE FROM quotations WHERE telefono_cliente = $1`,
+        telefono
+      );
+    } catch (e) {
+      // La tabla puede no existir, ignorar error
+      console.log('[eliminarCliente] Tabla quotations no encontrada, ignorando.');
+    }
+
+    // 5. Intentar eliminar órdenes globales si la tabla existe
+    try {
+      await tx.$executeRawUnsafe(
+        `DELETE FROM orders WHERE telefono_cliente = $1`,
+        telefono
+      );
+    } catch (e) {
+      // La tabla puede no existir, ignorar error
+      console.log('[eliminarCliente] Tabla orders no encontrada, ignorando.');
+    }
+
+    // 6. Intentar eliminar memorias del bot si la tabla existe
+    try {
+      await tx.$executeRawUnsafe(
+        `DELETE FROM bot_memories WHERE telefono_cliente = $1 OR session_id = ANY($2)`,
+        telefono, sessionIds
+      );
+    } catch (e) {
+      console.log('[eliminarCliente] Tabla bot_memories no encontrada, ignorando.');
+    }
+
+    // 7. Intentar eliminar historial del bot si la tabla existe
+    try {
+      await tx.$executeRawUnsafe(
+        `DELETE FROM bot_history WHERE telefono_cliente = $1 OR session_id = ANY($2)`,
+        telefono, sessionIds
+      );
+    } catch (e) {
+      console.log('[eliminarCliente] Tabla bot_history no encontrada, ignorando.');
+    }
+
+    // 8. Intentar eliminar archivos multimedia relacionados si la tabla existe
+    try {
+      await tx.$executeRawUnsafe(
+        `DELETE FROM bot_media WHERE telefono_cliente = $1 OR session_id = ANY($2)`,
+        telefono, sessionIds
+      );
+    } catch (e) {
+      console.log('[eliminarCliente] Tabla bot_media no encontrada, ignorando.');
+    }
+
+    // 9. Intentar eliminar logs de auditoría si la tabla existe
+    try {
+      await tx.$executeRawUnsafe(
+        `DELETE FROM audit_logs WHERE referencia_id = $1 OR referencia_id = ANY($2)`,
+        telefono, sessionIds
+      );
+    } catch (e) {
+      console.log('[eliminarCliente] Tabla audit_logs no encontrada, ignorando.');
+    }
+
+    // 10. Finalmente eliminar el cliente
+    const clienteEliminado = await tx.botClient.delete({
+      where: { telefono },
+    });
+
+    return clienteEliminado;
   });
 }
 

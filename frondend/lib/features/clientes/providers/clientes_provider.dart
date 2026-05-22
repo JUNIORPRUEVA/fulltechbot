@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/services/local_storage_service.dart';
 import '../models/cliente_model.dart';
 import '../services/clientes_api_service.dart';
 
@@ -23,6 +24,10 @@ class ClientesProvider extends ChangeNotifier {
     try {
       _clientes = await _apiService.listarClientes(botId: botId);
       _error = null;
+
+      // Actualizar caché local
+      final clientesJson = _clientes.map((c) => c.toJson()).toList();
+      await LocalStorageService.guardarClientes(clientesJson);
     } catch (e, st) {
       if (_clientes.isEmpty) {
         _error = e.toString();
@@ -70,15 +75,39 @@ class ClientesProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> eliminarCliente(String telefono, {String? chatid}) async {
+  /// Elimina un cliente de forma permanente.
+  /// 1. Llama al API (que elimina en BD con transacción)
+  /// 2. Elimina de la lista local inmediatamente
+  /// 3. Limpia la caché local
+  /// 4. Recarga desde el servidor para asegurar consistencia
+  Future<void> eliminarCliente(String telefono, {String? chatid, String? userRole}) async {
     if (_isLoadingMore) return;
     _isLoadingMore = true;
 
     _setLoading(true);
     try {
-      await _apiService.eliminarCliente(telefono);
-      await cargarClientes();
+      // 1. Eliminar en backend (transacción con todas las dependencias)
+      await _apiService.eliminarCliente(telefono, userRole: userRole);
+
+      // 2. Eliminar de la lista local inmediatamente (respuesta visual instantánea)
+      _clientes.removeWhere((c) => c.telefono == telefono);
+
+      // 3. Limpiar caché local de conversaciones y mensajes asociados
+      await LocalStorageService.limpiarCacheCliente(telefono);
+      if (chatid != null && chatid != telefono) {
+        await LocalStorageService.limpiarCacheCliente(chatid);
+      }
+
+      // 4. Actualizar caché de clientes
+      final clientesJson = _clientes.map((c) => c.toJson()).toList();
+      await LocalStorageService.guardarClientes(clientesJson);
+
       _error = null;
+      _isLoadingMore = false;
+      _setLoading(false);
+
+      // 5. Recargar desde servidor para asegurar consistencia
+      await cargarClientes();
     } catch (e, st) {
       _error = e.toString();
       debugPrint('[ClientesProvider] Error eliminando cliente: $e');

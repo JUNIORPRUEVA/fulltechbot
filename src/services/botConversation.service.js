@@ -37,11 +37,23 @@ async function crearConversacion(data) {
   });
 }
 
+/**
+ * Elimina todas las conversaciones de un sessionId en una transacción.
+ * También limpia datos relacionados si es necesario.
+ */
 async function eliminarPorSessionId(sessionId) {
-  const deleted = await prisma.botConversation.deleteMany({
-    where: { session_id: sessionId },
+  if (!sessionId) {
+    throw new Error('El sessionId es obligatorio');
+  }
+
+  return prisma.$transaction(async (tx) => {
+    // Eliminar todas las conversaciones con ese session_id
+    const deleted = await tx.botConversation.deleteMany({
+      where: { session_id: sessionId },
+    });
+
+    return deleted;
   });
-  return deleted;
 }
 
 module.exports = {

@@ -22,14 +22,15 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
   int _currentIndex = 0;
 
   late final List<Widget> _pages = const [
-    CatalogoPage(),
-    OrdersPage(),
-    QuotationsPage(),
-    ClientesPage(),
-    ConversacionesPage(),
-    _ConfiguracionPlaceholder(),
+    CatalogoPage(),      // 0 - NavBar + Drawer
+    OrdersPage(),        // 1 - NavBar + Drawer
+    ClientesPage(),      // 2 - NavBar + Drawer
+    QuotationsPage(),    // 3 - Drawer only
+    ConversacionesPage(),// 4 - Drawer only
+    _ConfiguracionPlaceholder(), // 5 - Drawer only
   ];
 
+  // Bottom Navigation Bar: solo Catálogo, Pedidos, Clientes
   static const List<_NavItem> _navItems = [
     _NavItem(
       icon: Icons.inventory_2_outlined,
@@ -42,22 +43,13 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
       label: 'Pedidos',
     ),
     _NavItem(
-      icon: Icons.request_quote_outlined,
-      activeIcon: Icons.request_quote,
-      label: 'Cotizaciones',
-    ),
-    _NavItem(
       icon: Icons.people_outline,
       activeIcon: Icons.people,
       label: 'Clientes',
     ),
-    _NavItem(
-      icon: Icons.chat_outlined,
-      activeIcon: Icons.chat,
-      label: 'Chats',
-    ),
   ];
 
+  // Drawer / Sidebar: todas las opciones
   static const List<_NavItem> _drawerItems = [
     _NavItem(
       icon: Icons.inventory_2_outlined,
@@ -70,14 +62,14 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
       label: 'Pedidos',
     ),
     _NavItem(
-      icon: Icons.request_quote_outlined,
-      activeIcon: Icons.request_quote,
-      label: 'Cotizaciones',
-    ),
-    _NavItem(
       icon: Icons.people_outline,
       activeIcon: Icons.people,
       label: 'Clientes',
+    ),
+    _NavItem(
+      icon: Icons.request_quote_outlined,
+      activeIcon: Icons.request_quote,
+      label: 'Cotizaciones',
     ),
     _NavItem(
       icon: Icons.chat_outlined,
@@ -172,7 +164,7 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
       bottomNavigationBar: isDesktop
           ? null
           : NavigationBar(
-              selectedIndex: _currentIndex,
+              selectedIndex: _currentIndex < _navItems.length ? _currentIndex : 0,
               onDestinationSelected: (index) {
                 setState(() {
                   _currentIndex = index;
@@ -186,6 +178,7 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
                 );
               }).toList(),
             ),
+
     );
   }
 
@@ -268,7 +261,8 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
                 padding: EdgeInsets.zero,
                 children: [
                   for (int i = 0; i < _drawerItems.length; i++) ...[
-                    if (i == 5) const Divider(height: 1),
+                    if (i == 3) const Divider(height: 1),
+
                     ListTile(
                       leading: Icon(
                         _currentIndex == i
@@ -414,22 +408,22 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
               children: [
-                for (int i = 0; i < _navItems.length; i++)
+                for (int i = 0; i < _drawerItems.length; i++)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     child: ListTile(
                       dense: true,
                       leading: Icon(
                         _currentIndex == i
-                            ? _navItems[i].activeIcon
-                            : _navItems[i].icon,
+                            ? _drawerItems[i].activeIcon
+                            : _drawerItems[i].icon,
                         size: 20,
                         color: _currentIndex == i
                             ? Theme.of(context).colorScheme.primary
                             : Colors.grey.shade600,
                       ),
                       title: Text(
-                        _navItems[i].label,
+                        _drawerItems[i].label,
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight:
@@ -457,6 +451,7 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
               ],
             ),
           ),
+
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(

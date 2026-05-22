@@ -6,6 +6,17 @@ import '../../../core/constants/api_config.dart';
 import '../models/conversacion_model.dart';
 
 class ConversacionesApiService {
+  /// Obtiene los headers incluyendo el rol del usuario para autorización.
+  Map<String, String> _getHeaders({String? userRole}) {
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+    };
+    if (userRole != null) {
+      headers['X-User-Role'] = userRole;
+    }
+    return headers;
+  }
+
   Future<List<ConversacionModel>> listarConversaciones() async {
     final response = await http.get(
       Uri.parse(ApiConfig.botConversationEndpoint),
@@ -42,9 +53,7 @@ class ConversacionesApiService {
   }) async {
     final response = await http.post(
       Uri.parse(ApiConfig.botConversationEndpoint),
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: _getHeaders(),
       body: jsonEncode({
         'session_id': sessionId,
         'message': message,
@@ -61,9 +70,12 @@ class ConversacionesApiService {
     throw Exception(body['message'] ?? 'Error al crear conversación');
   }
 
-  Future<void> eliminarPorSessionId(String sessionId) async {
+  /// Elimina todas las conversaciones de un sessionId.
+  /// Requiere rol admin/owner (se envía en header X-User-Role).
+  Future<void> eliminarPorSessionId(String sessionId, {String? userRole}) async {
     final response = await http.delete(
       Uri.parse('${ApiConfig.botConversationEndpoint}/$sessionId'),
+      headers: _getHeaders(userRole: userRole),
     );
 
     final body = jsonDecode(response.body);

@@ -13,4 +13,25 @@ class ApiConfig {
   // Endpoints globales
   static const String ordersEndpoint = '$baseUrl/api/orders';
   static const String quotationsEndpoint = '$baseUrl/api/quotations';
+
+  static String botCampaignsEndpoint(String botId) =>
+      '$baseUrl/api/bots/$botId/campaigns';
+
+  static String botCampaignByIdEndpoint(String botId, String campaignId) =>
+      '${botCampaignsEndpoint(botId)}/$campaignId';
+
+  static String botCampaignDetectEndpoint(String botId) =>
+      '${botCampaignsEndpoint(botId)}/detect';
+
+  static String botCampaignContextEndpoint(String conversationId) =>
+      '$baseUrl/api/conversations/$conversationId/campaign-context';
+
+  static String botCampaignContextHistoryEndpoint(String conversationId) =>
+      '$baseUrl/api/conversations/$conversationId/campaign-context/history';
+
+  static String botConversationChangeCampaignEndpoint(
+    String botId,
+    String conversationId,
+  ) =>
+      '$baseUrl/api/bots/$botId/conversations/$conversationId/change-campaign';
 }

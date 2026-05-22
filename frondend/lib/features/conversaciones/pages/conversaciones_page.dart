@@ -18,6 +18,12 @@ class _ConversacionesPageState extends State<ConversacionesPage> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
 
+  /// Rol del usuario actual. En producción esto debe venir del sistema de autenticación.
+  String get _userRole => 'admin';
+
+  /// Determina si el usuario puede eliminar conversaciones.
+  bool get _canDelete => ['admin', 'owner', 'superadmin'].contains(_userRole);
+
   @override
   void initState() {
     super.initState();
@@ -154,7 +160,9 @@ class _ConversacionesPageState extends State<ConversacionesPage> {
                               sessionId: sessionId,
                               ultimoMensaje: ultimoMensaje,
                               cliente: cliente,
+                              canDelete: _canDelete,
                               onTap: () => _abrirChat(context, sessionId, cliente),
+                              onDelete: () => _confirmarEliminarConversacion(context, sessionId, cliente),
                             );
                           },
                         ),
@@ -288,6 +296,142 @@ class _ConversacionesPageState extends State<ConversacionesPage> {
       ),
     );
   }
+
+  /// Muestra diálogo de confirmación para eliminar conversación.
+  Future<void> _confirmarEliminarConversacion(
+    BuildContext context, String sessionId, ClienteModel? cliente,
+  ) async {
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('¿Eliminar conversación?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (cliente != null)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.person_off_rounded, color: Colors.red.shade400, size: 22),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        cliente.nombre ?? sessionId,
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange.shade200),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.orange.shade600, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Se eliminarán todos los mensajes de esta conversación. '
+                      'El bot perderá la memoria de este cliente y empezará desde cero.\n\n'
+                      'Nota: El cliente NO será eliminado.',
+                      style: TextStyle(color: Colors.orange.shade800, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton.tonalIcon(
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Icon(Icons.delete_forever_rounded, size: 18),
+            label: const Text('Eliminar conversación'),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red.shade600,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmado == true && mounted) {
+      await _ejecutarEliminacionConversacion(context, sessionId, cliente);
+    }
+  }
+
+  /// Ejecuta la eliminación de la conversación con feedback visual.
+  Future<void> _ejecutarEliminacionConversacion(
+    BuildContext context, String sessionId, ClienteModel? cliente,
+  ) async {
+    final provider = context.read<ConversacionesProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    // Mostrar loading
+    messenger.showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            ),
+            const SizedBox(width: 12),
+            const Text('Eliminando conversación...'),
+          ],
+        ),
+        duration: const Duration(seconds: 30),
+      ),
+    );
+
+    try {
+      await provider.eliminarConversaciones(sessionId, userRole: _userRole);
+
+      // Cerrar loading y mostrar éxito
+      messenger.hideCurrentSnackBar();
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Conversación de ${cliente?.nombre ?? sessionId} eliminada correctamente.'),
+            backgroundColor: Colors.green.shade600,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      messenger.hideCurrentSnackBar();
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: Colors.red.shade600,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
+  }
 }
 
 class _StatChip extends StatelessWidget {
@@ -321,42 +465,18 @@ class _ConversacionCard extends StatelessWidget {
   final String sessionId;
   final ConversacionModel ultimoMensaje;
   final ClienteModel? cliente;
+  final bool canDelete;
   final VoidCallback onTap;
+  final VoidCallback onDelete;
 
   const _ConversacionCard({
     required this.sessionId,
     required this.ultimoMensaje,
     this.cliente,
+    required this.canDelete,
     required this.onTap,
+    required this.onDelete,
   });
-
-  void _confirmarEliminar(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('¿Eliminar conversación?'),
-        content: Text(
-          'Se eliminarán todos los mensajes de esta conversación. '
-          'El bot perderá la memoria de este cliente y empezará desde cero.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              context.read<ConversacionesProvider>().eliminarConversaciones(sessionId);
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Eliminar'),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -477,15 +597,18 @@ class _ConversacionCard extends StatelessWidget {
                   ),
                 ),
 
-                // Botón eliminar
-                IconButton(
-                  icon: Icon(Icons.delete_outline_rounded, color: Colors.red.shade300, size: 20),
-                  onPressed: () => _confirmarEliminar(context),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  splashRadius: 18,
-                ),
-                const SizedBox(width: 4),
+                // Botón eliminar (solo visible para admin/owner)
+                if (canDelete)
+                  IconButton(
+                    tooltip: 'Eliminar conversación',
+                    icon: Icon(Icons.delete_outline_rounded, color: Colors.red.shade300, size: 20),
+                    onPressed: onDelete,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    splashRadius: 18,
+                  ),
+                if (canDelete) const SizedBox(width: 4),
+
                 // Flecha
                 Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400),
               ],

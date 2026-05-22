@@ -1,5 +1,6 @@
 const express = require('express');
 const botClientController = require('../controllers/botClient.controller');
+const { verificarPermisoEliminar } = require('../middleware/auth.middleware');
 
 const router = express.Router({ mergeParams: true });
 
@@ -24,7 +25,7 @@ router.patch('/:telefono/status', botClientController.actualizarEstado);
 // PATCH /api/bots/:botId/clients/:telefono/pause-bot - Pausar/reanudar bot
 router.patch('/:telefono/pause-bot', botClientController.pausarBot);
 
-// DELETE /api/bots/:botId/clients/:telefono - Eliminar cliente
-router.delete('/:telefono', botClientController.eliminar);
+// DELETE /api/bots/:botId/clients/:telefono - Eliminar cliente (solo admin/owner)
+router.delete('/:telefono', verificarPermisoEliminar, botClientController.eliminar);
 
 module.exports = router;

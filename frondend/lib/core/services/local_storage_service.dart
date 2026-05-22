@@ -94,7 +94,32 @@ class LocalStorageService {
     }
   }
 
-  // ==================== LIMPIAR CACHE ====================
+  // ==================== LIMPIAR CACHE DE UN CLIENTE ESPECÍFICO ====================
+
+  /// Limpia la caché de conversaciones y mensajes asociados a un cliente/sessionId.
+  /// Esto evita que datos eliminados vuelvan a aparecer desde la caché local.
+  static Future<void> limpiarCacheCliente(String sessionId) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // Eliminar mensajes cacheados de este sessionId
+    final mensajesKey = '$_mensajesKeyPrefix$sessionId';
+    await prefs.remove(mensajesKey);
+
+    // Nota: La caché de conversaciones se actualiza al recargar desde el servidor
+    // después de eliminar. No eliminamos toda la caché de conversaciones porque
+    // podría contener datos de otros clientes.
+  }
+
+  /// Limpia la caché de conversaciones y mensajes de una conversación específica.
+  static Future<void> limpiarCacheConversacion(String sessionId) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // Eliminar mensajes cacheados de este sessionId
+    final mensajesKey = '$_mensajesKeyPrefix$sessionId';
+    await prefs.remove(mensajesKey);
+  }
+
+  // ==================== LIMPIAR TODO ====================
 
   static Future<void> limpiarTodo() async {
     final prefs = await SharedPreferences.getInstance();

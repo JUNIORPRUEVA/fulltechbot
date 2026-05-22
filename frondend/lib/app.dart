@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'features/bots/pages/bot_selector_page.dart';
+import 'features/bots/pages/bot_dashboard_page.dart';
 import 'features/bots/providers/bot_provider.dart';
-import 'app_shell.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -179,6 +179,6 @@ class _MainNavigationState extends State<MainNavigation> {
       );
     }
 
-    return const AppShell();
+    return const BotDashboardPage();
   }
 }

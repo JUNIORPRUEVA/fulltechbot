@@ -61,9 +61,53 @@ async function crearProducto(data) {
       reglasNegociacion: data.reglasNegociacion || null,
       estado: data.estado || 'activo',
       botId: data.botId || null,
+
+      // === CAMPOS NUEVOS ===
+      tipoProducto: data.tipoProducto || 'producto',
+      incluye: data.incluye || null,
+      permiteAdicionales:
+        data.permiteAdicionales !== undefined ? Boolean(data.permiteAdicionales) : false,
+      esCotizable:
+        data.esCotizable !== undefined ? Boolean(data.esCotizable) : true,
+      orden:
+        data.orden !== undefined && data.orden !== ''
+          ? Number(data.orden)
+          : 0,
+      cantidadBase:
+        data.cantidadBase !== undefined && data.cantidadBase !== ''
+          ? Number(data.cantidadBase)
+          : 1,
+      unidadAdicionalNombre: data.unidadAdicionalNombre || null,
+      precioAdicional:
+        data.precioAdicional !== undefined && data.precioAdicional !== ''
+          ? Number(data.precioAdicional)
+          : 0,
+      precioMinimoAdicional:
+        data.precioMinimoAdicional !== undefined && data.precioMinimoAdicional !== ''
+          ? Number(data.precioMinimoAdicional)
+          : 0,
+      permiteCalculoAdicional:
+        data.permiteCalculoAdicional !== undefined
+          ? Boolean(data.permiteCalculoAdicional)
+          : false,
+      ciudadBase: data.ciudadBase || 'Higüey',
+      cargoFueraCiudad:
+        data.cargoFueraCiudad !== undefined && data.cargoFueraCiudad !== ''
+          ? Number(data.cargoFueraCiudad)
+          : 0,
+      aplicaCargoFueraCiudad:
+        data.aplicaCargoFueraCiudad !== undefined
+          ? Boolean(data.aplicaCargoFueraCiudad)
+          : false,
+      instalacionIncluida:
+        data.instalacionIncluida !== undefined
+          ? Boolean(data.instalacionIncluida)
+          : false,
+      reglasCalculo: data.reglasCalculo || {},
     },
   });
 }
+
 
 async function actualizarProducto(id, data) {
   return prisma.catalogo.update({
@@ -97,9 +141,53 @@ async function actualizarProducto(id, data) {
       reglasNegociacion: data.reglasNegociacion || null,
       estado: data.estado || 'activo',
       botId: data.botId !== undefined ? data.botId : undefined,
+
+      // === CAMPOS NUEVOS ===
+      tipoProducto: data.tipoProducto || 'producto',
+      incluye: data.incluye || null,
+      permiteAdicionales:
+        data.permiteAdicionales !== undefined ? Boolean(data.permiteAdicionales) : false,
+      esCotizable:
+        data.esCotizable !== undefined ? Boolean(data.esCotizable) : true,
+      orden:
+        data.orden !== undefined && data.orden !== ''
+          ? Number(data.orden)
+          : 0,
+      cantidadBase:
+        data.cantidadBase !== undefined && data.cantidadBase !== ''
+          ? Number(data.cantidadBase)
+          : 1,
+      unidadAdicionalNombre: data.unidadAdicionalNombre || null,
+      precioAdicional:
+        data.precioAdicional !== undefined && data.precioAdicional !== ''
+          ? Number(data.precioAdicional)
+          : 0,
+      precioMinimoAdicional:
+        data.precioMinimoAdicional !== undefined && data.precioMinimoAdicional !== ''
+          ? Number(data.precioMinimoAdicional)
+          : 0,
+      permiteCalculoAdicional:
+        data.permiteCalculoAdicional !== undefined
+          ? Boolean(data.permiteCalculoAdicional)
+          : false,
+      ciudadBase: data.ciudadBase || 'Higüey',
+      cargoFueraCiudad:
+        data.cargoFueraCiudad !== undefined && data.cargoFueraCiudad !== ''
+          ? Number(data.cargoFueraCiudad)
+          : 0,
+      aplicaCargoFueraCiudad:
+        data.aplicaCargoFueraCiudad !== undefined
+          ? Boolean(data.aplicaCargoFueraCiudad)
+          : false,
+      instalacionIncluida:
+        data.instalacionIncluida !== undefined
+          ? Boolean(data.instalacionIncluida)
+          : false,
+      reglasCalculo: data.reglasCalculo || {},
     },
   });
 }
+
 
 async function cambiarEstadoProducto(id, estado) {
   return prisma.catalogo.update({

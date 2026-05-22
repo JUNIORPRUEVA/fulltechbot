@@ -17,6 +17,13 @@ class _ClientesPageState extends State<ClientesPage> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
 
+  /// Rol del usuario actual. En producción esto debe venir del sistema de autenticación.
+  /// Por ahora se usa 'admin' para pruebas. Cambiar a 'user' para probar permisos.
+  String get _userRole => 'admin';
+
+  /// Determina si el usuario puede eliminar clientes.
+  bool get _canDelete => ['admin', 'owner', 'superadmin'].contains(_userRole);
+
   @override
   void initState() {
     super.initState();
@@ -133,7 +140,9 @@ class _ClientesPageState extends State<ClientesPage> {
                             final cliente = clientesFiltrados[index];
                             return _ClienteCard(
                               cliente: cliente,
+                              canDelete: _canDelete,
                               onTap: () => _abrirDetalle(context, cliente),
+                              onDelete: () => _confirmarEliminarCliente(context, cliente),
                             );
                           },
                         ),
@@ -218,6 +227,143 @@ class _ClientesPageState extends State<ClientesPage> {
       ),
     );
   }
+
+  /// Muestra un diálogo de confirmación antes de eliminar un cliente.
+  Future<void> _confirmarEliminarCliente(BuildContext context, ClienteModel cliente) async {
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Eliminar cliente?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Se eliminará permanentemente a:',
+              style: TextStyle(color: Colors.grey.shade700),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.person_off_rounded, color: Colors.red.shade400, size: 22),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      cliente.nombre ?? cliente.telefono,
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange.shade200),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.orange.shade600, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Esta acción eliminará también sus conversaciones, cotizaciones, órdenes y no se podrá deshacer.',
+                      style: TextStyle(color: Colors.orange.shade800, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton.tonalIcon(
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Icon(Icons.delete_forever_rounded, size: 18),
+            label: const Text('Eliminar permanentemente'),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red.shade600,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmado == true && mounted) {
+      await _ejecutarEliminacion(context, cliente);
+    }
+  }
+
+  /// Ejecuta la eliminación del cliente con feedback visual.
+  Future<void> _ejecutarEliminacion(BuildContext context, ClienteModel cliente) async {
+    final provider = context.read<ClientesProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    // Mostrar loading
+    messenger.showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            ),
+            const SizedBox(width: 12),
+            Text('Eliminando ${cliente.nombre ?? cliente.telefono}...'),
+          ],
+        ),
+        duration: const Duration(seconds: 30),
+      ),
+    );
+
+    try {
+      await provider.eliminarCliente(
+        cliente.telefono,
+        chatid: cliente.chatid,
+        userRole: _userRole,
+      );
+
+      // Cerrar loading y mostrar éxito
+      messenger.hideCurrentSnackBar();
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('${cliente.nombre ?? cliente.telefono} eliminado correctamente.'),
+            backgroundColor: Colors.green.shade600,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      messenger.hideCurrentSnackBar();
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: Colors.red.shade600,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
+  }
 }
 
 class _StatChip extends StatelessWidget {
@@ -249,9 +395,16 @@ class _StatChip extends StatelessWidget {
 
 class _ClienteCard extends StatelessWidget {
   final ClienteModel cliente;
+  final bool canDelete;
   final VoidCallback onTap;
+  final VoidCallback onDelete;
 
-  const _ClienteCard({required this.cliente, required this.onTap});
+  const _ClienteCard({
+    required this.cliente,
+    required this.canDelete,
+    required this.onTap,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -352,6 +505,16 @@ class _ClienteCard extends StatelessWidget {
                     ],
                   ),
                 ),
+
+                // Botón eliminar (solo visible para admin/owner)
+                if (canDelete)
+                  IconButton(
+                    tooltip: 'Eliminar cliente',
+                    icon: Icon(Icons.delete_outline_rounded, color: Colors.red.shade300, size: 22),
+                    onPressed: onDelete,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                  ),
 
                 // Flecha
                 Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400),

@@ -30,43 +30,63 @@ model Bot {
   clientes          BotClient[]
   conversaciones    BotConversation[]
   cotizaciones      BotQuotation[]
+  campanias         BotCampaign[]
+  contextosCampania ConversationCampaignContext[]
 
   @@map("bots")
 }
 
 model Catalogo {
-  id                String   @id @default(uuid())
+  id                      String    @id @default(uuid())
 
-  titulo            String
-  categoria         String
-  descripcion       String?
-  informacion       String?
+  titulo                  String
+  categoria               String
+  descripcion             String?
+  informacion             String?
 
-  precio            Float
-  precioMinimo      Float?
-  precioOferta      Float?
-  stock             Int      @default(0)
+  precio                  Float
+  precioMinimo            Float?
+  precioOferta            Float?
+  stock                   Int       @default(0)
 
-  imagen1           String?
-  imagen2           String?
-  imagen3           String?
-  video             String?
+  imagen1                 String?
+  imagen2                 String?
+  imagen3                 String?
+  video                   String?
 
-  palabrasClave     String?
-  reglasNegociacion String?
-  estado            String   @default("activo")
+  palabrasClave           String?
+  reglasNegociacion       String?
+  estado                  String    @default("activo")
 
-  botId             String?  @map("bot_id")
+  // === CAMPOS NUEVOS: productos inteligentes ===
+  tipoProducto            String    @default("producto")          @map("tipo_producto")
+  incluye                 String?
+  permiteAdicionales      Boolean   @default(false)               @map("permite_adicionales")
+  esCotizable             Boolean   @default(true)                @map("es_cotizable")
+  orden                   Int       @default(0)
+  cantidadBase            Int       @default(1)                   @map("cantidad_base")
+  unidadAdicionalNombre   String?                                 @map("unidad_adicional_nombre")
+  precioAdicional         Float     @default(0)                   @map("precio_adicional")
+  precioMinimoAdicional   Float     @default(0)                   @map("precio_minimo_adicional")
+  permiteCalculoAdicional Boolean   @default(false)               @map("permite_calculo_adicional")
+  ciudadBase              String    @default("Higüey")            @map("ciudad_base")
+  cargoFueraCiudad        Float     @default(0)                   @map("cargo_fuera_ciudad")
+  aplicaCargoFueraCiudad  Boolean   @default(false)               @map("aplica_cargo_fuera_ciudad")
+  instalacionIncluida     Boolean   @default(false)               @map("instalacion_incluida")
+  reglasCalculo           Json      @default("{}")                @map("reglas_calculo")
 
-  creadoEn          DateTime @default(now())
-  actualizadoEn     DateTime @updatedAt
+  botId                   String?   @map("bot_id")
 
-  bot               Bot?     @relation(fields: [botId], references: [id])
+  creadoEn                DateTime  @default(now())
+  actualizadoEn           DateTime  @updatedAt
+
+  bot                     Bot?      @relation(fields: [botId], references: [id])
 
   @@index([botId], map: "idx_catalogo_bot_id")
   @@index([estado], map: "idx_catalogo_estado")
   @@map("catalogo")
 }
+
 
 model BotClient {
   telefono                  String    @id
@@ -133,7 +153,6 @@ model BotConversation {
   botId      String?  @map("bot_id")
 
   bot        Bot?     @relation(fields: [botId], references: [id])
-
   @@index([botId], map: "idx_bot_conversations_bot_id")
   @@index([created_at(sort: Desc)], map: "idx_bot_conversations_created_at")
   @@index([session_id], map: "idx_bot_conversations_session_id")
@@ -193,4 +212,76 @@ model BotOrder {
   @@index([estadoPedido], map: "idx_bot_orders_estado_pedido")
   @@index([telefonoCliente], map: "idx_bot_orders_telefono_cliente")
   @@map("bot_orders")
+}
+
+model BotCampaign {
+  id                       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bot_id                   String
+  campaign_code            String
+  campaign_name            String
+  campaign_description     String?
+  product_name             String?
+  product_id               String?
+  normal_price             Float    @default(0)
+  offer_price              Float    @default(0)
+  currency                 String   @default("DOP")
+  campaign_status          String   @default("activa")
+  trigger_phrases          Json     @default("[]")
+  keywords                 Json     @default("[]")
+  initial_message          String?
+  agent_context            String?
+  sales_instructions       String?
+  negotiation_rules        Json     @default("{}")
+  objection_handling       Json     @default("[]")
+  closing_questions        Json     @default("[]")
+  extra_camera_price       Float    @default(0)
+  minimum_extra_camera_price Float  @default(0)
+  location_rules           Json     @default("{}")
+  warranty_info            String?
+  installation_info        String?
+  media_urls               Json     @default("[]")
+  crm_initial_status       String   @default("Nuevo interesado")
+  crm_tag                  String?
+  priority                 Int      @default(0)
+  active                   Boolean  @default(true)
+  created_at               DateTime @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime @default(now()) @db.Timestamptz(6)
+
+  bot                      Bot      @relation(fields: [bot_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  contextos                ConversationCampaignContext[]
+
+  @@unique([bot_id, campaign_code], map: "uq_campaign_bot_code")
+  @@index([bot_id], map: "idx_bot_campaigns_bot_id")
+  @@index([active], map: "idx_bot_campaigns_active")
+  @@index([priority(sort: Desc)], map: "idx_bot_campaigns_priority")
+  @@map("bot_campaigns")
+}
+
+model ConversationCampaignContext {
+  id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bot_id                  String
+  conversation_id         String
+  customer_id             String?
+  campaign_id             String?   @db.Uuid
+  campaign_code           String?
+  campaign_name           String?
+  matched_keyword         String?
+  matched_trigger_phrase  String?
+  customer_message        String?
+  detection_confidence    Float     @default(0)
+  source_channel          String    @default("whatsapp")
+  status                  String    @default("detectada")
+  initial_message_sent_at DateTime? @db.Timestamptz(6)
+  last_response_at        DateTime? @db.Timestamptz(6)
+  created_at              DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime  @default(now()) @db.Timestamptz(6)
+
+  bot                     Bot       @relation(fields: [bot_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  campaign                BotCampaign? @relation(fields: [campaign_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  @@index([bot_id], map: "idx_conv_campaign_bot_id")
+  @@index([conversation_id], map: "idx_conv_campaign_conversation_id")
+  @@index([campaign_id], map: "idx_conv_campaign_campaign_id")
+  @@index([status], map: "idx_conv_campaign_status")
+  @@index([created_at(sort: Desc)], map: "idx_conv_campaign_created_at")
+  @@map("conversation_campaign_context")
 }

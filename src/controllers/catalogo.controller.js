@@ -83,8 +83,59 @@ function validarProducto(data) {
     return 'El stock no puede ser negativo';
   }
 
+  // Validaciones campos nuevos
+  if (!data.tipoProducto || String(data.tipoProducto).trim() === '') {
+    return 'El tipo de producto es obligatorio';
+  }
+
+  if (
+    data.permiteCalculoAdicional === true ||
+    data.permiteCalculoAdicional === 'true'
+  ) {
+    const cantidadBase =
+      data.cantidadBase !== undefined && data.cantidadBase !== ''
+        ? Number(data.cantidadBase)
+        : 0;
+    if (cantidadBase <= 0) {
+      return 'Si permite calculo adicional, la cantidad base debe ser mayor que 0';
+    }
+    if (
+      !data.unidadAdicionalNombre ||
+      String(data.unidadAdicionalNombre).trim() === ''
+    ) {
+      return 'Si permite calculo adicional, debe especificar la unidad adicional';
+    }
+    if (
+      data.precioAdicional === undefined ||
+      data.precioAdicional === '' ||
+      Number(data.precioAdicional) < 0
+    ) {
+      return 'Si permite calculo adicional, el precio adicional no puede ser negativo';
+    }
+  }
+
+  if (
+    data.aplicaCargoFueraCiudad === true ||
+    data.aplicaCargoFueraCiudad === 'true'
+  ) {
+    if (
+      !data.ciudadBase ||
+      String(data.ciudadBase).trim() === ''
+    ) {
+      return 'Si aplica cargo fuera de ciudad, debe especificar la ciudad base';
+    }
+    if (
+      data.cargoFueraCiudad === undefined ||
+      data.cargoFueraCiudad === '' ||
+      Number(data.cargoFueraCiudad) < 0
+    ) {
+      return 'Si aplica cargo fuera de ciudad, el cargo no puede ser negativo';
+    }
+  }
+
   return null;
 }
+
 
 async function listar(req, res) {
   try {

@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/catalogo_model.dart';
+import '../models/catalogo_kit_componente_model.dart';
 import '../providers/catalogo_provider.dart';
+import '../services/catalogo_kit_componentes_api_service.dart';
 import 'catalogo_form_page.dart';
+
 
 class CatalogoDetailPage extends StatefulWidget {
   final CatalogoModel producto;
@@ -19,10 +22,21 @@ class _CatalogoDetailPageState extends State<CatalogoDetailPage> {
   int _imagenActual = 0;
   final _pageController = PageController();
 
+  // Componentes del kit
+  final CatalogoKitComponentesApiService _kitComponentesService =
+      CatalogoKitComponentesApiService();
+  List<CatalogoKitComponenteModel> _componentesKit = [];
+  bool _cargandoComponentes = false;
+
   @override
   void initState() {
     super.initState();
     _producto = widget.producto;
+
+    // Cargar componentes si es un kit
+    if (_producto.tipoProducto == 'kit' && _producto.id.isNotEmpty) {
+      _cargarComponentesKit();
+    }
   }
 
   @override
@@ -31,7 +45,121 @@ class _CatalogoDetailPageState extends State<CatalogoDetailPage> {
     super.dispose();
   }
 
+  Future<void> _cargarComponentesKit() async {
+    setState(() => _cargandoComponentes = true);
+    final componentes =
+        await _kitComponentesService.obtenerComponentesKit(_producto.id);
+    if (mounted) {
+      setState(() {
+        _componentesKit = componentes;
+        _cargandoComponentes = false;
+      });
+    }
+  }
+
+  Widget _buildComponenteItem(CatalogoKitComponenteModel comp) {
+    final esOpcional = comp.esOpcional;
+    final color = esOpcional ? Colors.orange : Colors.teal;
+
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 6),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: color.shade100),
+      ),
+      color: color.withValues(alpha: 0.03),
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Row(
+          children: [
+            // Imagen
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: SizedBox(
+                width: 44,
+                height: 44,
+                child: comp.imagen1 != null && comp.imagen1!.isNotEmpty
+                    ? Image.network(
+                        comp.imagen1!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: Colors.grey.shade100,
+                          child: Icon(Icons.inventory_2_outlined,
+                              size: 18, color: Colors.grey.shade400),
+                        ),
+                      )
+                    : Container(
+                        color: Colors.grey.shade100,
+                        child: Icon(Icons.inventory_2_outlined,
+                            size: 18, color: Colors.grey.shade400),
+                      ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    comp.titulo ?? 'Sin título',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Text(
+                        'Cant: ${comp.cantidad.toStringAsFixed(0)}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      if (comp.precio != null && comp.precio! > 0) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          'RD\$${comp.precio!.toStringAsFixed(0)}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.green.shade700,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            // Chip
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: color.withValues(alpha: 0.3)),
+              ),
+              child: Text(
+                esOpcional ? 'Opcional' : 'Incluido',
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  color: color.shade700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   List<String> get _imagenes {
+
     final imgs = <String>[];
     if (_producto.imagen1 != null && _producto.imagen1!.isNotEmpty) imgs.add(_producto.imagen1!);
     if (_producto.imagen2 != null && _producto.imagen2!.isNotEmpty) imgs.add(_producto.imagen2!);
@@ -176,6 +304,156 @@ class _CatalogoDetailPageState extends State<CatalogoDetailPage> {
                   ),
                 ),
 
+                // Tipo de producto
+                _buildSection(
+                  icon: Icons.category_outlined,
+                  title: 'Tipo y clasificación',
+                  color: Colors.amber,
+                  child: Column(
+                    children: [
+                      _InfoRow(label: 'Tipo', value: _producto.tipoProducto.toUpperCase()),
+                      _InfoRow(label: 'Cotizable', value: _producto.esCotizable ? 'Sí' : 'No'),
+                      _InfoRow(label: 'Permite adicionales', value: _producto.permiteAdicionales ? 'Sí' : 'No'),
+                      if (_producto.orden > 0) _InfoRow(label: 'Orden', value: '${_producto.orden}'),
+                    ],
+                  ),
+                ),
+
+                // Contenido del kit
+                if (_producto.tipoProducto == 'kit' && _producto.incluye != null && _producto.incluye!.isNotEmpty)
+                  _buildSection(
+                    icon: Icons.inventory_2_outlined,
+                    title: 'Contenido del kit',
+                    color: Colors.deepPurple,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _producto.incluye!,
+                          style: TextStyle(fontSize: 14, color: Colors.grey.shade700, height: 1.5),
+                        ),
+                        if (_producto.instalacionIncluida) ...[
+                          const SizedBox(height: 8),
+                          _DetailChip(
+                            icon: Icons.build_circle_outlined,
+                            label: 'Instalación incluida',
+                            color: Colors.green,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+
+                // Componentes del kit (desde la tabla CatalogoKitComponente)
+                if (_producto.tipoProducto == 'kit')
+                  _buildSection(
+                    icon: Icons.widgets_outlined,
+                    title: 'Componentes del kit',
+                    color: Colors.teal,
+                    child: _cargandoComponentes
+                        ? const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(16),
+                              child: CircularProgressIndicator(),
+                            ),
+                          )
+                        : _componentesKit.isEmpty
+                            ? Text(
+                                'No hay componentes registrados.',
+                                style: TextStyle(
+                                    fontSize: 13, color: Colors.grey.shade600),
+                              )
+                            : Column(
+                                children: [
+                                  // Componentes incluidos
+                                  if (_componentesKit
+                                      .where((c) => !c.esOpcional)
+                                      .isNotEmpty) ...[
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 8),
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.check_circle,
+                                              size: 16,
+                                              color: Colors.teal.shade600),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            'Incluidos',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.teal.shade700,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    ..._componentesKit
+                                        .where((c) => !c.esOpcional)
+                                        .map((comp) =>
+                                            _buildComponenteItem(comp)),
+                                  ],
+                                  // Extras opcionales
+                                  if (_componentesKit
+                                      .where((c) => c.esOpcional)
+                                      .isNotEmpty) ...[
+                                    const SizedBox(height: 12),
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 8),
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.add_circle_outline,
+                                              size: 16,
+                                              color: Colors.orange.shade600),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            'Extras opcionales',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.orange.shade700,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    ..._componentesKit
+                                        .where((c) => c.esOpcional)
+                                        .map((comp) =>
+                                            _buildComponenteItem(comp)),
+                                  ],
+                                ],
+                              ),
+                  ),
+
+                // Reglas de cálculo
+
+                if (_producto.permiteCalculoAdicional || _producto.aplicaCargoFueraCiudad)
+                  _buildSection(
+                    icon: Icons.calculate_outlined,
+                    title: 'Reglas de cálculo',
+                    color: Colors.indigo,
+                    child: Column(
+                      children: [
+                        if (_producto.permiteCalculoAdicional) ...[
+                          _InfoRow(label: 'Cantidad base', value: '${_producto.cantidadBase}'),
+                          if (_producto.unidadAdicionalNombre != null)
+                            _InfoRow(label: 'Unidad adicional', value: _producto.unidadAdicionalNombre!),
+                          if (_producto.precioAdicional > 0)
+                            _InfoRow(label: 'Precio adicional', value: 'RD\$${_producto.precioAdicional.toStringAsFixed(0)}'),
+                          if (_producto.precioMinimoAdicional > 0)
+                            _InfoRow(label: 'Precio mínimo adicional', value: 'RD\$${_producto.precioMinimoAdicional.toStringAsFixed(0)}'),
+                        ],
+                        if (_producto.aplicaCargoFueraCiudad) ...[
+                          const Divider(height: 16),
+                          _InfoRow(label: 'Ciudad base', value: _producto.ciudadBase),
+                          if (_producto.cargoFueraCiudad > 0)
+                            _InfoRow(label: 'Cargo fuera de ciudad', value: 'RD\$${_producto.cargoFueraCiudad.toStringAsFixed(0)}'),
+                        ],
+                      ],
+                    ),
+                  ),
+
                 // Stock y estado
                 _buildSection(
                   icon: Icons.inventory_2_rounded,
@@ -197,6 +475,7 @@ class _CatalogoDetailPageState extends State<CatalogoDetailPage> {
                     ],
                   ),
                 ),
+
 
                 // Galería de imágenes (miniaturas)
                 if (tieneImagenes)
