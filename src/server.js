@@ -8,6 +8,13 @@ const botClientRoutes = require('./routes/botClient.routes');
 const botConversationRoutes = require('./routes/botConversation.routes');
 const botQuotationRoutes = require('./routes/botQuotation.routes');
 
+// Nuevas rutas multi-bot
+const botRoutes = require('./routes/bot.routes');
+const botCatalogoRoutes = require('./routes/botCatalogo.routes');
+const botClientNestedRoutes = require('./routes/botClient.routes');
+const botConversationNestedRoutes = require('./routes/botConversation.routes');
+const botQuotationNestedRoutes = require('./routes/botQuotation.routes');
+
 const app = express();
 
 app.use(cors());
@@ -36,10 +43,20 @@ app.use('/catalogo', (req, res, next) => {
   next();
 }, storageRoutes);
 
-// Nuevas rutas para bot (clientes, conversaciones, cotizaciones)
+// Rutas para bot (clientes, conversaciones, cotizaciones) - se mantienen
 app.use('/api/bot/clients', botClientRoutes);
 app.use('/api/bot/conversations', botConversationRoutes);
 app.use('/api/bot/quotations', botQuotationRoutes);
+
+// ===== NUEVAS RUTAS MULTI-BOT =====
+// Gestión de bots
+app.use('/api/bots', botRoutes);
+
+// Rutas anidadas por botId
+app.use('/api/bots/:botId/catalogo', botCatalogoRoutes);
+app.use('/api/bots/:botId/clients', botClientNestedRoutes);
+app.use('/api/bots/:botId/conversations', botConversationNestedRoutes);
+app.use('/api/bots/:botId/quotations', botQuotationNestedRoutes);
 
 const PORT = process.env.PORT || 3000;
 

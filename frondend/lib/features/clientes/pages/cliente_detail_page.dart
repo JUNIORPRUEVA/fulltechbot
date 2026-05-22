@@ -7,6 +7,7 @@ import '../../conversaciones/models/conversacion_model.dart';
 import '../../conversaciones/pages/chat_detail_page.dart';
 import '../../conversaciones/providers/conversaciones_provider.dart';
 import '../models/cliente_model.dart';
+import '../providers/clientes_provider.dart';
 
 class ClienteDetailPage extends StatefulWidget {
   final ClienteModel cliente;
@@ -37,6 +38,40 @@ class _ClienteDetailPageState extends State<ClienteDetailPage> {
     });
   }
 
+  void _confirmarEliminar(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('¿Eliminar cliente?'),
+        content: const Text(
+          'Se eliminará este cliente y todas sus conversaciones. '
+          'El bot perderá la memoria de este cliente y empezará desde cero.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await context.read<ClientesProvider>().eliminarCliente(
+                _cliente.telefono,
+                chatid: _cliente.chatid,
+              );
+              if (context.mounted) {
+                Navigator.pop(context);
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final conversacionesProvider = context.watch<ConversacionesProvider>();
@@ -57,6 +92,11 @@ class _ClienteDetailPageState extends State<ClienteDetailPage> {
               onPressed: () => Navigator.pop(context),
             ),
             actions: [
+              IconButton(
+                icon: Icon(Icons.delete_outline_rounded, color: Colors.red.shade200),
+                onPressed: () => _confirmarEliminar(context),
+                tooltip: 'Eliminar cliente',
+              ),
               IconButton(
                 icon: const Icon(Icons.refresh_rounded),
                 onPressed: _cargarConversaciones,

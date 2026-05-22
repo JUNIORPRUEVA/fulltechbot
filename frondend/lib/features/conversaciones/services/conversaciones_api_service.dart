@@ -60,4 +60,18 @@ class ConversacionesApiService {
 
     throw Exception(body['message'] ?? 'Error al crear conversación');
   }
+
+  Future<void> eliminarPorSessionId(String sessionId) async {
+    final response = await http.delete(
+      Uri.parse('${ApiConfig.botConversationEndpoint}/$sessionId'),
+    );
+
+    final body = jsonDecode(response.body);
+
+    if (response.statusCode == 200 && body['ok'] == true) {
+      return;
+    }
+
+    throw Exception(body['message'] ?? 'Error al eliminar conversaciones');
+  }
 }

@@ -7,19 +7,24 @@ const prisma = new PrismaClient({
   adapter,
 });
 
-async function listarCatalogo() {
+async function listarCatalogo(botId = null) {
+  const where = {};
+  if (botId) where.bot_id = botId;
   return prisma.catalogo.findMany({
+    where,
     orderBy: {
       creadoEn: 'desc',
     },
   });
 }
 
-async function listarCatalogoActivo() {
+async function listarCatalogoActivo(botId = null) {
+  const where = {
+    estado: 'activo',
+  };
+  if (botId) where.bot_id = botId;
   return prisma.catalogo.findMany({
-    where: {
-      estado: 'activo',
-    },
+    where,
     orderBy: {
       creadoEn: 'desc',
     },
@@ -62,6 +67,7 @@ async function crearProducto(data) {
       palabrasClave: data.palabrasClave || null,
       reglasNegociacion: data.reglasNegociacion || null,
       estado: data.estado || 'activo',
+      bot_id: data.bot_id || null,
     },
   });
 }
@@ -97,6 +103,7 @@ async function actualizarProducto(id, data) {
       palabrasClave: data.palabrasClave || null,
       reglasNegociacion: data.reglasNegociacion || null,
       estado: data.estado || 'activo',
+      bot_id: data.bot_id !== undefined ? data.bot_id : undefined,
     },
   });
 }

@@ -1,7 +1,7 @@
 const express = require('express');
 const botQuotationController = require('../controllers/botQuotation.controller');
 
-const router = express.Router();
+const router = express.Router({ mergeParams: true });
 
 router.get('/', botQuotationController.listar);
 router.get('/:id', botQuotationController.obtenerPorId);

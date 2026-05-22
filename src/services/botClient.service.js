@@ -1,7 +1,10 @@
 const prisma = require('../lib/prisma');
 
-async function listarClientes() {
+async function listarClientes(botId = null) {
+  const where = {};
+  if (botId) where.bot_id = botId;
   return prisma.botClient.findMany({
+    where,
     orderBy: { ultima_interaccion_at: 'desc' },
   });
 }
@@ -19,7 +22,7 @@ async function obtenerClientePorChatId(chatid) {
 }
 
 async function buscarOCrearCliente(data) {
-  const { telefono, chatid } = data;
+  const { telefono, chatid, bot_id } = data;
   if (!telefono) {
     throw new Error('El teléfono es obligatorio');
   }
@@ -55,6 +58,8 @@ async function buscarOCrearCliente(data) {
       ultima_interaccion_at: new Date(),
       dias_sin_responder: 0,
       actualizado_en: new Date(),
+      // Actualizar bot_id si viene en la petición
+      ...(bot_id ? { bot_id } : {}),
     };
 
     // Si se pasa metadata, mergearla
@@ -92,6 +97,7 @@ async function buscarOCrearCliente(data) {
       bot_pausado: false,
       humano_tomo_control: false,
       metadata: data.metadata ?? {},
+      bot_id: bot_id || null,
       creado_en: new Date(),
       actualizado_en: new Date(),
     },

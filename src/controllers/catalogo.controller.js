@@ -88,7 +88,8 @@ function validarProducto(data) {
 
 async function listar(req, res) {
   try {
-    const productos = await catalogoService.listarCatalogo();
+    const botId = req.query.botId || req.params.botId || null;
+    const productos = await catalogoService.listarCatalogo(botId);
 
     res.json({
       ok: true,
@@ -106,7 +107,8 @@ async function listar(req, res) {
 
 async function listarActivos(req, res) {
   try {
-    const productos = await catalogoService.listarCatalogoActivo();
+    const botId = req.query.botId || req.params.botId || null;
+    const productos = await catalogoService.listarCatalogoActivo(botId);
 
     res.json({
       ok: true,
@@ -152,6 +154,10 @@ async function obtenerPorId(req, res) {
 async function crear(req, res) {
   try {
     const data = req.body;
+    // Si viene de ruta anidada, asignar botId automáticamente
+    if (req.params.botId) {
+      data.bot_id = req.params.botId;
+    }
 
     const errorValidacion = validarProducto(data);
 

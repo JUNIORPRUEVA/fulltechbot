@@ -15,7 +15,7 @@ class CatalogoProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  Future<void> cargarProductos() async {
+  Future<void> cargarProductos({String? botId}) async {
     _setLoading(true);
 
     try {
@@ -23,7 +23,7 @@ class CatalogoProvider extends ChangeNotifier {
       await _cargarProductosLocales();
 
       // 2. Luego obtener datos frescos de la API
-      _productos = await _apiService.listarProductos();
+      _productos = await _apiService.listarProductos(botId: botId);
 
       // 3. Guardar en almacenamiento local
       final jsonList = _productos.map((p) => p.toJson()).toList();
@@ -40,12 +40,12 @@ class CatalogoProvider extends ChangeNotifier {
     _setLoading(false);
   }
 
-  Future<void> crearProducto(CatalogoModel producto) async {
+  Future<void> crearProducto(CatalogoModel producto, {String? botId}) async {
     _setLoading(true);
 
     try {
-      await _apiService.crearProducto(producto);
-      await cargarProductos();
+      await _apiService.crearProducto(producto, botId: botId);
+      await cargarProductos(botId: botId);
       _error = null;
     } catch (e) {
       _error = e.toString();
@@ -53,12 +53,12 @@ class CatalogoProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> actualizarProducto(CatalogoModel producto) async {
+  Future<void> actualizarProducto(CatalogoModel producto, {String? botId}) async {
     _setLoading(true);
 
     try {
-      await _apiService.actualizarProducto(producto);
-      await cargarProductos();
+      await _apiService.actualizarProducto(producto, botId: botId);
+      await cargarProductos(botId: botId);
       _error = null;
     } catch (e) {
       _error = e.toString();
@@ -69,12 +69,13 @@ class CatalogoProvider extends ChangeNotifier {
   Future<void> cambiarEstado({
     required String id,
     required String estado,
+    String? botId,
   }) async {
     _setLoading(true);
 
     try {
-      await _apiService.cambiarEstado(id: id, estado: estado);
-      await cargarProductos();
+      await _apiService.cambiarEstado(id: id, estado: estado, botId: botId);
+      await cargarProductos(botId: botId);
       _error = null;
     } catch (e) {
       _error = e.toString();
@@ -82,12 +83,12 @@ class CatalogoProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> eliminarProducto(String id) async {
+  Future<void> eliminarProducto(String id, {String? botId}) async {
     _setLoading(true);
 
     try {
-      await _apiService.eliminarProducto(id);
-      await cargarProductos();
+      await _apiService.eliminarProducto(id, botId: botId);
+      await cargarProductos(botId: botId);
       _error = null;
     } catch (e) {
       _error = e.toString();

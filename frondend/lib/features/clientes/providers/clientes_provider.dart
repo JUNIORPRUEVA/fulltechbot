@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/services/local_storage_service.dart';
+import '../../conversaciones/services/conversaciones_api_service.dart';
 import '../models/cliente_model.dart';
 import '../services/clientes_api_service.dart';
 
 class ClientesProvider extends ChangeNotifier {
   final ClientesApiService _apiService = ClientesApiService();
+  final ConversacionesApiService _conversacionesApiService = ConversacionesApiService();
 
   List<ClienteModel> _clientes = [];
   bool _isLoading = false;
@@ -66,11 +68,26 @@ class ClientesProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> eliminarCliente(String telefono) async {
+  Future<void> eliminarCliente(String telefono, {String? chatid}) async {
     _setLoading(true);
 
     try {
+      // 1. Eliminar conversaciones asociadas si hay chatid
+      if (chatid != null && chatid.isNotEmpty) {
+        try {
+          await _conversacionesApiService.eliminarPorSessionId(chatid);
+        } catch (_) {
+          // Si falla la eliminación de conversaciones, continuamos
+        }
+      }
+
+      // 2. Eliminar el cliente
       await _apiService.eliminarCliente(telefono);
+
+      // 3. Limpiar almacenamiento local
+      await LocalStorageService.guardarClientes([]);
+
+      // 4. Recargar lista
       await cargarClientes();
       _error = null;
     } catch (e) {

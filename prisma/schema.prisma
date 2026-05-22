@@ -6,6 +6,34 @@ datasource db {
   provider = "postgresql"
 }
 
+model Bot {
+  id                String   @id @default(uuid())
+  nombre            String
+  slug              String   @unique
+  descripcion       String?
+  tipoNegocio       String?
+  estado            String   @default("activo")
+
+  promptBase        String?
+  tono              String?
+  instrucciones     String?
+  reglasNegocio     String?
+
+  instanciaWhatsapp String?
+  telefonoWhatsapp  String?
+  apiKeyChatGPT     String?
+
+  creadoEn          DateTime @default(now())
+  actualizadoEn     DateTime @updatedAt
+
+  catalogo          Catalogo[]
+  clientes          BotClient[]
+  conversaciones    BotConversation[]
+  cotizaciones      BotQuotation[]
+
+  @@map("bots")
+}
+
 model Catalogo {
   id                String   @id @default(uuid())
 
@@ -28,9 +56,15 @@ model Catalogo {
   reglasNegociacion String?
   estado            String   @default("activo")
 
+  botId             String?  @map("bot_id")
+
   creadoEn          DateTime @default(now())
   actualizadoEn     DateTime @updatedAt
 
+  bot               Bot?     @relation(fields: [botId], references: [id])
+
+  @@index([botId], map: "idx_catalogo_bot_id")
+  @@index([estado], map: "idx_catalogo_estado")
   @@map("catalogo")
 }
 
@@ -75,6 +109,11 @@ model BotClient {
   creado_en                 DateTime  @default(now()) @db.Timestamptz(6)
   actualizado_en            DateTime  @default(now()) @db.Timestamptz(6)
 
+  botId                     String?   @map("bot_id")
+
+  bot                       Bot?      @relation(fields: [botId], references: [id])
+
+  @@index([botId], map: "idx_bot_clients_bot_id")
   @@index([estado_cliente], map: "idx_bot_clients_estado_cliente")
   @@index([etapa], map: "idx_bot_clients_etapa")
   @@index([producto_servicio_interes], map: "idx_bot_clients_interes")
@@ -91,6 +130,11 @@ model BotConversation {
   message    Json
   created_at DateTime @default(now()) @db.Timestamptz(6)
 
+  botId      String?  @map("bot_id")
+
+  bot        Bot?     @relation(fields: [botId], references: [id])
+
+  @@index([botId], map: "idx_bot_conversations_bot_id")
   @@index([created_at(sort: Desc)], map: "idx_bot_conversations_created_at")
   @@index([session_id], map: "idx_bot_conversations_session_id")
 
@@ -121,6 +165,11 @@ model BotQuotation {
   creado_en           DateTime  @default(now()) @db.Timestamptz(6)
   actualizado_en      DateTime  @default(now()) @db.Timestamptz(6)
 
+  botId               String?   @map("bot_id")
+
+  bot                 Bot?      @relation(fields: [botId], references: [id])
+
+  @@index([botId], map: "idx_bot_quotations_bot_id")
   @@index([creado_en(sort: Desc)], map: "idx_bot_quotations_creado_en")
   @@index([estado], map: "idx_bot_quotations_estado")
   @@index([telefono_cliente], map: "idx_bot_quotations_telefono_cliente")

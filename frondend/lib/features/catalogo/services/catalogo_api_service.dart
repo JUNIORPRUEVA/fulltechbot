@@ -6,9 +6,17 @@ import '../../../../core/constants/api_config.dart';
 import '../models/catalogo_model.dart';
 
 class CatalogoApiService {
-  Future<List<CatalogoModel>> listarProductos() async {
+  String _buildUrl(String? botId) {
+    if (botId != null && botId.isNotEmpty) {
+      return '${ApiConfig.baseUrl}/api/bots/$botId/catalogo';
+    }
+    return ApiConfig.catalogoEndpoint;
+  }
+
+  Future<List<CatalogoModel>> listarProductos({String? botId}) async {
+    final baseUrl = _buildUrl(botId);
     final response = await http.get(
-      Uri.parse(ApiConfig.catalogoEndpoint),
+      Uri.parse(baseUrl),
     );
 
     final body = jsonDecode(response.body);
@@ -21,9 +29,10 @@ class CatalogoApiService {
     throw Exception(body['message'] ?? 'Error al listar productos');
   }
 
-  Future<List<CatalogoModel>> listarProductosActivos() async {
+  Future<List<CatalogoModel>> listarProductosActivos({String? botId}) async {
+    final baseUrl = _buildUrl(botId);
     final response = await http.get(
-      Uri.parse('${ApiConfig.catalogoEndpoint}/activos'),
+      Uri.parse('$baseUrl/activos'),
     );
 
     final body = jsonDecode(response.body);
@@ -36,9 +45,10 @@ class CatalogoApiService {
     throw Exception(body['message'] ?? 'Error al listar productos activos');
   }
 
-  Future<CatalogoModel> crearProducto(CatalogoModel producto) async {
+  Future<CatalogoModel> crearProducto(CatalogoModel producto, {String? botId}) async {
+    final baseUrl = _buildUrl(botId);
     final response = await http.post(
-      Uri.parse(ApiConfig.catalogoEndpoint),
+      Uri.parse(baseUrl),
       headers: {
         'Content-Type': 'application/json',
       },
@@ -55,9 +65,10 @@ class CatalogoApiService {
     throw Exception(body['message'] ?? 'Error al crear producto');
   }
 
-  Future<CatalogoModel> actualizarProducto(CatalogoModel producto) async {
+  Future<CatalogoModel> actualizarProducto(CatalogoModel producto, {String? botId}) async {
+    final baseUrl = _buildUrl(botId);
     final response = await http.put(
-      Uri.parse('${ApiConfig.catalogoEndpoint}/${producto.id}'),
+      Uri.parse('$baseUrl/${producto.id}'),
       headers: {
         'Content-Type': 'application/json',
       },
@@ -76,9 +87,11 @@ class CatalogoApiService {
   Future<CatalogoModel> cambiarEstado({
     required String id,
     required String estado,
+    String? botId,
   }) async {
+    final baseUrl = _buildUrl(botId);
     final response = await http.patch(
-      Uri.parse('${ApiConfig.catalogoEndpoint}/$id/estado'),
+      Uri.parse('$baseUrl/$id/estado'),
       headers: {
         'Content-Type': 'application/json',
       },
@@ -96,9 +109,10 @@ class CatalogoApiService {
     throw Exception(body['message'] ?? 'Error al cambiar estado');
   }
 
-  Future<void> eliminarProducto(String id) async {
+  Future<void> eliminarProducto(String id, {String? botId}) async {
+    final baseUrl = _buildUrl(botId);
     final response = await http.delete(
-      Uri.parse('${ApiConfig.catalogoEndpoint}/$id'),
+      Uri.parse('$baseUrl/$id'),
     );
 
     final body = jsonDecode(response.body);

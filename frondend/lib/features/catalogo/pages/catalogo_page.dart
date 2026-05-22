@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../bots/providers/bot_provider.dart';
 import '../models/catalogo_model.dart';
 import '../providers/catalogo_provider.dart';
 import 'catalogo_detail_page.dart';
@@ -21,9 +22,7 @@ class _CatalogoPageState extends State<CatalogoPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        context.read<CatalogoProvider>().cargarProductos();
-      }
+      _cargarProductos();
     });
   }
 
@@ -31,6 +30,21 @@ class _CatalogoPageState extends State<CatalogoPage> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  String? get _botId {
+    try {
+      return context.read<BotProvider>().botSeleccionado?.id;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void _cargarProductos() {
+    final botId = _botId;
+    if (botId != null) {
+      context.read<CatalogoProvider>().cargarProductos(botId: botId);
+    }
   }
 
   List<CatalogoModel> _filtrarProductos(List<CatalogoModel> productos) {
@@ -58,7 +72,7 @@ class _CatalogoPageState extends State<CatalogoPage> {
             tooltip: 'Actualizar',
             onPressed: provider.isLoading
                 ? null
-                : () => context.read<CatalogoProvider>().cargarProductos(),
+                : _cargarProductos,
             icon: const Icon(Icons.refresh_rounded),
           ),
         ],
@@ -181,7 +195,7 @@ class _CatalogoPageState extends State<CatalogoPage> {
                             ),
                           )
                         : RefreshIndicator(
-                            onRefresh: () => context.read<CatalogoProvider>().cargarProductos(),
+                            onRefresh: () async => _cargarProductos(),
                             child: ListView.builder(
                               padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
                               itemCount: productosFiltrados.length,
@@ -196,6 +210,7 @@ class _CatalogoPageState extends State<CatalogoPage> {
                                     context.read<CatalogoProvider>().cambiarEstado(
                                           id: producto.id,
                                           estado: estado,
+                                          botId: _botId,
                                         );
                                   },
                                 );
@@ -248,7 +263,7 @@ class _CatalogoPageState extends State<CatalogoPage> {
     );
 
     if (confirmar == true && context.mounted) {
-      await context.read<CatalogoProvider>().eliminarProducto(producto.id);
+      await context.read<CatalogoProvider>().eliminarProducto(producto.id, botId: _botId);
     }
   }
 }

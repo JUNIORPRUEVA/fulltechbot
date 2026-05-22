@@ -1,30 +1,30 @@
 const express = require('express');
 const botClientController = require('../controllers/botClient.controller');
 
-const router = express.Router();
+const router = express.Router({ mergeParams: true });
 
-// GET /api/bot/clients - Listar todos los clientes
+// GET /api/bots/:botId/clients - Listar todos los clientes
 router.get('/', botClientController.listar);
 
-// GET /api/bot/clients/by-phone/:telefono - Buscar por teléfono
+// GET /api/bots/:botId/clients/by-phone/:telefono - Buscar por teléfono
 router.get('/by-phone/:telefono', botClientController.obtenerPorTelefono);
 
-// GET /api/bot/clients/by-chatid/:chatid - Buscar por chatid
+// GET /api/bots/:botId/clients/by-chatid/:chatid - Buscar por chatid
 router.get('/by-chatid/:chatid', botClientController.obtenerPorChatId);
 
-// POST /api/bot/clients - Crear o actualizar cliente (upsert)
+// POST /api/bots/:botId/clients - Crear o actualizar cliente (upsert)
 router.post('/', botClientController.buscarOCrear);
 
-// PUT /api/bot/clients/:telefono - Actualizar cliente
+// PUT /api/bots/:botId/clients/:telefono - Actualizar cliente
 router.put('/:telefono', botClientController.actualizar);
 
-// PATCH /api/bot/clients/:telefono/status - Actualizar estado
+// PATCH /api/bots/:botId/clients/:telefono/status - Actualizar estado
 router.patch('/:telefono/status', botClientController.actualizarEstado);
 
-// PATCH /api/bot/clients/:telefono/pause-bot - Pausar/reanudar bot
+// PATCH /api/bots/:botId/clients/:telefono/pause-bot - Pausar/reanudar bot
 router.patch('/:telefono/pause-bot', botClientController.pausarBot);
 
-// DELETE /api/bot/clients/:telefono - Eliminar cliente
+// DELETE /api/bots/:botId/clients/:telefono - Eliminar cliente
 router.delete('/:telefono', botClientController.eliminar);
 
 module.exports = router;

@@ -1,7 +1,10 @@
 const prisma = require('../lib/prisma');
 
-async function listarCotizaciones() {
+async function listarCotizaciones(botId = null) {
+  const where = {};
+  if (botId) where.bot_id = botId;
   return prisma.botQuotation.findMany({
+    where,
     orderBy: { creado_en: 'desc' },
   });
 }
@@ -33,6 +36,7 @@ async function crearCotizacion(data) {
     condiciones,
     valida_hasta,
     creada_por,
+    bot_id,
   } = data;
 
   if (!numero_cotizacion) {
@@ -64,6 +68,7 @@ async function crearCotizacion(data) {
       condiciones: condiciones ?? null,
       valida_hasta: valida_hasta ?? null,
       creada_por: creada_por ?? 'bot',
+      bot_id: bot_id || null,
       creado_en: new Date(),
       actualizado_en: new Date(),
     },

@@ -2,7 +2,8 @@ const botClientService = require('../services/botClient.service');
 
 async function listar(req, res) {
   try {
-    const clientes = await botClientService.listarClientes();
+    const botId = req.params.botId || null;
+    const clientes = await botClientService.listarClientes(botId);
     res.json({
       ok: true,
       message: 'Clientes listados correctamente',
@@ -86,6 +87,8 @@ async function buscarOCrear(req, res) {
       });
     }
 
+    const bot_id = req.params.botId || null;
+
     const cliente = await botClientService.buscarOCrearCliente({
       telefono,
       nombre,
@@ -101,6 +104,7 @@ async function buscarOCrear(req, res) {
       presupuesto_estimado,
       ultimo_mensaje,
       metadata,
+      bot_id,
     });
 
     const esNuevo = cliente.total_mensajes === 1;

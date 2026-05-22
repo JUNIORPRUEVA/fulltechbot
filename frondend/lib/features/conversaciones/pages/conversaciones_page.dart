@@ -330,6 +330,34 @@ class _ConversacionCard extends StatelessWidget {
     required this.onTap,
   });
 
+  void _confirmarEliminar(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('¿Eliminar conversación?'),
+        content: Text(
+          'Se eliminarán todos los mensajes de esta conversación. '
+          'El bot perderá la memoria de este cliente y empezará desde cero.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<ConversacionesProvider>().eliminarConversaciones(sessionId);
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final nombre = cliente?.nombre ?? sessionId.replaceAll('@s.whatsapp.net', '');
@@ -449,6 +477,15 @@ class _ConversacionCard extends StatelessWidget {
                   ),
                 ),
 
+                // Botón eliminar
+                IconButton(
+                  icon: Icon(Icons.delete_outline_rounded, color: Colors.red.shade300, size: 20),
+                  onPressed: () => _confirmarEliminar(context),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  splashRadius: 18,
+                ),
+                const SizedBox(width: 4),
                 // Flecha
                 Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400),
               ],

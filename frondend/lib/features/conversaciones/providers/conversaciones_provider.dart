@@ -90,6 +90,33 @@ class ConversacionesProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> eliminarConversaciones(String sessionId) async {
+    _cargando = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      // 1. Eliminar del backend
+      await _apiService.eliminarPorSessionId(sessionId);
+
+      // 2. Eliminar de la lista local en memoria
+      _conversaciones.removeWhere((c) => c.sessionId == sessionId);
+      _mensajesActuales = [];
+
+      // 3. Actualizar almacenamiento local
+      final jsonList = _conversaciones.map((c) => c.toJson()).toList();
+      await LocalStorageService.guardarConversaciones(jsonList);
+      await LocalStorageService.guardarMensajes(sessionId, []);
+
+      _error = null;
+    } catch (e) {
+      _error = e.toString();
+    }
+
+    _cargando = false;
+    notifyListeners();
+  }
+
   Future<void> _cargarConversacionesLocales() async {
     final data = await LocalStorageService.cargarConversaciones();
     if (data != null && data.isNotEmpty) {

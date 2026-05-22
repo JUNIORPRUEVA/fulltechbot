@@ -2,7 +2,8 @@ const botConversationService = require('../services/botConversation.service');
 
 async function listar(req, res) {
   try {
-    const conversaciones = await botConversationService.listarConversaciones();
+    const botId = req.params.botId || null;
+    const conversaciones = await botConversationService.listarConversaciones(botId);
     res.json({
       ok: true,
       message: 'Conversaciones listadas correctamente',
@@ -40,6 +41,7 @@ async function obtenerPorSessionId(req, res) {
 async function crear(req, res) {
   try {
     const { session_id, message } = req.body;
+    const bot_id = req.params.botId || null;
 
     if (!session_id) {
       return res.status(400).json({
@@ -58,6 +60,7 @@ async function crear(req, res) {
     const conversacion = await botConversationService.crearConversacion({
       session_id,
       message,
+      bot_id,
     });
 
     res.status(201).json({
@@ -74,8 +77,36 @@ async function crear(req, res) {
   }
 }
 
+async function eliminarPorSessionId(req, res) {
+  try {
+    const { sessionId } = req.params;
+
+    if (!sessionId) {
+      return res.status(400).json({
+        ok: false,
+        message: 'El sessionId es obligatorio',
+      });
+    }
+
+    const result = await botConversationService.eliminarPorSessionId(sessionId);
+
+    res.json({
+      ok: true,
+      message: `Se eliminaron ${result.count} conversaciones`,
+      data: { eliminados: result.count },
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: 'Error al eliminar conversaciones',
+      error: error.message,
+    });
+  }
+}
+
 module.exports = {
   listar,
   obtenerPorSessionId,
   crear,
+  eliminarPorSessionId,
 };

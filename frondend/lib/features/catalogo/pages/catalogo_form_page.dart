@@ -2,6 +2,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../bots/providers/bot_provider.dart';
 import '../models/catalogo_model.dart';
 import '../providers/catalogo_provider.dart';
 import '../services/storage_api_service.dart';
@@ -46,6 +47,14 @@ bool _subiendoVideo = false;
   String _estado = 'activo';
 
   bool get _isEditing => widget.producto != null;
+
+  String? get _botId {
+    try {
+      return context.read<BotProvider>().botSeleccionado?.id;
+    } catch (_) {
+      return null;
+    }
+  }
 
   @override
   void initState() {
@@ -407,11 +416,13 @@ bool _subiendoVideo = false;
       actualizadoEn: widget.producto?.actualizadoEn,
     );
 
+    final botId = _botId;
+
     try {
       if (_isEditing) {
-        await context.read<CatalogoProvider>().actualizarProducto(producto);
+        await context.read<CatalogoProvider>().actualizarProducto(producto, botId: botId);
       } else {
-        await context.read<CatalogoProvider>().crearProducto(producto);
+        await context.read<CatalogoProvider>().crearProducto(producto, botId: botId);
       }
 
       if (!mounted) return;
