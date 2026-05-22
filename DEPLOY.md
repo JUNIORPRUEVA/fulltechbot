@@ -40,10 +40,16 @@ Si no tienes el bucket publico listo todavia, la app ya puede servir los archivo
 Al iniciar, el contenedor:
 
 1. valida que `DATABASE_URL` exista
-2. inicia el servidor en `PORT`
+2. ejecuta `prisma migrate deploy` por defecto
+3. inicia el servidor en `PORT`
 
 Durante el build de la imagen se ejecuta `prisma generate`.
-El contenedor no debe ejecutar `prisma migrate deploy` al iniciar.
+
+Si por alguna razon necesitas desactivar migraciones automaticas, define:
+
+```bash
+RUN_PRISMA_MIGRATIONS=false
+```
 
 ## Verificacion rapida
 
@@ -54,6 +60,15 @@ curl https://tu-dominio/api/health
 ```
 
 Debes recibir un JSON con `ok: true`.
+
+Despues valida que existan las tablas nuevas:
+
+```sql
+SELECT tablename
+FROM pg_tables
+WHERE schemaname = 'public'
+  AND tablename IN ('bot_campaigns', 'conversation_campaign_context');
+```
 
 ## Notas
 
