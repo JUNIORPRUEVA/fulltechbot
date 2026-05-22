@@ -10,6 +10,7 @@ class QuotationProvider extends ChangeNotifier {
   BotQuotationModel? _cotizacionSeleccionada;
   bool _isLoading = false;
   String? _error;
+  String? _currentBotId;
 
   List<BotQuotationModel> get cotizaciones => _cotizaciones;
   BotQuotationModel? get cotizacionSeleccionada => _cotizacionSeleccionada;
@@ -22,6 +23,7 @@ class QuotationProvider extends ChangeNotifier {
     String? telefono,
     String? botId,
   }) async {
+    _currentBotId = botId;
     _setLoading(true);
     try {
       _cotizaciones = await _apiService.listarCotizaciones(
@@ -40,8 +42,8 @@ class QuotationProvider extends ChangeNotifier {
   Future<void> crearCotizacion(Map<String, dynamic> data) async {
     _setLoading(true);
     try {
-      await _apiService.crearCotizacion(data);
-      await cargarCotizaciones();
+      await _apiService.crearCotizacion(data, botId: _currentBotId);
+      await cargarCotizaciones(botId: _currentBotId);
       _error = null;
     } catch (e) {
       _error = e.toString();
@@ -49,11 +51,14 @@ class QuotationProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> actualizarCotizacion(String id, Map<String, dynamic> data) async {
+  Future<void> actualizarCotizacion(
+    String id,
+    Map<String, dynamic> data,
+  ) async {
     _setLoading(true);
     try {
-      await _apiService.actualizarCotizacion(id, data);
-      await cargarCotizaciones();
+      await _apiService.actualizarCotizacion(id, data, botId: _currentBotId);
+      await cargarCotizaciones(botId: _currentBotId);
       _error = null;
     } catch (e) {
       _error = e.toString();
@@ -64,8 +69,8 @@ class QuotationProvider extends ChangeNotifier {
   Future<void> cambiarEstado(String id, String estado) async {
     _setLoading(true);
     try {
-      await _apiService.cambiarEstado(id, estado);
-      await cargarCotizaciones();
+      await _apiService.cambiarEstado(id, estado, botId: _currentBotId);
+      await cargarCotizaciones(botId: _currentBotId);
       _error = null;
     } catch (e) {
       _error = e.toString();
@@ -76,8 +81,8 @@ class QuotationProvider extends ChangeNotifier {
   Future<void> eliminarCotizacion(String id) async {
     _setLoading(true);
     try {
-      await _apiService.eliminarCotizacion(id);
-      await cargarCotizaciones();
+      await _apiService.eliminarCotizacion(id, botId: _currentBotId);
+      await cargarCotizaciones(botId: _currentBotId);
       _error = null;
     } catch (e) {
       _error = e.toString();
@@ -100,6 +105,7 @@ class QuotationProvider extends ChangeNotifier {
     _cotizacionSeleccionada = null;
     _error = null;
     _isLoading = false;
+    _currentBotId = null;
     notifyListeners();
   }
 

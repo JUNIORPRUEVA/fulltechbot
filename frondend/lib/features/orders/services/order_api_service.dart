@@ -9,7 +9,9 @@ import '../models/bot_order_model.dart';
 class OrderApiService {
   static const Duration _timeout = Duration(seconds: 15);
 
-  String get _baseUrl => '${ApiConfig.baseUrl}/api/orders';
+  String _baseUrl({String? botId}) => botId != null && botId.isNotEmpty
+      ? '${ApiConfig.baseUrl}/api/bots/$botId/orders'
+      : '${ApiConfig.baseUrl}/api/orders';
 
   /// Valida que la respuesta no sea HTML y lanza error descriptivo.
   Map<String, dynamic> _validateAndDecode(http.Response response) {
@@ -33,7 +35,9 @@ class OrderApiService {
     try {
       final decoded = jsonDecode(body);
       if (decoded is! Map<String, dynamic>) {
-        throw Exception('Formato de respuesta inválido: se esperaba un objeto JSON');
+        throw Exception(
+          'Formato de respuesta inválido: se esperaba un objeto JSON',
+        );
       }
       return decoded;
     } on FormatException catch (e) {
@@ -71,7 +75,9 @@ class OrderApiService {
     if (telefono != null) params['telefono'] = telefono;
     if (botId != null) params['botId'] = botId;
 
-    final uri = Uri.parse(_baseUrl).replace(queryParameters: params.isNotEmpty ? params : null);
+    final uri = Uri.parse(_baseUrl(botId: botId)).replace(
+      queryParameters: botId == null && params.isNotEmpty ? params : null,
+    );
     final body = await _request(() => http.get(uri));
 
     if (body['ok'] == true) {
@@ -82,9 +88,9 @@ class OrderApiService {
     throw Exception(body['message'] ?? 'Error al listar órdenes');
   }
 
-  Future<BotOrderModel> obtenerOrden(String id) async {
+  Future<BotOrderModel> obtenerOrden(String id, {String? botId}) async {
     final body = await _request(
-      () => http.get(Uri.parse('$_baseUrl/$id')),
+      () => http.get(Uri.parse('${_baseUrl(botId: botId)}/$id')),
     );
 
     if (body['ok'] == true) {
@@ -94,10 +100,13 @@ class OrderApiService {
     throw Exception(body['message'] ?? 'Error al obtener orden');
   }
 
-  Future<BotOrderModel> crearOrden(Map<String, dynamic> data) async {
+  Future<BotOrderModel> crearOrden(
+    Map<String, dynamic> data, {
+    String? botId,
+  }) async {
     final body = await _request(
       () => http.post(
-        Uri.parse(_baseUrl),
+        Uri.parse(_baseUrl(botId: botId ?? data['botId']?.toString())),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(data),
       ),
@@ -111,10 +120,13 @@ class OrderApiService {
   }
 
   Future<BotOrderModel> actualizarOrden(
-      String id, Map<String, dynamic> data) async {
+    String id,
+    Map<String, dynamic> data, {
+    String? botId,
+  }) async {
     final body = await _request(
       () => http.put(
-        Uri.parse('$_baseUrl/$id'),
+        Uri.parse('${_baseUrl(botId: botId ?? data['botId']?.toString())}/$id'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(data),
       ),
@@ -127,10 +139,14 @@ class OrderApiService {
     throw Exception(body['message'] ?? 'Error al actualizar orden');
   }
 
-  Future<BotOrderModel> cambiarEstado(String id, String estado) async {
+  Future<BotOrderModel> cambiarEstado(
+    String id,
+    String estado, {
+    String? botId,
+  }) async {
     final body = await _request(
       () => http.patch(
-        Uri.parse('$_baseUrl/$id/status'),
+        Uri.parse('${_baseUrl(botId: botId)}/$id/status'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'estado': estado}),
       ),
@@ -143,9 +159,9 @@ class OrderApiService {
     throw Exception(body['message'] ?? 'Error al cambiar estado');
   }
 
-  Future<void> eliminarOrden(String id) async {
+  Future<void> eliminarOrden(String id, {String? botId}) async {
     final body = await _request(
-      () => http.delete(Uri.parse('$_baseUrl/$id')),
+      () => http.delete(Uri.parse('${_baseUrl(botId: botId)}/$id')),
     );
 
     if (body['ok'] == true) {

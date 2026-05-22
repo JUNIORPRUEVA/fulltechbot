@@ -5,7 +5,12 @@ async function listarCotizaciones(filtros = {}) {
   if (filtros.sourceBotId) where.sourceBotId = filtros.sourceBotId;
   if (filtros.estado) where.estado = filtros.estado;
   if (filtros.telefono) where.telefono_cliente = filtros.telefono;
-  if (filtros.botId) where.botId = filtros.botId;
+  if (filtros.botId) {
+    where.OR = [
+      { botId: filtros.botId },
+      { sourceBotId: filtros.botId },
+    ];
+  }
 
   return prisma.botQuotation.findMany({
     where,

@@ -5,7 +5,12 @@ async function listarOrdenes(filtros = {}) {
   if (filtros.sourceBotId) where.sourceBotId = filtros.sourceBotId;
   if (filtros.estado) where.estadoPedido = filtros.estado;
   if (filtros.telefono) where.telefonoCliente = filtros.telefono;
-  if (filtros.botId) where.botId = filtros.botId;
+  if (filtros.botId) {
+    where.OR = [
+      { botId: filtros.botId },
+      { sourceBotId: filtros.botId },
+    ];
+  }
 
   return prisma.botOrder.findMany({
     where,

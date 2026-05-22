@@ -11,6 +11,7 @@ class OrderProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool _isLoadingMore = false;
   String? _error;
+  String? _currentBotId;
 
   List<BotOrderModel> get ordenes => _ordenes;
   BotOrderModel? get ordenSeleccionada => _ordenSeleccionada;
@@ -20,6 +21,7 @@ class OrderProvider extends ChangeNotifier {
   Future<void> cargarOrdenes({String? botId}) async {
     if (_isLoadingMore) return;
     _isLoadingMore = true;
+    _currentBotId = botId;
 
     _setLoading(true);
     try {
@@ -40,8 +42,8 @@ class OrderProvider extends ChangeNotifier {
 
     _setLoading(true);
     try {
-      await _apiService.crearOrden(data);
-      await cargarOrdenes();
+      await _apiService.crearOrden(data, botId: _currentBotId);
+      await cargarOrdenes(botId: _currentBotId);
       _error = null;
     } catch (e, st) {
       _error = e.toString();
@@ -52,15 +54,14 @@ class OrderProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> actualizarOrden(
-      String id, Map<String, dynamic> data) async {
+  Future<void> actualizarOrden(String id, Map<String, dynamic> data) async {
     if (_isLoadingMore) return;
     _isLoadingMore = true;
 
     _setLoading(true);
     try {
-      await _apiService.actualizarOrden(id, data);
-      await cargarOrdenes();
+      await _apiService.actualizarOrden(id, data, botId: _currentBotId);
+      await cargarOrdenes(botId: _currentBotId);
       _error = null;
     } catch (e, st) {
       _error = e.toString();
@@ -77,8 +78,8 @@ class OrderProvider extends ChangeNotifier {
 
     _setLoading(true);
     try {
-      await _apiService.cambiarEstado(id, estado);
-      await cargarOrdenes();
+      await _apiService.cambiarEstado(id, estado, botId: _currentBotId);
+      await cargarOrdenes(botId: _currentBotId);
       _error = null;
     } catch (e, st) {
       _error = e.toString();
@@ -95,8 +96,8 @@ class OrderProvider extends ChangeNotifier {
 
     _setLoading(true);
     try {
-      await _apiService.eliminarOrden(id);
-      await cargarOrdenes();
+      await _apiService.eliminarOrden(id, botId: _currentBotId);
+      await cargarOrdenes(botId: _currentBotId);
       _error = null;
     } catch (e, st) {
       _error = e.toString();
@@ -123,6 +124,7 @@ class OrderProvider extends ChangeNotifier {
     _error = null;
     _isLoading = false;
     _isLoadingMore = false;
+    _currentBotId = null;
     notifyListeners();
   }
 
