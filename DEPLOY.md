@@ -40,9 +40,10 @@ Si no tienes el bucket publico listo todavia, la app ya puede servir los archivo
 Al iniciar, el contenedor:
 
 1. valida que `DATABASE_URL` exista
-2. ejecuta `prisma generate`
-3. ejecuta `prisma migrate deploy`
-4. inicia el servidor en `PORT`
+2. inicia el servidor en `PORT`
+
+Durante el build de la imagen se ejecuta `prisma generate`.
+El contenedor no debe ejecutar `prisma migrate deploy` al iniciar.
 
 ## Verificacion rapida
 

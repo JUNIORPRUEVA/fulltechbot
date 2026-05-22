@@ -2,15 +2,12 @@ const prisma = require('../lib/prisma');
 
 async function listarOrdenes(botId) {
   return prisma.botOrder.findMany({
-    where: { botId },
     orderBy: { creadoEn: 'desc' },
   });
 }
 
 async function obtenerOrdenPorId(id, botId) {
-  return prisma.botOrder.findFirst({
-    where: { id, botId },
-  });
+  return prisma.botOrder.findUnique({ where: { id } });
 }
 
 async function crearOrden(data) {
@@ -23,7 +20,6 @@ async function crearOrden(data) {
     fechaDeseada,
     estadoPedido,
     resumenPedido,
-    botId,
   } = data;
 
   if (!telefonoCliente) {
@@ -40,15 +36,12 @@ async function crearOrden(data) {
       fechaDeseada: fechaDeseada ?? null,
       estadoPedido: estadoPedido ?? 'pendiente',
       resumenPedido: resumenPedido ?? null,
-      botId: botId || null,
     },
   });
 }
 
 async function actualizarOrden(id, data, botId) {
-  const existente = await prisma.botOrder.findFirst({
-    where: { id, botId },
-  });
+  const existente = await prisma.botOrder.findUnique({ where: { id } });
 
   if (!existente) {
     return null;
@@ -94,9 +87,7 @@ async function cambiarEstado(id, estado, botId) {
     throw new Error(`Estado no válido. Permitidos: ${estadosPermitidos.join(', ')}`);
   }
 
-  const existente = await prisma.botOrder.findFirst({
-    where: { id, botId },
-  });
+  const existente = await prisma.botOrder.findUnique({ where: { id } });
 
   if (!existente) {
     return null;
@@ -109,9 +100,7 @@ async function cambiarEstado(id, estado, botId) {
 }
 
 async function eliminarOrden(id, botId) {
-  const existente = await prisma.botOrder.findFirst({
-    where: { id, botId },
-  });
+  const existente = await prisma.botOrder.findUnique({ where: { id } });
 
   if (!existente) {
     return null;

@@ -8,8 +8,8 @@ if [ -z "${DATABASE_URL:-}" ]; then
   exit 1
 fi
 
-echo "Running database migrations..."
-npx prisma migrate deploy
+echo "Prisma migrations are disabled for this environment."
+echo "Prisma Client is generated during the image build."
 
 echo "Starting HTTP server on port ${PORT:-3000}..."
 exec node src/server.js

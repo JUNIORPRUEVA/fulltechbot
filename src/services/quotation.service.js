@@ -2,15 +2,9 @@ const prisma = require('../lib/prisma');
 
 async function listarCotizaciones(filtros = {}) {
   const where = {};
-  if (filtros.sourceBotId) where.sourceBotId = filtros.sourceBotId;
   if (filtros.estado) where.estado = filtros.estado;
   if (filtros.telefono) where.telefono_cliente = filtros.telefono;
-  if (filtros.botId) {
-    where.OR = [
-      { botId: filtros.botId },
-      { sourceBotId: filtros.botId },
-    ];
-  }
+  if (filtros.botId) where.botId = filtros.botId;
 
   return prisma.botQuotation.findMany({
     where,
@@ -76,9 +70,6 @@ async function crearCotizacion(data) {
     valida_hasta,
     creada_por,
     botId,
-    sourceBotId,
-    instanciaWhatsapp,
-    origen,
   } = data;
 
   if (!telefono_cliente) {
@@ -113,9 +104,6 @@ async function crearCotizacion(data) {
       valida_hasta: valida_hasta ? new Date(valida_hasta) : null,
       creada_por: creada_por || 'bot',
       botId: botId || null,
-      sourceBotId: sourceBotId || botId || null,
-      instanciaWhatsapp: instanciaWhatsapp || null,
-      origen: origen || null,
     },
   });
 }
@@ -149,8 +137,6 @@ async function actualizarCotizacion(id, data) {
     condiciones,
     valida_hasta,
     creada_por,
-    instanciaWhatsapp,
-    origen,
   } = data;
 
   const updateData = {};
@@ -176,8 +162,6 @@ async function actualizarCotizacion(id, data) {
   if (condiciones !== undefined) updateData.condiciones = condiciones;
   if (valida_hasta !== undefined) updateData.valida_hasta = valida_hasta ? new Date(valida_hasta) : null;
   if (creada_por !== undefined) updateData.creada_por = creada_por;
-  if (instanciaWhatsapp !== undefined) updateData.instanciaWhatsapp = instanciaWhatsapp;
-  if (origen !== undefined) updateData.origen = origen;
 
   return prisma.botQuotation.update({
     where: { id },

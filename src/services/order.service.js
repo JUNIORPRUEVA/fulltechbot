@@ -2,32 +2,17 @@ const prisma = require('../lib/prisma');
 
 async function listarOrdenes(filtros = {}) {
   const where = {};
-  if (filtros.sourceBotId) where.sourceBotId = filtros.sourceBotId;
   if (filtros.estado) where.estadoPedido = filtros.estado;
   if (filtros.telefono) where.telefonoCliente = filtros.telefono;
-  if (filtros.botId) {
-    where.OR = [
-      { botId: filtros.botId },
-      { sourceBotId: filtros.botId },
-    ];
-  }
 
   return prisma.botOrder.findMany({
     where,
     orderBy: { creadoEn: 'desc' },
-    include: {
-      bot: { select: { id: true, nombre: true, slug: true } },
-    },
   });
 }
 
 async function obtenerOrdenPorId(id) {
-  return prisma.botOrder.findUnique({
-    where: { id },
-    include: {
-      bot: { select: { id: true, nombre: true, slug: true } },
-    },
-  });
+  return prisma.botOrder.findUnique({ where: { id } });
 }
 
 async function crearOrden(data) {
@@ -40,11 +25,6 @@ async function crearOrden(data) {
     fechaDeseada,
     estadoPedido,
     resumenPedido,
-    botId,
-    sourceBotId,
-    instanciaWhatsapp,
-    origen,
-    metadata,
   } = data;
 
   if (!telefonoCliente) {
@@ -61,11 +41,6 @@ async function crearOrden(data) {
       fechaDeseada: fechaDeseada ?? null,
       estadoPedido: estadoPedido ?? 'pendiente',
       resumenPedido: resumenPedido ?? null,
-      botId: botId || null,
-      sourceBotId: sourceBotId || botId || null,
-      instanciaWhatsapp: instanciaWhatsapp || null,
-      origen: origen || null,
-      metadata: metadata || {},
     },
   });
 }
@@ -88,9 +63,6 @@ async function actualizarOrden(id, data) {
     fechaDeseada,
     estadoPedido,
     resumenPedido,
-    instanciaWhatsapp,
-    origen,
-    metadata,
   } = data;
 
   return prisma.botOrder.update({
@@ -104,9 +76,6 @@ async function actualizarOrden(id, data) {
       ...(fechaDeseada !== undefined && { fechaDeseada }),
       ...(estadoPedido !== undefined && { estadoPedido }),
       ...(resumenPedido !== undefined && { resumenPedido }),
-      ...(instanciaWhatsapp !== undefined && { instanciaWhatsapp }),
-      ...(origen !== undefined && { origen }),
-      ...(metadata !== undefined && { metadata }),
     },
   });
 }
