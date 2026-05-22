@@ -32,7 +32,9 @@ class _QuotationsPageState extends State<QuotationsPage> {
   @override
   void initState() {
     super.initState();
-    _cargarDatos();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _cargarDatos();
+    });
   }
 
   void _cargarDatos() {
@@ -40,7 +42,6 @@ class _QuotationsPageState extends State<QuotationsPage> {
     final bot = botProvider.botSeleccionado;
     context.read<QuotationProvider>().cargarCotizaciones(
           botId: bot?.id,
-          sourceBotId: bot?.id,
         );
   }
 
@@ -70,7 +71,6 @@ class _QuotationsPageState extends State<QuotationsPage> {
                 ? null
                 : () => context.read<QuotationProvider>().cargarCotizaciones(
                       botId: bot?.id,
-                      sourceBotId: bot?.id,
                     ),
             icon: const Icon(Icons.refresh_rounded),
           ),
@@ -221,7 +221,6 @@ class _QuotationsPageState extends State<QuotationsPage> {
                     : RefreshIndicator(
                         onRefresh: () => context.read<QuotationProvider>().cargarCotizaciones(
                               botId: bot?.id,
-                              sourceBotId: bot?.id,
                             ),
                         child: ListView.builder(
                           padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),

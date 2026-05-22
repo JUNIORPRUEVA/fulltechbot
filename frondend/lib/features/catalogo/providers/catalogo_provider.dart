@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/services/local_storage_service.dart';
 import '../models/catalogo_model.dart';
 import '../services/catalogo_api_service.dart';
 
@@ -9,6 +8,7 @@ class CatalogoProvider extends ChangeNotifier {
 
   List<CatalogoModel> _productos = [];
   bool _isLoading = false;
+  bool _isLoadingMore = false;
   String? _error;
 
   List<CatalogoModel> get productos => _productos;
@@ -16,52 +16,57 @@ class CatalogoProvider extends ChangeNotifier {
   String? get error => _error;
 
   Future<void> cargarProductos({String? botId}) async {
+    if (_isLoadingMore) return;
+    _isLoadingMore = true;
+
     _setLoading(true);
-
     try {
-      // 1. Primero cargar datos locales para mostrar inmediatamente
-      await _cargarProductosLocales();
-
-      // 2. Luego obtener datos frescos de la API
       _productos = await _apiService.listarProductos(botId: botId);
-
-      // 3. Guardar en almacenamiento local
-      final jsonList = _productos.map((p) => p.toJson()).toList();
-      await LocalStorageService.guardarProductos(jsonList);
-
       _error = null;
-    } catch (e) {
-      // Si falla la API, ya tenemos los datos locales cargados
+    } catch (e, st) {
       if (_productos.isEmpty) {
         _error = e.toString();
       }
+      debugPrint('[CatalogoProvider] Error cargando productos: $e');
+      debugPrint('$st');
     }
-
+    _isLoadingMore = false;
     _setLoading(false);
   }
 
   Future<void> crearProducto(CatalogoModel producto, {String? botId}) async {
-    _setLoading(true);
+    if (_isLoadingMore) return;
+    _isLoadingMore = true;
 
+    _setLoading(true);
     try {
       await _apiService.crearProducto(producto, botId: botId);
       await cargarProductos(botId: botId);
       _error = null;
-    } catch (e) {
+    } catch (e, st) {
       _error = e.toString();
+      debugPrint('[CatalogoProvider] Error creando producto: $e');
+      debugPrint('$st');
+      _isLoadingMore = false;
       _setLoading(false);
     }
   }
 
-  Future<void> actualizarProducto(CatalogoModel producto, {String? botId}) async {
-    _setLoading(true);
+  Future<void> actualizarProducto(CatalogoModel producto,
+      {String? botId}) async {
+    if (_isLoadingMore) return;
+    _isLoadingMore = true;
 
+    _setLoading(true);
     try {
       await _apiService.actualizarProducto(producto, botId: botId);
       await cargarProductos(botId: botId);
       _error = null;
-    } catch (e) {
+    } catch (e, st) {
       _error = e.toString();
+      debugPrint('[CatalogoProvider] Error actualizando producto: $e');
+      debugPrint('$st');
+      _isLoadingMore = false;
       _setLoading(false);
     }
   }
@@ -71,27 +76,37 @@ class CatalogoProvider extends ChangeNotifier {
     required String estado,
     String? botId,
   }) async {
-    _setLoading(true);
+    if (_isLoadingMore) return;
+    _isLoadingMore = true;
 
+    _setLoading(true);
     try {
       await _apiService.cambiarEstado(id: id, estado: estado, botId: botId);
       await cargarProductos(botId: botId);
       _error = null;
-    } catch (e) {
+    } catch (e, st) {
       _error = e.toString();
+      debugPrint('[CatalogoProvider] Error cambiando estado: $e');
+      debugPrint('$st');
+      _isLoadingMore = false;
       _setLoading(false);
     }
   }
 
   Future<void> eliminarProducto(String id, {String? botId}) async {
-    _setLoading(true);
+    if (_isLoadingMore) return;
+    _isLoadingMore = true;
 
+    _setLoading(true);
     try {
       await _apiService.eliminarProducto(id, botId: botId);
       await cargarProductos(botId: botId);
       _error = null;
-    } catch (e) {
+    } catch (e, st) {
       _error = e.toString();
+      debugPrint('[CatalogoProvider] Error eliminando producto: $e');
+      debugPrint('$st');
+      _isLoadingMore = false;
       _setLoading(false);
     }
   }
@@ -99,14 +114,6 @@ class CatalogoProvider extends ChangeNotifier {
   void limpiarError() {
     _error = null;
     notifyListeners();
-  }
-
-  Future<void> _cargarProductosLocales() async {
-    final data = await LocalStorageService.cargarProductos();
-    if (data != null && data.isNotEmpty) {
-      _productos = data.map((json) => CatalogoModel.fromJson(json)).toList();
-      notifyListeners();
-    }
   }
 
   void _setLoading(bool value) {

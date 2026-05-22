@@ -9,6 +9,7 @@ class OrderProvider extends ChangeNotifier {
   List<BotOrderModel> _ordenes = [];
   BotOrderModel? _ordenSeleccionada;
   bool _isLoading = false;
+  bool _isLoadingMore = false;
   String? _error;
 
   List<BotOrderModel> get ordenes => _ordenes;
@@ -16,71 +17,92 @@ class OrderProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  Future<void> cargarOrdenes({
-    String? sourceBotId,
-    String? estado,
-    String? telefono,
-    String? botId,
-  }) async {
+  Future<void> cargarOrdenes({String? botId}) async {
+    if (_isLoadingMore) return;
+    _isLoadingMore = true;
+
     _setLoading(true);
     try {
-      _ordenes = await _apiService.listarOrdenes(
-        sourceBotId: sourceBotId,
-        estado: estado,
-        telefono: telefono,
-        botId: botId,
-      );
+      _ordenes = await _apiService.listarOrdenes(botId: botId);
       _error = null;
-    } catch (e) {
+    } catch (e, st) {
       _error = e.toString();
+      debugPrint('[OrderProvider] Error cargando órdenes: $e');
+      debugPrint('$st');
     }
+    _isLoadingMore = false;
     _setLoading(false);
   }
 
   Future<void> crearOrden(Map<String, dynamic> data) async {
+    if (_isLoadingMore) return;
+    _isLoadingMore = true;
+
     _setLoading(true);
     try {
       await _apiService.crearOrden(data);
       await cargarOrdenes();
       _error = null;
-    } catch (e) {
+    } catch (e, st) {
       _error = e.toString();
+      debugPrint('[OrderProvider] Error creando orden: $e');
+      debugPrint('$st');
+      _isLoadingMore = false;
       _setLoading(false);
     }
   }
 
-  Future<void> actualizarOrden(String id, Map<String, dynamic> data) async {
+  Future<void> actualizarOrden(
+      String id, Map<String, dynamic> data) async {
+    if (_isLoadingMore) return;
+    _isLoadingMore = true;
+
     _setLoading(true);
     try {
       await _apiService.actualizarOrden(id, data);
       await cargarOrdenes();
       _error = null;
-    } catch (e) {
+    } catch (e, st) {
       _error = e.toString();
+      debugPrint('[OrderProvider] Error actualizando orden: $e');
+      debugPrint('$st');
+      _isLoadingMore = false;
       _setLoading(false);
     }
   }
 
   Future<void> cambiarEstado(String id, String estado) async {
+    if (_isLoadingMore) return;
+    _isLoadingMore = true;
+
     _setLoading(true);
     try {
       await _apiService.cambiarEstado(id, estado);
       await cargarOrdenes();
       _error = null;
-    } catch (e) {
+    } catch (e, st) {
       _error = e.toString();
+      debugPrint('[OrderProvider] Error cambiando estado: $e');
+      debugPrint('$st');
+      _isLoadingMore = false;
       _setLoading(false);
     }
   }
 
   Future<void> eliminarOrden(String id) async {
+    if (_isLoadingMore) return;
+    _isLoadingMore = true;
+
     _setLoading(true);
     try {
       await _apiService.eliminarOrden(id);
       await cargarOrdenes();
       _error = null;
-    } catch (e) {
+    } catch (e, st) {
       _error = e.toString();
+      debugPrint('[OrderProvider] Error eliminando orden: $e');
+      debugPrint('$st');
+      _isLoadingMore = false;
       _setLoading(false);
     }
   }
@@ -100,6 +122,7 @@ class OrderProvider extends ChangeNotifier {
     _ordenSeleccionada = null;
     _error = null;
     _isLoading = false;
+    _isLoadingMore = false;
     notifyListeners();
   }
 

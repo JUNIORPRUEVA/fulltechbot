@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/services/local_storage_service.dart';
-import '../../conversaciones/services/conversaciones_api_service.dart';
 import '../models/cliente_model.dart';
 import '../services/clientes_api_service.dart';
 
 class ClientesProvider extends ChangeNotifier {
   final ClientesApiService _apiService = ClientesApiService();
-  final ConversacionesApiService _conversacionesApiService = ConversacionesApiService();
 
   List<ClienteModel> _clientes = [];
   bool _isLoading = false;
+  bool _isLoadingMore = false;
   String? _error;
 
   List<ClienteModel> get clientes => _clientes;
@@ -18,80 +16,74 @@ class ClientesProvider extends ChangeNotifier {
   String? get error => _error;
 
   Future<void> cargarClientes({String? botId}) async {
+    if (_isLoadingMore) return;
+    _isLoadingMore = true;
+
     _setLoading(true);
-
     try {
-      // 1. Primero cargar datos locales para mostrar inmediatamente
-      await _cargarClientesLocales();
-
-      // 2. Luego obtener datos frescos de la API
       _clientes = await _apiService.listarClientes(botId: botId);
-
-      // 3. Guardar en almacenamiento local
-      final jsonList = _clientes.map((c) => c.toJson()).toList();
-      await LocalStorageService.guardarClientes(jsonList);
-
       _error = null;
-    } catch (e) {
-      // Si falla la API, ya tenemos los datos locales cargados
+    } catch (e, st) {
       if (_clientes.isEmpty) {
         _error = e.toString();
       }
+      debugPrint('[ClientesProvider] Error cargando clientes: $e');
+      debugPrint('$st');
     }
-
+    _isLoadingMore = false;
     _setLoading(false);
   }
 
   Future<void> crearCliente(ClienteModel cliente) async {
-    _setLoading(true);
+    if (_isLoadingMore) return;
+    _isLoadingMore = true;
 
+    _setLoading(true);
     try {
       await _apiService.crearCliente(cliente);
       await cargarClientes();
       _error = null;
-    } catch (e) {
+    } catch (e, st) {
       _error = e.toString();
+      debugPrint('[ClientesProvider] Error creando cliente: $e');
+      debugPrint('$st');
+      _isLoadingMore = false;
       _setLoading(false);
     }
   }
 
   Future<void> actualizarCliente(ClienteModel cliente) async {
-    _setLoading(true);
+    if (_isLoadingMore) return;
+    _isLoadingMore = true;
 
+    _setLoading(true);
     try {
       await _apiService.actualizarCliente(cliente);
       await cargarClientes();
       _error = null;
-    } catch (e) {
+    } catch (e, st) {
       _error = e.toString();
+      debugPrint('[ClientesProvider] Error actualizando cliente: $e');
+      debugPrint('$st');
+      _isLoadingMore = false;
       _setLoading(false);
     }
   }
 
   Future<void> eliminarCliente(String telefono, {String? chatid}) async {
+    if (_isLoadingMore) return;
+    _isLoadingMore = true;
+
     _setLoading(true);
-
     try {
-      // 1. Eliminar conversaciones asociadas si hay chatid
-      if (chatid != null && chatid.isNotEmpty) {
-        try {
-          await _conversacionesApiService.eliminarPorSessionId(chatid);
-        } catch (_) {
-          // Si falla la eliminación de conversaciones, continuamos
-        }
-      }
-
-      // 2. Eliminar el cliente
       await _apiService.eliminarCliente(telefono);
-
-      // 3. Limpiar almacenamiento local
-      await LocalStorageService.guardarClientes([]);
-
-      // 4. Recargar lista
       await cargarClientes();
       _error = null;
-    } catch (e) {
+    } catch (e, st) {
       _error = e.toString();
+      debugPrint('[ClientesProvider] Error eliminando cliente: $e');
+      debugPrint('$st');
+      _isLoadingMore = false;
       _setLoading(false);
     }
   }
@@ -99,14 +91,6 @@ class ClientesProvider extends ChangeNotifier {
   void limpiarError() {
     _error = null;
     notifyListeners();
-  }
-
-  Future<void> _cargarClientesLocales() async {
-    final data = await LocalStorageService.cargarClientes();
-    if (data != null && data.isNotEmpty) {
-      _clientes = data.map((json) => ClienteModel.fromJson(json)).toList();
-      notifyListeners();
-    }
   }
 
   void _setLoading(bool value) {

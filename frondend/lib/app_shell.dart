@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import 'features/bots/providers/bot_provider.dart';
 import 'features/bots/pages/bot_dashboard_page.dart';
-import 'features/bots/pages/bot_selector_page.dart';
 import 'features/orders/pages/orders_page.dart';
 import 'features/quotations/pages/quotations_page.dart';
 import 'features/clientes/pages/clientes_page.dart';
@@ -19,13 +18,13 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   int _selectedIndex = 0;
 
-  final List<Widget> _pages = const [
-    BotDashboardPage(),
-    BotSelectorPage(),
-    OrdersPage(),
-    QuotationsPage(),
-    ClientesPage(),
-    ConversacionesPage(),
+  // No usar const para las páginas - se crean una vez y se mantienen vivas con IndexedStack
+  late final List<Widget> _pages = [
+    const BotDashboardPage(),
+    const OrdersPage(),
+    const QuotationsPage(),
+    const ClientesPage(),
+    const ConversacionesPage(),
   ];
 
   @override
@@ -57,11 +56,6 @@ class _AppShellState extends State<AppShell> {
             icon: Icon(Icons.dashboard_outlined),
             selectedIcon: Icon(Icons.dashboard),
             label: 'Dashboard',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.smart_toy_outlined),
-            selectedIcon: Icon(Icons.smart_toy),
-            label: 'Bots',
           ),
           NavigationDestination(
             icon: Icon(Icons.receipt_long_outlined),
@@ -124,36 +118,30 @@ class _AppShellState extends State<AppShell> {
             selected: _selectedIndex == 0,
             onTap: () => _selectPage(0),
           ),
-          _drawerItem(
-            icon: Icons.smart_toy,
-            label: 'Bots',
-            selected: _selectedIndex == 1,
-            onTap: () => _selectPage(1),
-          ),
           const Divider(),
           _drawerItem(
             icon: Icons.receipt_long,
             label: 'Pedidos',
-            selected: _selectedIndex == 2,
-            onTap: () => _selectPage(2),
+            selected: _selectedIndex == 1,
+            onTap: () => _selectPage(1),
           ),
           _drawerItem(
             icon: Icons.request_quote,
             label: 'Cotizaciones',
-            selected: _selectedIndex == 3,
-            onTap: () => _selectPage(3),
+            selected: _selectedIndex == 2,
+            onTap: () => _selectPage(2),
           ),
           _drawerItem(
             icon: Icons.people,
             label: 'Clientes',
-            selected: _selectedIndex == 4,
-            onTap: () => _selectPage(4),
+            selected: _selectedIndex == 3,
+            onTap: () => _selectPage(3),
           ),
           _drawerItem(
             icon: Icons.chat,
             label: 'Conversaciones',
-            selected: _selectedIndex == 5,
-            onTap: () => _selectPage(5),
+            selected: _selectedIndex == 4,
+            onTap: () => _selectPage(4),
           ),
           const Divider(),
           if (bot != null) ...[

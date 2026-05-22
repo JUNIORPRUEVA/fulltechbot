@@ -41,6 +41,7 @@ class MainNavigation extends StatefulWidget {
 
 class _MainNavigationState extends State<MainNavigation> {
   bool _checkingBot = true;
+  bool _navigating = false;
 
   @override
   void initState() {
@@ -51,24 +52,33 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 
   Future<void> _verificarBotInicial() async {
-    final botProvider = context.read<BotProvider>();
-    await botProvider.cargarBots();
+    if (_navigating) return;
+    _navigating = true;
 
-    if (!mounted) return;
+    try {
+      final botProvider = context.read<BotProvider>();
+      await botProvider.cargarBots();
 
-    if (!botProvider.hayBotSeleccionado) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const BotSelectorPage(),
-        ),
-      );
+      if (!mounted) return;
+
+      if (!botProvider.hayBotSeleccionado) {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const BotSelectorPage(),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('[MainNavigation] Error en verificación inicial: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _checkingBot = false;
+          _navigating = false;
+        });
+      }
     }
-
-    if (!mounted) return;
-    setState(() {
-      _checkingBot = false;
-    });
   }
 
   @override
@@ -139,14 +149,22 @@ class _MainNavigationState extends State<MainNavigation> {
                 const SizedBox(height: 28),
                 FilledButton.icon(
                   onPressed: () async {
-                    await botProvider.cargarBots();
-                    if (!mounted) return;
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const BotSelectorPage(),
-                      ),
-                    );
+                    if (_navigating) return;
+                    _navigating = true;
+                    try {
+                      await botProvider.cargarBots();
+                      if (!mounted) return;
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const BotSelectorPage(),
+                        ),
+                      );
+                    } finally {
+                      if (mounted) {
+                        _navigating = false;
+                      }
+                    }
                   },
                   icon: const Icon(Icons.touch_app_rounded, size: 20),
                   label: const Text('Seleccionar bot'),

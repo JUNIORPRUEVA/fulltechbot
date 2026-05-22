@@ -68,6 +68,24 @@ app.use('/api/bots/:botId/orders', botOrderRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/quotations', quotationRoutes);
 
+// ===== MIDDLEWARE 404 JSON =====
+// Captura cualquier ruta no definida y devuelve JSON en lugar de HTML
+app.use((req, res) => {
+  res.status(404).json({
+    ok: false,
+    message: `Ruta no encontrada: ${req.method} ${req.originalUrl}`,
+  });
+});
+
+// ===== MIDDLEWARE GLOBAL DE ERRORES =====
+app.use((err, req, res, next) => {
+  console.error('Error interno:', err);
+  res.status(500).json({
+    ok: false,
+    message: err.message || 'Error interno del servidor',
+  });
+});
+
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {

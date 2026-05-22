@@ -32,7 +32,9 @@ class _OrdersPageState extends State<OrdersPage> {
   @override
   void initState() {
     super.initState();
-    _cargarDatos();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _cargarDatos();
+    });
   }
 
   void _cargarDatos() {
@@ -40,7 +42,6 @@ class _OrdersPageState extends State<OrdersPage> {
     final bot = botProvider.botSeleccionado;
     context.read<OrderProvider>().cargarOrdenes(
           botId: bot?.id,
-          sourceBotId: bot?.id,
         );
   }
 
@@ -70,7 +71,6 @@ class _OrdersPageState extends State<OrdersPage> {
                 ? null
                 : () => context.read<OrderProvider>().cargarOrdenes(
                       botId: bot?.id,
-                      sourceBotId: bot?.id,
                     ),
             icon: const Icon(Icons.refresh_rounded),
           ),
@@ -221,7 +221,6 @@ class _OrdersPageState extends State<OrdersPage> {
                     : RefreshIndicator(
                         onRefresh: () => context.read<OrderProvider>().cargarOrdenes(
                               botId: bot?.id,
-                              sourceBotId: bot?.id,
                             ),
                         child: ListView.builder(
                           padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
