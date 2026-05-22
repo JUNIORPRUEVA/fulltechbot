@@ -65,7 +65,10 @@ app.use('/api/bots/:botId/quotations', botQuotationNestedRoutes);
 app.use('/api/bots/:botId/orders', botOrderRoutes);
 
 // ===== RUTAS GLOBALES (sin botId obligatorio) =====
-app.use('/api/orders', orderRoutes);
+app.use('/api/orders', (req, res, next) => {
+  console.log('ORDERS ROUTE HIT', req.method, req.originalUrl);
+  next();
+}, orderRoutes);
 app.use('/api/quotations', quotationRoutes);
 
 // ===== MIDDLEWARE 404 JSON =====

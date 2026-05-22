@@ -2,6 +2,7 @@ const orderService = require('../services/order.service');
 
 async function listar(req, res) {
   try {
+    console.log('ORDERS ROUTE HIT', req.method, req.originalUrl);
     const { sourceBotId, estado, telefono, botId } = req.query;
     const filtros = {};
     if (sourceBotId) filtros.sourceBotId = sourceBotId;

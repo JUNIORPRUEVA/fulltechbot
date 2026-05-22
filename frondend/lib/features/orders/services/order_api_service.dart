@@ -13,20 +13,18 @@ class OrderApiService {
       ? '${ApiConfig.baseUrl}/api/bots/$botId/orders'
       : '${ApiConfig.baseUrl}/api/orders';
 
-  /// Valida que la respuesta no sea HTML y lanza error descriptivo.
   Map<String, dynamic> _validateAndDecode(http.Response response) {
     final body = response.body;
 
     if (body.isEmpty) {
-      throw Exception('Respuesta vacía del servidor');
+      throw Exception('Respuesta vacia del servidor');
     }
 
-    // Detectar HTML (error 404 del servidor Express sin middleware JSON)
     if (body.trimLeft().startsWith('<!DOCTYPE html>') ||
         body.trimLeft().startsWith('<html') ||
         body.trimLeft().startsWith('<')) {
       throw Exception(
-        'La API devolvió HTML. Revisa la URL del backend o la ruta del endpoint.\n'
+        'La API devolvio HTML. Revisa la URL del backend o la ruta del endpoint.\n'
         'URL: ${response.request?.url}\n'
         'Status: ${response.statusCode}',
       );
@@ -36,7 +34,7 @@ class OrderApiService {
       final decoded = jsonDecode(body);
       if (decoded is! Map<String, dynamic>) {
         throw Exception(
-          'Formato de respuesta inválido: se esperaba un objeto JSON',
+          'Formato de respuesta invalido: se esperaba un objeto JSON',
         );
       }
       return decoded;
@@ -56,10 +54,31 @@ class OrderApiService {
       final response = await requestFn().timeout(_timeout);
       return _validateAndDecode(response);
     } on TimeoutException {
-      throw Exception('La solicitud tardó demasiado. Verifica tu conexión.');
+      throw Exception('La solicitud tardo demasiado. Verifica tu conexion.');
     } catch (e) {
       if (e is Exception) rethrow;
-      throw Exception('Error de conexión: $e');
+      throw Exception('Error de conexion: $e');
+    }
+  }
+
+  bool _shouldFallbackToGlobal(Object error) {
+    final message = error.toString().toLowerCase();
+    return (message.contains('html') && message.contains('404')) ||
+        message.contains('ruta no encontrada') ||
+        message.contains('status: 404');
+  }
+
+  Future<Map<String, dynamic>> _requestWithFallback({
+    required Future<Map<String, dynamic>> Function() primary,
+    required Future<Map<String, dynamic>> Function() fallback,
+  }) async {
+    try {
+      return await primary();
+    } catch (error) {
+      if (_shouldFallbackToGlobal(error)) {
+        return fallback();
+      }
+      rethrow;
     }
   }
 
@@ -75,23 +94,36 @@ class OrderApiService {
     if (telefono != null) params['telefono'] = telefono;
     if (botId != null) params['botId'] = botId;
 
-    final uri = Uri.parse(_baseUrl(botId: botId)).replace(
-      queryParameters: botId == null && params.isNotEmpty ? params : null,
-    );
-    final body = await _request(() => http.get(uri));
+    final nestedUri = Uri.parse(_baseUrl(botId: botId));
+    final globalUri = Uri.parse(
+      _baseUrl(),
+    ).replace(queryParameters: params.isNotEmpty ? params : null);
+
+    final body = botId != null && botId.isNotEmpty
+        ? await _requestWithFallback(
+            primary: () => _request(() => http.get(nestedUri)),
+            fallback: () => _request(() => http.get(globalUri)),
+          )
+        : await _request(() => http.get(globalUri));
 
     if (body['ok'] == true) {
       final List data = body['data'] ?? [];
       return data.map((item) => BotOrderModel.fromJson(item)).toList();
     }
 
-    throw Exception(body['message'] ?? 'Error al listar órdenes');
+    throw Exception(body['message'] ?? 'Error al listar ordenes');
   }
 
   Future<BotOrderModel> obtenerOrden(String id, {String? botId}) async {
-    final body = await _request(
-      () => http.get(Uri.parse('${_baseUrl(botId: botId)}/$id')),
-    );
+    final nestedUri = Uri.parse('${_baseUrl(botId: botId)}/$id');
+    final globalUri = Uri.parse('${_baseUrl()}/$id');
+
+    final body = botId != null && botId.isNotEmpty
+        ? await _requestWithFallback(
+            primary: () => _request(() => http.get(nestedUri)),
+            fallback: () => _request(() => http.get(globalUri)),
+          )
+        : await _request(() => http.get(globalUri));
 
     if (body['ok'] == true) {
       return BotOrderModel.fromJson(body['data']);
@@ -104,13 +136,39 @@ class OrderApiService {
     Map<String, dynamic> data, {
     String? botId,
   }) async {
-    final body = await _request(
-      () => http.post(
-        Uri.parse(_baseUrl(botId: botId ?? data['botId']?.toString())),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(data),
-      ),
-    );
+    final resolvedBotId = botId ?? data['botId']?.toString();
+    final nestedUri = Uri.parse(_baseUrl(botId: resolvedBotId));
+    final globalUri = Uri.parse(_baseUrl());
+    final globalPayload = {
+      ...data,
+      if (resolvedBotId != null && resolvedBotId.isNotEmpty)
+        'botId': resolvedBotId,
+    };
+
+    final body = resolvedBotId != null && resolvedBotId.isNotEmpty
+        ? await _requestWithFallback(
+            primary: () => _request(
+              () => http.post(
+                nestedUri,
+                headers: {'Content-Type': 'application/json'},
+                body: jsonEncode(data),
+              ),
+            ),
+            fallback: () => _request(
+              () => http.post(
+                globalUri,
+                headers: {'Content-Type': 'application/json'},
+                body: jsonEncode(globalPayload),
+              ),
+            ),
+          )
+        : await _request(
+            () => http.post(
+              globalUri,
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode(globalPayload),
+            ),
+          );
 
     if (body['ok'] == true) {
       return BotOrderModel.fromJson(body['data']);
@@ -124,13 +182,34 @@ class OrderApiService {
     Map<String, dynamic> data, {
     String? botId,
   }) async {
-    final body = await _request(
-      () => http.put(
-        Uri.parse('${_baseUrl(botId: botId ?? data['botId']?.toString())}/$id'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(data),
-      ),
-    );
+    final resolvedBotId = botId ?? data['botId']?.toString();
+    final nestedUri = Uri.parse('${_baseUrl(botId: resolvedBotId)}/$id');
+    final globalUri = Uri.parse('${_baseUrl()}/$id');
+
+    final body = resolvedBotId != null && resolvedBotId.isNotEmpty
+        ? await _requestWithFallback(
+            primary: () => _request(
+              () => http.put(
+                nestedUri,
+                headers: {'Content-Type': 'application/json'},
+                body: jsonEncode(data),
+              ),
+            ),
+            fallback: () => _request(
+              () => http.put(
+                globalUri,
+                headers: {'Content-Type': 'application/json'},
+                body: jsonEncode(data),
+              ),
+            ),
+          )
+        : await _request(
+            () => http.put(
+              globalUri,
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode(data),
+            ),
+          );
 
     if (body['ok'] == true) {
       return BotOrderModel.fromJson(body['data']);
@@ -144,13 +223,34 @@ class OrderApiService {
     String estado, {
     String? botId,
   }) async {
-    final body = await _request(
-      () => http.patch(
-        Uri.parse('${_baseUrl(botId: botId)}/$id/status'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'estado': estado}),
-      ),
-    );
+    final nestedUri = Uri.parse('${_baseUrl(botId: botId)}/$id/status');
+    final globalUri = Uri.parse('${_baseUrl()}/$id/status');
+    final payload = {'estado': estado};
+
+    final body = botId != null && botId.isNotEmpty
+        ? await _requestWithFallback(
+            primary: () => _request(
+              () => http.patch(
+                nestedUri,
+                headers: {'Content-Type': 'application/json'},
+                body: jsonEncode(payload),
+              ),
+            ),
+            fallback: () => _request(
+              () => http.patch(
+                globalUri,
+                headers: {'Content-Type': 'application/json'},
+                body: jsonEncode(payload),
+              ),
+            ),
+          )
+        : await _request(
+            () => http.patch(
+              globalUri,
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode(payload),
+            ),
+          );
 
     if (body['ok'] == true) {
       return BotOrderModel.fromJson(body['data']);
@@ -160,9 +260,15 @@ class OrderApiService {
   }
 
   Future<void> eliminarOrden(String id, {String? botId}) async {
-    final body = await _request(
-      () => http.delete(Uri.parse('${_baseUrl(botId: botId)}/$id')),
-    );
+    final nestedUri = Uri.parse('${_baseUrl(botId: botId)}/$id');
+    final globalUri = Uri.parse('${_baseUrl()}/$id');
+
+    final body = botId != null && botId.isNotEmpty
+        ? await _requestWithFallback(
+            primary: () => _request(() => http.delete(nestedUri)),
+            fallback: () => _request(() => http.delete(globalUri)),
+          )
+        : await _request(() => http.delete(globalUri));
 
     if (body['ok'] == true) {
       return;
