@@ -17,7 +17,7 @@ class ClientesProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  Future<void> cargarClientes() async {
+  Future<void> cargarClientes({String? botId}) async {
     _setLoading(true);
 
     try {
@@ -25,7 +25,7 @@ class ClientesProvider extends ChangeNotifier {
       await _cargarClientesLocales();
 
       // 2. Luego obtener datos frescos de la API
-      _clientes = await _apiService.listarClientes();
+      _clientes = await _apiService.listarClientes(botId: botId);
 
       // 3. Guardar en almacenamiento local
       final jsonList = _clientes.map((c) => c.toJson()).toList();

@@ -58,8 +58,8 @@ async function buscarOCrearCliente(data) {
       ultima_interaccion_at: new Date(),
       dias_sin_responder: 0,
       actualizado_en: new Date(),
-      // Actualizar botId si viene en la petición
-      ...(botId ? { botId } : {}),
+      // Guardar sourceBotId si viene en la petición (no sobrescribir botId original)
+      ...(botId ? { sourceBotId: botId } : {}),
     };
 
     // Si se pasa metadata, mergearla

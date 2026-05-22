@@ -30,6 +30,7 @@ model Bot {
   clientes          BotClient[]
   conversaciones    BotConversation[]
   cotizaciones      BotQuotation[]
+  ordenes           BotOrder[]
 
   @@map("bots")
 }
@@ -110,10 +111,14 @@ model BotClient {
   actualizado_en            DateTime  @default(now()) @db.Timestamptz(6)
 
   botId                     String?   @map("bot_id")
+  sourceBotId               String?   @map("source_bot_id")
+  ultimaInstanciaWhatsapp   String?   @map("ultima_instancia_whatsapp")
+  origen                    String?
 
   bot                       Bot?      @relation(fields: [botId], references: [id])
 
   @@index([botId], map: "idx_bot_clients_bot_id")
+  @@index([sourceBotId], map: "idx_bot_clients_source_bot_id")
   @@index([estado_cliente], map: "idx_bot_clients_estado_cliente")
   @@index([etapa], map: "idx_bot_clients_etapa")
   @@index([producto_servicio_interes], map: "idx_bot_clients_interes")
@@ -166,13 +171,44 @@ model BotQuotation {
   actualizado_en      DateTime  @default(now()) @db.Timestamptz(6)
 
   botId               String?   @map("bot_id")
+  sourceBotId         String?   @map("source_bot_id")
+  instanciaWhatsapp   String?   @map("instancia_whatsapp")
+  origen              String?
 
   bot                 Bot?      @relation(fields: [botId], references: [id])
 
   @@index([botId], map: "idx_bot_quotations_bot_id")
+  @@index([sourceBotId], map: "idx_bot_quotations_source_bot_id")
   @@index([creado_en(sort: Desc)], map: "idx_bot_quotations_creado_en")
   @@index([estado], map: "idx_bot_quotations_estado")
   @@index([telefono_cliente], map: "idx_bot_quotations_telefono_cliente")
 
   @@map("bot_quotations")
+}
+
+model BotOrder {
+  id                String    @id @default(uuid())
+  botId             String?   @map("bot_id")
+  telefonoCliente   String    @map("telefono_cliente")
+  nombreCliente     String?   @map("nombre_cliente")
+  productoServicio  String?   @map("producto_servicio")
+  tipoServicio      String?   @default("otro") @map("tipo_servicio")
+  direccion         String?
+  fechaDeseada      String?   @map("fecha_deseada")
+  estadoPedido      String?   @default("pendiente") @map("estado_pedido")
+  resumenPedido     String?   @map("resumen_pedido")
+  sourceBotId       String?   @map("source_bot_id")
+  instanciaWhatsapp String?   @map("instancia_whatsapp")
+  origen            String?
+  metadata          Json?     @default("{}")
+  creadoEn          DateTime? @default(now()) @map("creado_en")
+  actualizadoEn     DateTime? @updatedAt @map("actualizado_en")
+
+  bot               Bot?      @relation(fields: [botId], references: [id])
+
+  @@index([botId], map: "idx_bot_orders_bot_id")
+  @@index([sourceBotId], map: "idx_bot_orders_source_bot_id")
+  @@index([estadoPedido], map: "idx_bot_orders_estado_pedido")
+  @@index([telefonoCliente], map: "idx_bot_orders_telefono_cliente")
+  @@map("bot_orders")
 }

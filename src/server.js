@@ -14,6 +14,11 @@ const botCatalogoRoutes = require('./routes/botCatalogo.routes');
 const botClientNestedRoutes = require('./routes/botClient.routes');
 const botConversationNestedRoutes = require('./routes/botConversation.routes');
 const botQuotationNestedRoutes = require('./routes/botQuotation.routes');
+const botOrderRoutes = require('./routes/botOrder.routes');
+
+// Rutas globales (sin botId obligatorio)
+const orderRoutes = require('./routes/order.routes');
+const quotationRoutes = require('./routes/quotation.routes');
 
 const app = express();
 
@@ -57,6 +62,11 @@ app.use('/api/bots/:botId/catalogo', botCatalogoRoutes);
 app.use('/api/bots/:botId/clients', botClientNestedRoutes);
 app.use('/api/bots/:botId/conversations', botConversationNestedRoutes);
 app.use('/api/bots/:botId/quotations', botQuotationNestedRoutes);
+app.use('/api/bots/:botId/orders', botOrderRoutes);
+
+// ===== RUTAS GLOBALES (sin botId obligatorio) =====
+app.use('/api/orders', orderRoutes);
+app.use('/api/quotations', quotationRoutes);
 
 const PORT = process.env.PORT || 3000;
 

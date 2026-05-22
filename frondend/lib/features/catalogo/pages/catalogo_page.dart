@@ -15,15 +15,15 @@ class CatalogoPage extends StatefulWidget {
   State<CatalogoPage> createState() => _CatalogoPageState();
 }
 
-class _CatalogoPageState extends State<CatalogoPage> with WidgetsBindingObserver {
+class _CatalogoPageState extends State<CatalogoPage> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   String? _lastBotId;
+  bool _initialized = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _cargarSiHayBot();
     });
@@ -31,7 +31,6 @@ class _CatalogoPageState extends State<CatalogoPage> with WidgetsBindingObserver
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     super.dispose();
   }
@@ -39,7 +38,15 @@ class _CatalogoPageState extends State<CatalogoPage> with WidgetsBindingObserver
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _verificarCambioDeBot();
+    if (!_initialized) {
+      _initialized = true;
+      return;
+    }
+    // Diferir la verificación de cambio de bot para evitar setState durante build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _verificarCambioDeBot();
+    });
   }
 
   void _verificarCambioDeBot() {
@@ -48,7 +55,6 @@ class _CatalogoPageState extends State<CatalogoPage> with WidgetsBindingObserver
       _lastBotId = botId;
       _cargarProductos();
     } else if (botId == null && _lastBotId != null) {
-      // Se limpió la selección de bot
       _lastBotId = null;
       context.read<CatalogoProvider>().cargarProductos(botId: null);
     }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../bots/providers/bot_provider.dart';
 import '../models/cliente_model.dart';
 import '../providers/clientes_provider.dart';
 import 'cliente_detail_page.dart';
@@ -20,7 +21,8 @@ class _ClientesPageState extends State<ClientesPage> {
   void initState() {
     super.initState();
     Future.microtask(() {
-      context.read<ClientesProvider>().cargarClientes();
+      final bot = context.read<BotProvider>().botSeleccionado;
+      context.read<ClientesProvider>().cargarClientes(botId: bot?.id);
     });
   }
 

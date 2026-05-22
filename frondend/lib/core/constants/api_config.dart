@@ -9,4 +9,8 @@ class ApiConfig {
   static const String botConversationEndpoint = '$baseUrl/api/bot/conversations';
   static const String botQuotationEndpoint = '$baseUrl/api/bot/quotations';
   static const String healthEndpoint = '$baseUrl/api/health';
+
+  // Endpoints globales
+  static const String ordersEndpoint = '$baseUrl/api/orders';
+  static const String quotationsEndpoint = '$baseUrl/api/quotations';
 }

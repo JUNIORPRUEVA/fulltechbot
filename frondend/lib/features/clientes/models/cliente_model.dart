@@ -2,6 +2,8 @@ class ClienteModel {
   final String telefono;
   final String? chatid;
   final String? nombre;
+  final String? botId;
+  final String? sourceBotId;
   final String? usuarioWhatsapp;
   final String? direccion;
   final String? ciudad;
@@ -43,6 +45,8 @@ class ClienteModel {
     required this.telefono,
     this.chatid,
     this.nombre,
+    this.botId,
+    this.sourceBotId,
     this.usuarioWhatsapp,
     this.direccion,
     this.ciudad,

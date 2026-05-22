@@ -6,10 +6,11 @@ import '../../../core/constants/api_config.dart';
 import '../models/cliente_model.dart';
 
 class ClientesApiService {
-  Future<List<ClienteModel>> listarClientes() async {
-    final response = await http.get(
-      Uri.parse(ApiConfig.botClientEndpoint),
-    );
+  Future<List<ClienteModel>> listarClientes({String? botId}) async {
+    final uri = botId != null
+        ? Uri.parse('${ApiConfig.botClientEndpoint}?botId=$botId')
+        : Uri.parse(ApiConfig.botClientEndpoint);
+    final response = await http.get(uri);
 
     final body = jsonDecode(response.body);
 
