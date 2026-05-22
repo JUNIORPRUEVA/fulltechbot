@@ -3,13 +3,14 @@ import 'package:provider/provider.dart';
 
 import '../models/bot_model.dart';
 import '../providers/bot_provider.dart';
+import '../../campaigns/pages/bot_campaigns_page.dart';
 import '../../catalogo/pages/catalogo_page.dart';
 import '../../clientes/pages/clientes_page.dart';
 import '../../conversaciones/pages/conversaciones_page.dart';
 import '../../orders/pages/orders_page.dart';
 import '../../quotations/pages/quotations_page.dart';
-import 'bot_selector_page.dart';
 import 'bot_form_page.dart';
+import 'bot_selector_page.dart';
 
 class BotDashboardPage extends StatefulWidget {
   const BotDashboardPage({super.key});
@@ -22,15 +23,14 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
   int _currentIndex = 0;
 
   late final List<Widget> _pages = const [
-    CatalogoPage(),      // 0 - NavBar + Drawer
-    OrdersPage(),        // 1 - NavBar + Drawer
-    ClientesPage(),      // 2 - NavBar + Drawer
-    QuotationsPage(),    // 3 - Drawer only
-    ConversacionesPage(),// 4 - Drawer only
-    _ConfiguracionPlaceholder(), // 5 - Drawer only
+    CatalogoPage(),
+    OrdersPage(),
+    ClientesPage(),
+    QuotationsPage(),
+    ConversacionesPage(),
+    BotCampaignsPage(),
   ];
 
-  // Bottom Navigation Bar: solo Catálogo, Pedidos, Clientes
   static const List<_NavItem> _navItems = [
     _NavItem(
       icon: Icons.inventory_2_outlined,
@@ -49,7 +49,6 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
     ),
   ];
 
-  // Drawer / Sidebar: todas las opciones
   static const List<_NavItem> _drawerItems = [
     _NavItem(
       icon: Icons.inventory_2_outlined,
@@ -77,9 +76,9 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
       label: 'Conversaciones',
     ),
     _NavItem(
-      icon: Icons.tune_outlined,
-      activeIcon: Icons.tune,
-      label: 'Config.',
+      icon: Icons.campaign_outlined,
+      activeIcon: Icons.campaign,
+      label: 'Campañas',
     ),
   ];
 
@@ -178,7 +177,6 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
                 );
               }).toList(),
             ),
-
     );
   }
 
@@ -187,7 +185,6 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
       child: SafeArea(
         child: Column(
           children: [
-            // Header del bot - flexible, sin altura fija
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
@@ -255,14 +252,12 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
                 ],
               ),
             ),
-            // Lista de navegación
             Expanded(
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
                   for (int i = 0; i < _drawerItems.length; i++) ...[
                     if (i == 3) const Divider(height: 1),
-
                     ListTile(
                       leading: Icon(
                         _currentIndex == i
@@ -316,7 +311,6 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
                 ],
               ),
             ),
-            // Footer
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -451,7 +445,6 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
               ],
             ),
           ),
-
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -545,7 +538,7 @@ class _SinBotSeleccionado extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Para empezar, selecciona o crea un bot.\nCada bot tiene su propio catálogo, clientes y conversaciones.',
+                'Para empezar, selecciona o crea un bot.\nCada bot tiene su propio catálogo, clientes, conversaciones y campañas.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
@@ -579,59 +572,6 @@ class _SinBotSeleccionado extends StatelessWidget {
       context,
       MaterialPageRoute(
         builder: (_) => const BotSelectorPage(),
-      ),
-    );
-  }
-}
-
-class _ConfiguracionPlaceholder extends StatelessWidget {
-  const _ConfiguracionPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    final bot = context.watch<BotProvider>().botSeleccionado;
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: Colors.purple.shade50,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Icon(Icons.tune_outlined, size: 40, color: Colors.purple.shade300),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Configuración del bot',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Personaliza el comportamiento y ajustes\nde ${bot?.nombre ?? "tu bot"}.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-            ),
-            const SizedBox(height: 24),
-            OutlinedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => BotFormPage(bot: bot),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.edit_outlined, size: 18),
-              label: const Text('Editar configuración'),
-            ),
-          ],
-        ),
       ),
     );
   }

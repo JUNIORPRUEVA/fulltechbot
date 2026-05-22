@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../bots/providers/bot_provider.dart';
+import '../../campaigns/models/bot_campaign_model.dart';
+import '../../campaigns/models/campaign_context_model.dart';
+import '../../campaigns/services/bot_campaign_api_service.dart';
 import '../models/conversacion_model.dart';
 import '../providers/conversaciones_provider.dart';
 
@@ -21,12 +25,20 @@ class ChatDetailPage extends StatefulWidget {
 class _ChatDetailPageState extends State<ChatDetailPage> {
   final _mensajeController = TextEditingController();
   final _scrollController = ScrollController();
+  final _campaignApiService = BotCampaignApiService();
+
+  CampaignContextModel? _campaignContext;
+  bool _loadingCampaignContext = false;
 
   @override
   void initState() {
     super.initState();
-    Future.microtask(() {
-      context.read<ConversacionesProvider>().listarMensajes(widget.sessionId);
+    final conversacionesProvider = context.read<ConversacionesProvider>();
+    Future.microtask(() async {
+      await conversacionesProvider.listarMensajes(widget.sessionId);
+      if (mounted) {
+        await _loadCampaignContext();
+      }
     });
   }
 
@@ -35,6 +47,107 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     _mensajeController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadCampaignContext() async {
+    setState(() {
+      _loadingCampaignContext = true;
+    });
+
+    try {
+      final contextData = await _campaignApiService.obtenerContextoConversacion(
+        widget.sessionId,
+      );
+      if (!mounted) return;
+      setState(() {
+        _campaignContext = contextData;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _campaignContext = null;
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loadingCampaignContext = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _changeCampaignManually() async {
+    final bot = context.read<BotProvider>().botSeleccionado;
+    if (bot == null) return;
+
+    List<BotCampaignModel> campaigns = [];
+    try {
+      campaigns = await _campaignApiService.listarCampanas(bot.id, active: true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+      return;
+    }
+
+    if (!mounted) return;
+
+    final selected = await showModalBottomSheet<BotCampaignModel>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+          children: [
+            const ListTile(
+              title: Text(
+                'Cambiar campaña',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              subtitle: Text(
+                'Selecciona la campaña correcta para esta conversación.',
+              ),
+            ),
+            for (final campaign in campaigns)
+              ListTile(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                title: Text(campaign.campaignName),
+                subtitle: Text(campaign.productName ?? campaign.campaignCode),
+                trailing: _campaignContext?.campaignId == campaign.id
+                    ? const Icon(Icons.check_circle, color: Colors.green)
+                    : null,
+                onTap: () => Navigator.pop(ctx, campaign),
+              ),
+          ],
+        ),
+      ),
+    );
+
+    if (selected == null || !mounted) return;
+
+    try {
+      await _campaignApiService.cambiarCampanaConversacion(
+        botId: bot.id,
+        conversationId: widget.sessionId,
+        campaignId: selected.id,
+        customerId: widget.sessionId,
+      );
+      await _loadCampaignContext();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('La conversación ahora usa la campaña ${selected.campaignName}.'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
   }
 
   void _enviarMensaje() {
@@ -69,8 +182,6 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   Widget build(BuildContext context) {
     final provider = context.watch<ConversacionesProvider>();
     final mensajes = provider.mensajesActuales;
-
-    // Contar mensajes por tipo
     final mensajesBot = mensajes.where((m) => m.role == 'assistant' || m.role == 'admin').length;
     final mensajesCliente = mensajes.where((m) => m.role == 'user').length;
 
@@ -106,7 +217,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                   Text(
-                    '${mensajes.length} mensajes  ·  Bot: $mensajesBot  ·  Cliente: $mensajesCliente',
+                    '${mensajes.length} mensajes · Bot: $mensajesBot · Cliente: $mensajesCliente',
                     style: TextStyle(
                       fontSize: 11,
                       color: Colors.grey.shade600,
@@ -120,16 +231,30 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         ),
         actions: [
           IconButton(
+            tooltip: 'Cambiar campaña',
+            onPressed: _changeCampaignManually,
+            icon: const Icon(Icons.campaign_outlined),
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh_rounded),
-            onPressed: () {
-              context.read<ConversacionesProvider>().listarMensajes(widget.sessionId);
+            onPressed: () async {
+              await context.read<ConversacionesProvider>().listarMensajes(widget.sessionId);
+              if (mounted) {
+                await _loadCampaignContext();
+              }
             },
           ),
         ],
       ),
       body: Column(
         children: [
-          // Error banner
+          if (_loadingCampaignContext)
+            const LinearProgressIndicator(minHeight: 2),
+          if (_campaignContext != null)
+            _CampaignContextBanner(
+              contextData: _campaignContext!,
+              onChangeCampaign: _changeCampaignManually,
+            ),
           if (provider.error != null)
             Container(
               width: double.infinity,
@@ -153,8 +278,6 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                 ],
               ),
             ),
-
-          // Mensajes
           Expanded(
             child: provider.cargando && mensajes.isEmpty
                 ? const Center(child: CircularProgressIndicator(strokeWidth: 3))
@@ -195,8 +318,6 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                         },
                       ),
           ),
-
-          // Input
           Container(
             decoration: BoxDecoration(
               color: Theme.of(context).scaffoldBackgroundColor,
@@ -271,6 +392,105 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   }
 }
 
+class _CampaignContextBanner extends StatelessWidget {
+  final CampaignContextModel contextData;
+  final VoidCallback onChangeCampaign;
+
+  const _CampaignContextBanner({
+    required this.contextData,
+    required this.onChangeCampaign,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFECFDF5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFA7F3D0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.campaign_outlined, color: Color(0xFF047857)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  contextData.campaignName ?? 'Campaña detectada',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF065F46),
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: onChangeCampaign,
+                child: const Text('Cambiar'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if ((contextData.matchedKeyword ?? '').isNotEmpty)
+                _MiniPill(label: 'Keyword: ${contextData.matchedKeyword}'),
+              if ((contextData.matchedTriggerPhrase ?? '').isNotEmpty)
+                _MiniPill(label: 'Trigger: ${contextData.matchedTriggerPhrase}'),
+              _MiniPill(
+                label:
+                    'Confianza ${(contextData.detectionConfidence * 100).toStringAsFixed(0)}%',
+              ),
+              _MiniPill(label: 'Estado: ${contextData.status}'),
+            ],
+          ),
+          if ((contextData.customerMessage ?? '').isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Origen: "${contextData.customerMessage}"',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade700,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniPill extends StatelessWidget {
+  final String label;
+
+  const _MiniPill({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF065F46),
+        ),
+      ),
+    );
+  }
+}
+
 class _BurbujaMensaje extends StatelessWidget {
   final ConversacionModel mensaje;
   final bool esAdmin;
@@ -291,7 +511,6 @@ class _BurbujaMensaje extends StatelessWidget {
       child: Column(
         crossAxisAlignment: isRight ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
-          // Etiqueta de quién envía
           Padding(
             padding: EdgeInsets.only(
               left: isRight ? 0 : 38,
@@ -318,8 +537,6 @@ class _BurbujaMensaje extends StatelessWidget {
               ],
             ),
           ),
-
-          // Burbuja
           Row(
             mainAxisAlignment: isRight ? MainAxisAlignment.end : MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -414,7 +631,6 @@ class _ToolMensaje extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Column(
         children: [
-          // Etiqueta
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
             child: Row(

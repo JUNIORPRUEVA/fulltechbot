@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import 'app.dart';
 import 'features/catalogo/providers/catalogo_provider.dart';
+import 'features/campaigns/providers/bot_campaign_provider.dart';
 import 'features/conversaciones/providers/conversaciones_provider.dart';
 import 'features/clientes/providers/clientes_provider.dart';
 import 'features/bots/providers/bot_provider.dart';
@@ -119,6 +120,9 @@ void main() {
           ),
           ChangeNotifierProvider(
             create: (_) => CatalogoProvider(),
+          ),
+          ChangeNotifierProvider(
+            create: (_) => BotCampaignProvider(),
           ),
           ChangeNotifierProvider(
             create: (_) => ConversacionesProvider(),
