@@ -6,16 +6,14 @@ RUN apk add --no-cache openssl ca-certificates
 
 COPY package*.json ./
 
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev && npm cache clean --force
 
-COPY prisma ./prisma
-COPY src ./src
-COPY prisma.config.ts ./prisma.config.ts
-COPY entrypoint.sh ./entrypoint.sh
+COPY --chown=node:node prisma ./prisma
+COPY --chown=node:node src ./src
+COPY --chown=node:node prisma.config.ts ./prisma.config.ts
+COPY --chown=node:node entrypoint.sh ./entrypoint.sh
 
 RUN chmod +x ./entrypoint.sh
-
-RUN chown -R node:node /app
 
 ENV NODE_ENV=production
 ENV PORT=3000
