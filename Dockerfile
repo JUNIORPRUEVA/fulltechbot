@@ -13,7 +13,7 @@ COPY --chown=node:node src ./src
 COPY --chown=node:node prisma.config.ts ./prisma.config.ts
 COPY --chown=node:node entrypoint.sh ./entrypoint.sh
 
-RUN chmod +x ./entrypoint.sh
+RUN npx prisma generate && chmod +x ./entrypoint.sh
 
 ENV NODE_ENV=production
 ENV PORT=3000
