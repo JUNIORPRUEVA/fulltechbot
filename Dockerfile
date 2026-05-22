@@ -4,6 +4,9 @@ WORKDIR /app
 
 RUN apk add --no-cache openssl ca-certificates
 
+ARG DATABASE_URL
+ENV DATABASE_URL=${DATABASE_URL}
+
 COPY package*.json ./
 
 RUN npm ci --omit=dev && npm cache clean --force
