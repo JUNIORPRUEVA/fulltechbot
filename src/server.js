@@ -23,8 +23,9 @@ const orderRoutes = require('./routes/order.routes');
 const quotationRoutes = require('./routes/quotation.routes');
 
 const app = express();
+const BACKEND_VERSION = 'campaign-module-003-simple';
 
-console.log('FULLTECH BOT backend version: campaign-module-002');
+console.log(`FULLTECH BOT backend version: ${BACKEND_VERSION}`);
 
 app.use(cors());
 app.use(express.json({ limit: '20mb' }));
@@ -38,6 +39,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
     message: 'Backend de FULLTECH_BOT funcionando correctamente',
+    version: BACKEND_VERSION,
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
   });
@@ -51,6 +53,7 @@ app.get('/api/debug/routes', (req, res) => {
   res.json({
     ok: true,
     message: 'Backend FULLTECH BOT activo',
+    version: BACKEND_VERSION,
     routes: [
       'GET /api/orders',
       'POST /api/orders',
