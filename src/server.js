@@ -22,9 +22,15 @@ const quotationRoutes = require('./routes/quotation.routes');
 
 const app = express();
 
+console.log('FULLTECH BOT backend version: orders-route-fix-001');
+
 app.use(cors());
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true }));
+app.use((req, res, next) => {
+  console.log('[HTTP]', req.method, req.originalUrl);
+  next();
+});
 
 // Health check para Docker
 app.get('/api/health', (req, res) => {
@@ -38,6 +44,21 @@ app.get('/api/health', (req, res) => {
 
 app.get('/', (req, res) => {
   res.redirect('/api/health');
+});
+
+app.get('/api/debug/routes', (req, res) => {
+  res.json({
+    ok: true,
+    message: 'Backend FULLTECH BOT activo',
+    routes: [
+      'GET /api/orders',
+      'POST /api/orders',
+      'GET /api/quotations',
+      'POST /api/quotations',
+      'GET /api/bots',
+      'GET /api/catalogo',
+    ],
+  });
 });
 
 // Rutas del catálogo y storage (se mantienen)
