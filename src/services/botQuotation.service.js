@@ -4,8 +4,6 @@ async function listarCotizaciones(botId) {
   return prisma.botQuotation.findMany({
     where: {
       botId,
-      deleted_at: null,
-      is_deleted: false,
     },
     orderBy: { creado_en: 'desc' },
   });

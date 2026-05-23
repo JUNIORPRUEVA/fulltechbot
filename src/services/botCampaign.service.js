@@ -22,8 +22,6 @@ class BotCampaignService {
   async listar(botId, filtros = {}) {
     const where = { 
       bot_id: botId,
-      deleted_at: null,
-      is_deleted: false,
     };
 
     if (filtros.active !== undefined) {

@@ -1,10 +1,7 @@
 const prisma = require('../lib/prisma');
 
 async function listarConversaciones(botId = null) {
-  const where = {
-    deleted_at: null,
-    is_deleted: false,
-  };
+  const where = {};
   if (botId) where.botId = botId;
   return prisma.botConversation.findMany({
     where,
