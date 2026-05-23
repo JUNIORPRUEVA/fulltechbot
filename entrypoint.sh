@@ -1,7 +1,10 @@
 #!/bin/sh
 set -eu
 
-echo "Starting FULLTECH BOT backend..."
+echo "============================================"
+echo "  FULLTECH BOT BACKEND v2.0.0 - FIXED"
+echo "  Starting at $(date)"
+echo "============================================"
 
 if [ -z "${DATABASE_URL:-}" ]; then
   echo "ERROR: DATABASE_URL is not configured"
