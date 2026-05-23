@@ -24,7 +24,7 @@ const quotationRoutes = require('./routes/quotation.routes');
 const syncRoutes = require('./routes/sync.routes');
 
 const app = express();
-const BACKEND_VERSION = 'campaign-module-004-fix-deleted-at';
+const BACKEND_VERSION = 'campaign-module-005-force-rebuild';
 
 console.log(`FULLTECH BOT backend version: ${BACKEND_VERSION}`);
 
