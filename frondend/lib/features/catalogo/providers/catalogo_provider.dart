@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/services/sync_service.dart';
 import '../models/catalogo_model.dart';
 import '../services/catalogo_api_service.dart';
 
 class CatalogoProvider extends ChangeNotifier {
   final CatalogoApiService _apiService = CatalogoApiService();
+  final SyncService _syncService = SyncService.instance;
 
   List<CatalogoModel> _productos = [];
   bool _isLoading = false;
@@ -94,21 +96,19 @@ class CatalogoProvider extends ChangeNotifier {
   }
 
   Future<void> eliminarProducto(String id, {String? botId}) async {
-    if (_isLoadingMore) return;
-    _isLoadingMore = true;
+    // Eliminación optimista: quitar de la UI inmediatamente
+    _productos.removeWhere((p) => p.id == id);
+    notifyListeners();
 
-    _setLoading(true);
-    try {
-      await _apiService.eliminarProducto(id, botId: botId);
-      await cargarProductos(botId: botId);
-      _error = null;
-    } catch (e, st) {
-      _error = e.toString();
-      debugPrint('[CatalogoProvider] Error eliminando producto: $e');
-      debugPrint('$st');
-      _isLoadingMore = false;
-      _setLoading(false);
-    }
+    // Encolar operación de eliminación para sincronización
+    await _syncService.encolarOperacion(
+      tabla: 'productos',
+      operacion: 'delete',
+      id: id,
+      datos: {'botId': botId},
+    );
+
+    _error = null;
   }
 
   void limpiarError() {

@@ -1,11 +1,13 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../core/services/local_storage_service.dart';
+import '../../../core/services/sync_service.dart';
 import '../models/conversacion_model.dart';
 import '../services/conversaciones_api_service.dart';
 
 class ConversacionesProvider extends ChangeNotifier {
   final ConversacionesApiService _apiService = ConversacionesApiService();
+  final SyncService _syncService = SyncService.instance;
 
   List<ConversacionModel> _conversaciones = [];
   List<ConversacionModel> _mensajesActuales = [];
@@ -122,33 +124,25 @@ class ConversacionesProvider extends ChangeNotifier {
       );
     }
 
-    _currentBotId = resolvedBotId;
-    _cargando = true;
-    _error = null;
+    // Eliminación optimista: quitar de la UI inmediatamente
+    _conversaciones.removeWhere((c) => c.sessionId == sessionId);
+    _mensajesActuales = [];
     notifyListeners();
 
-    try {
-      await _apiService.eliminarPorSessionId(
-        resolvedBotId,
-        sessionId,
-        userRole: userRole,
-      );
+    // Limpiar caché local
+    final jsonList = _conversaciones.map((c) => c.toJson()).toList();
+    await LocalStorageService.guardarConversaciones(jsonList);
+    await LocalStorageService.limpiarCacheConversacion(sessionId);
 
-      _conversaciones.removeWhere((c) => c.sessionId == sessionId);
-      _mensajesActuales = [];
+    // Encolar operación de eliminación para sincronización
+    await _syncService.encolarOperacion(
+      tabla: 'conversaciones',
+      operacion: 'delete',
+      id: sessionId,
+      datos: {'botId': resolvedBotId},
+    );
 
-      final jsonList = _conversaciones.map((c) => c.toJson()).toList();
-      await LocalStorageService.guardarConversaciones(jsonList);
-      await LocalStorageService.limpiarCacheConversacion(sessionId);
-
-      _error = null;
-    } catch (e) {
-      _error = e.toString();
-      rethrow;
-    } finally {
-      _cargando = false;
-      notifyListeners();
-    }
+    _error = null;
   }
 
   Future<void> _cargarConversacionesLocales() async {

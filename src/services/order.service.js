@@ -274,13 +274,17 @@ async function eliminarOrden(id) {
     return null;
   }
 
+  const now = new Date().toISOString();
   const idCondition = columns.has('id') ? 'id::text = $1' : 'ctid::text = $1';
+  
+  // Soft delete: marcar como eliminado en lugar de borrar
   await prisma.$executeRawUnsafe(`
-    DELETE FROM bot_orders
+    UPDATE bot_orders 
+    SET deleted_at = $2, is_deleted = true, sync_status = 'pending_delete'
     WHERE ${idCondition}
-  `, id);
+  `, id, now);
 
-  return existente;
+  return { ...existente, deleted_at: now, is_deleted: true };
 }
 
 module.exports = {

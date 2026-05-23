@@ -1,7 +1,10 @@
 const prisma = require('../lib/prisma');
 
 async function listarCotizaciones(filtros = {}) {
-  const where = {};
+  const where = {
+    deleted_at: null,
+    is_deleted: false,
+  };
   if (filtros.estado) where.estado = filtros.estado;
   if (filtros.telefono) where.telefono_cliente = filtros.telefono;
   if (filtros.botId) where.botId = filtros.botId;
@@ -206,8 +209,15 @@ async function eliminarCotizacion(id) {
     return null;
   }
 
-  return prisma.botQuotation.delete({
+  const now = new Date();
+  return prisma.botQuotation.update({
     where: { id },
+    data: {
+      deleted_at: now,
+      is_deleted: true,
+      sync_status: 'pending_delete',
+      actualizado_en: now,
+    },
   });
 }
 

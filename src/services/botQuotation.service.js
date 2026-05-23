@@ -2,7 +2,11 @@ const prisma = require('../lib/prisma');
 
 async function listarCotizaciones(botId) {
   return prisma.botQuotation.findMany({
-    where: { botId },
+    where: {
+      botId,
+      deleted_at: null,
+      is_deleted: false,
+    },
     orderBy: { creado_en: 'desc' },
   });
 }
@@ -173,8 +177,15 @@ async function eliminarCotizacion(id, botId) {
     return null;
   }
 
-  return prisma.botQuotation.delete({
+  const now = new Date();
+  return prisma.botQuotation.update({
     where: { id },
+    data: {
+      deleted_at: now,
+      is_deleted: true,
+      sync_status: 'pending_delete',
+      actualizado_en: now,
+    },
   });
 }
 

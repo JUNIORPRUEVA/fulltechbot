@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/services/local_storage_service.dart';
+import '../../../core/services/sync_service.dart';
 import '../models/cliente_model.dart';
 import '../services/clientes_api_service.dart';
 
 class ClientesProvider extends ChangeNotifier {
   final ClientesApiService _apiService = ClientesApiService();
+  final SyncService _syncService = SyncService.instance;
 
   List<ClienteModel> _clientes = [];
   bool _isLoading = false;
@@ -109,40 +111,30 @@ class ClientesProvider extends ChangeNotifier {
       throw Exception('No hay un bot seleccionado para eliminar el cliente.');
     }
 
-    if (_isLoadingMore) return;
-    _isLoadingMore = true;
-    _setLoading(true);
+    // Eliminación optimista: quitar de la UI inmediatamente
+    _clientes.removeWhere((c) => c.telefono == telefono);
+    notifyListeners();
 
-    try {
-      await _apiService.eliminarCliente(
-        resolvedBotId,
-        telefono,
-        userRole: userRole,
-      );
-
-      _clientes.removeWhere((c) => c.telefono == telefono);
-
-      await LocalStorageService.limpiarCacheCliente(telefono);
-      if (chatid != null && chatid != telefono) {
-        await LocalStorageService.limpiarCacheCliente(chatid);
-        await LocalStorageService.limpiarCacheConversacion(chatid);
-      }
-      await LocalStorageService.limpiarCacheConversacion(telefono);
-
-      final clientesJson = _clientes.map((c) => c.toJson()).toList();
-      await LocalStorageService.guardarClientes(clientesJson);
-
-      _error = null;
-      await cargarClientes(botId: resolvedBotId);
-    } catch (e, st) {
-      _error = e.toString();
-      debugPrint('[ClientesProvider] Error eliminando cliente: $e');
-      debugPrint('$st');
-      rethrow;
-    } finally {
-      _isLoadingMore = false;
-      _setLoading(false);
+    // Limpiar caché local
+    await LocalStorageService.limpiarCacheCliente(telefono);
+    if (chatid != null && chatid != telefono) {
+      await LocalStorageService.limpiarCacheCliente(chatid);
+      await LocalStorageService.limpiarCacheConversacion(chatid);
     }
+    await LocalStorageService.limpiarCacheConversacion(telefono);
+
+    final clientesJson = _clientes.map((c) => c.toJson()).toList();
+    await LocalStorageService.guardarClientes(clientesJson);
+
+    // Encolar operación de eliminación para sincronización
+    await _syncService.encolarOperacion(
+      tabla: 'clientes',
+      operacion: 'delete',
+      id: telefono,
+      datos: {'botId': resolvedBotId},
+    );
+
+    _error = null;
   }
 
   void limpiarError() {

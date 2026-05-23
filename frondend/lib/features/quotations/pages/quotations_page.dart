@@ -230,6 +230,7 @@ class _QuotationsPageState extends State<QuotationsPage> {
                             return _CotizacionCard(
                               cotizacion: cot,
                               onTap: () => _abrirDetalle(context, cot),
+                              onDelete: () => _confirmarEliminar(context, cot),
                             );
                           },
                         ),
@@ -342,13 +343,55 @@ class _QuotationsPageState extends State<QuotationsPage> {
       ),
     );
   }
+
+  void _confirmarEliminar(BuildContext context, BotQuotationModel cotizacion) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar cotización'),
+        content: Text(
+          '¿Estás seguro de eliminar la cotización ${cotizacion.numeroCotizacion}?\n\n'
+          'Esta acción eliminará esta cotización permanentemente.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<QuotationProvider>().eliminarCotizacion(cotizacion.id);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Cotización eliminada'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
+            icon: const Icon(Icons.delete_forever_rounded, size: 18),
+            label: const Text('Eliminar'),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _CotizacionCard extends StatelessWidget {
   final BotQuotationModel cotizacion;
   final VoidCallback onTap;
+  final VoidCallback onDelete;
 
-  const _CotizacionCard({required this.cotizacion, required this.onTap});
+  const _CotizacionCard({
+    required this.cotizacion,
+    required this.onTap,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -445,6 +488,20 @@ class _CotizacionCard extends StatelessWidget {
                         _formatDate(cotizacion.creadoEn!),
                         style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
                       ),
+                  ],
+                ),
+                // Botón eliminar
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    IconButton(
+                      onPressed: onDelete,
+                      icon: Icon(Icons.delete_outline_rounded, color: Colors.red.shade400, size: 20),
+                      tooltip: 'Eliminar cotización',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                    ),
                   ],
                 ),
               ],

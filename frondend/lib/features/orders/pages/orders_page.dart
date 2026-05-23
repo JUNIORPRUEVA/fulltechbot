@@ -230,6 +230,7 @@ class _OrdersPageState extends State<OrdersPage> {
                             return _OrdenCard(
                               orden: orden,
                               onTap: () => _abrirDetalle(context, orden),
+                              onDelete: () => _confirmarEliminar(context, orden),
                             );
                           },
                         ),
@@ -338,13 +339,55 @@ class _OrdersPageState extends State<OrdersPage> {
       ),
     );
   }
+
+  void _confirmarEliminar(BuildContext context, BotOrderModel orden) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar pedido'),
+        content: Text(
+          '¿Estás seguro de eliminar el pedido de ${orden.productoServicio ?? "sin producto"}?\n\n'
+          'Esta acción eliminará este pedido permanentemente.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<OrderProvider>().eliminarOrden(orden.id);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Pedido eliminado'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
+            icon: const Icon(Icons.delete_forever_rounded, size: 18),
+            label: const Text('Eliminar'),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _OrdenCard extends StatelessWidget {
   final BotOrderModel orden;
   final VoidCallback onTap;
+  final VoidCallback onDelete;
 
-  const _OrdenCard({required this.orden, required this.onTap});
+  const _OrdenCard({
+    required this.orden,
+    required this.onTap,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -455,6 +498,20 @@ class _OrdenCard extends StatelessWidget {
                     style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
                   ),
                 ],
+                // Botón eliminar
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    IconButton(
+                      onPressed: onDelete,
+                      icon: Icon(Icons.delete_outline_rounded, color: Colors.red.shade400, size: 20),
+                      tooltip: 'Eliminar pedido',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),

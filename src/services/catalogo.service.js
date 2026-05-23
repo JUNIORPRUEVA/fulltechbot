@@ -1,7 +1,10 @@
 const prisma = require('../lib/prisma');
 
 async function listarCatalogo(botId = null) {
-  const where = {};
+  const where = {
+    deleted_at: null,
+    is_deleted: false,
+  };
   if (botId) where.botId = botId;
   return prisma.catalogo.findMany({
     where,
@@ -14,6 +17,8 @@ async function listarCatalogo(botId = null) {
 async function listarCatalogoActivo(botId = null) {
   const where = {
     estado: 'activo',
+    deleted_at: null,
+    is_deleted: false,
   };
   if (botId) where.botId = botId;
   return prisma.catalogo.findMany({
@@ -197,8 +202,14 @@ async function cambiarEstadoProducto(id, estado) {
 }
 
 async function eliminarProducto(id) {
-  return prisma.catalogo.delete({
+  const now = new Date();
+  return prisma.catalogo.update({
     where: { id },
+    data: {
+      deleted_at: now,
+      is_deleted: true,
+      sync_status: 'pending_delete',
+    },
   });
 }
 

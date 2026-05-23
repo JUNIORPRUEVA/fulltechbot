@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/services/sync_service.dart';
 import '../models/bot_order_model.dart';
 import '../services/order_api_service.dart';
 
 class OrderProvider extends ChangeNotifier {
   final OrderApiService _apiService = OrderApiService();
+  final SyncService _syncService = SyncService.instance;
 
   List<BotOrderModel> _ordenes = [];
   BotOrderModel? _ordenSeleccionada;
@@ -91,21 +93,19 @@ class OrderProvider extends ChangeNotifier {
   }
 
   Future<void> eliminarOrden(String id) async {
-    if (_isLoadingMore) return;
-    _isLoadingMore = true;
+    // Eliminación optimista: quitar de la UI inmediatamente
+    _ordenes.removeWhere((o) => o.id == id);
+    notifyListeners();
 
-    _setLoading(true);
-    try {
-      await _apiService.eliminarOrden(id, botId: _currentBotId);
-      await cargarOrdenes(botId: _currentBotId);
-      _error = null;
-    } catch (e, st) {
-      _error = e.toString();
-      debugPrint('[OrderProvider] Error eliminando orden: $e');
-      debugPrint('$st');
-      _isLoadingMore = false;
-      _setLoading(false);
-    }
+    // Encolar operación de eliminación para sincronización
+    await _syncService.encolarOperacion(
+      tabla: 'pedidos',
+      operacion: 'delete',
+      id: id,
+      datos: {'botId': _currentBotId},
+    );
+
+    _error = null;
   }
 
   void seleccionarOrden(BotOrderModel orden) {

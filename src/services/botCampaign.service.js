@@ -20,7 +20,11 @@ class BotCampaignService {
   }
 
   async listar(botId, filtros = {}) {
-    const where = { bot_id: botId };
+    const where = { 
+      bot_id: botId,
+      deleted_at: null,
+      is_deleted: false,
+    };
 
     if (filtros.active !== undefined) {
       where.active = filtros.active === true || filtros.active === 'true';
@@ -87,7 +91,15 @@ class BotCampaignService {
 
   async eliminar(id) {
     await this.obtenerPorId(id);
-    await prisma.botCampaign.delete({ where: { id } });
+    const now = new Date();
+    await prisma.botCampaign.update({
+      where: { id },
+      data: {
+        deleted_at: now,
+        is_deleted: true,
+        sync_status: 'pending_delete',
+      },
+    });
     return { message: 'Campaña eliminada exitosamente' };
   }
 

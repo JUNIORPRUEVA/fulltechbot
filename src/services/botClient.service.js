@@ -15,7 +15,10 @@ async function getBotOrdersColumns() {
 }
 
 async function listarClientes(botId = null) {
-  const where = {};
+  const where = {
+    deleted_at: null,
+    is_deleted: false,
+  };
   if (botId) where.botId = botId;
 
   return prisma.botClient.findMany({
@@ -173,22 +176,18 @@ async function pausarBot(telefono, pausado) {
 }
 
 /**
- * Elimina un cliente y TODOS sus datos relacionados en una transacción.
+ * Elimina un cliente y TODOS sus datos relacionados usando SOFT DELETE.
+ * 
+ * En lugar de borrar físicamente, marca todos los registros como eliminados
+ * para que la eliminación se propague a otros dispositivos vía sync.
  * 
  * ORDEN DE ELIMINACIÓN (de dependencias a principal):
- * 1. Conversaciones (bot_conversations) por session_id (chatid o telefono)
+ * 1. Conversaciones (bot_conversations) por session_id
  * 2. Cotizaciones del bot (bot_quotations) por telefono_cliente
  * 3. Órdenes del bot (bot_orders) por telefono_cliente
- * 4. Cotizaciones globales (quotations) por telefono_cliente - si existe la tabla
- * 5. Órdenes globales (orders) por telefono_cliente - si existe la tabla
+ * 4. Cotizaciones globales (quotations) por telefono_cliente
+ * 5. Órdenes globales (orders) por telefono_cliente
  * 6. Cliente (bot_clients)
- * 
- * NOTA: Si en el futuro se agregan tablas como:
- *   - bot_memories (memorias del bot)
- *   - bot_history (historial del bot)
- *   - bot_media (archivos multimedia)
- *   - audit_logs (logs de auditoría)
- * Se deben agregar aquí en el orden correcto.
  */
 async function eliminarCliente(telefono, botId = null) {
   const existente = await obtenerClientePorTelefono(telefono, botId);
@@ -203,111 +202,127 @@ async function eliminarCliente(telefono, botId = null) {
     sessionIds.push(existente.chatid);
   }
 
+  const now = new Date();
+
   return prisma.$transaction(async (tx) => {
-    // 1. Eliminar conversaciones del bot por session_id
+    // 1. Soft delete conversaciones del bot por session_id
     if (sessionIds.length > 0) {
-      await tx.botConversation.deleteMany({
+      await tx.botConversation.updateMany({
         where: {
           session_id: { in: sessionIds },
           ...(botId ? { botId } : {}),
         },
+        data: {
+          deleted_at: now,
+          is_deleted: true,
+          sync_status: 'pending_delete',
+        },
       });
     }
 
-    // 2. Eliminar cotizaciones del bot asociadas al cliente
-    await tx.botQuotation.deleteMany({
+    // 2. Soft delete cotizaciones del bot asociadas al cliente
+    await tx.botQuotation.updateMany({
       where: {
         telefono_cliente: telefono,
         ...(botId ? { botId } : {}),
       },
+      data: {
+        deleted_at: now,
+        is_deleted: true,
+        sync_status: 'pending_delete',
+        actualizado_en: now,
+      },
     });
 
-    // 3. Eliminar órdenes del bot asociadas al cliente
+    // 3. Soft delete órdenes del bot asociadas al cliente
     try {
       const botOrdersColumns = await getBotOrdersColumns();
       const canFilterByBot = botId && botOrdersColumns.has('bot_id');
 
       if (canFilterByBot) {
         await tx.$executeRawUnsafe(
-          `DELETE FROM bot_orders WHERE telefono_cliente = $1 AND bot_id = $2`,
-          telefono,
-          botId
+          `UPDATE bot_orders SET deleted_at = $1, is_deleted = true, sync_status = 'pending_delete' WHERE telefono_cliente = $2 AND bot_id = $3`,
+          now, telefono, botId
         );
       } else {
         await tx.$executeRawUnsafe(
-          `DELETE FROM bot_orders WHERE telefono_cliente = $1`,
-          telefono
+          `UPDATE bot_orders SET deleted_at = $1, is_deleted = true, sync_status = 'pending_delete' WHERE telefono_cliente = $2`,
+          now, telefono
         );
       }
     } catch (e) {
-      console.log('[eliminarCliente] No se pudieron eliminar órdenes del bot, ignorando.', e.message);
+      console.log('[eliminarCliente] No se pudieron marcar órdenes del bot, ignorando.', e.message);
     }
 
-    // 4. Intentar eliminar cotizaciones globales si la tabla existe
+    // 4. Soft delete cotizaciones globales si la tabla existe
     try {
       await tx.$executeRawUnsafe(
-        `DELETE FROM quotations WHERE telefono_cliente = $1`,
-        telefono
+        `UPDATE quotations SET deleted_at = $1, is_deleted = true, sync_status = 'pending_delete' WHERE telefono_cliente = $2`,
+        now, telefono
       );
     } catch (e) {
-      // La tabla puede no existir, ignorar error
       console.log('[eliminarCliente] Tabla quotations no encontrada, ignorando.');
     }
 
-    // 5. Intentar eliminar órdenes globales si la tabla existe
+    // 5. Soft delete órdenes globales si la tabla existe
     try {
       await tx.$executeRawUnsafe(
-        `DELETE FROM orders WHERE telefono_cliente = $1`,
-        telefono
+        `UPDATE orders SET deleted_at = $1, is_deleted = true, sync_status = 'pending_delete' WHERE telefono_cliente = $2`,
+        now, telefono
       );
     } catch (e) {
-      // La tabla puede no existir, ignorar error
       console.log('[eliminarCliente] Tabla orders no encontrada, ignorando.');
     }
 
-    // 6. Intentar eliminar memorias del bot si la tabla existe
+    // 6. Soft delete memorias del bot si la tabla existe
     try {
       await tx.$executeRawUnsafe(
-        `DELETE FROM bot_memories WHERE telefono_cliente = $1 OR session_id = ANY($2)`,
-        telefono, sessionIds
+        `UPDATE bot_memories SET deleted_at = $1, is_deleted = true, sync_status = 'pending_delete' WHERE telefono_cliente = $2 OR session_id = ANY($3)`,
+        now, telefono, sessionIds
       );
     } catch (e) {
       console.log('[eliminarCliente] Tabla bot_memories no encontrada, ignorando.');
     }
 
-    // 7. Intentar eliminar historial del bot si la tabla existe
+    // 7. Soft delete historial del bot si la tabla existe
     try {
       await tx.$executeRawUnsafe(
-        `DELETE FROM bot_history WHERE telefono_cliente = $1 OR session_id = ANY($2)`,
-        telefono, sessionIds
+        `UPDATE bot_history SET deleted_at = $1, is_deleted = true, sync_status = 'pending_delete' WHERE telefono_cliente = $2 OR session_id = ANY($3)`,
+        now, telefono, sessionIds
       );
     } catch (e) {
       console.log('[eliminarCliente] Tabla bot_history no encontrada, ignorando.');
     }
 
-    // 8. Intentar eliminar archivos multimedia relacionados si la tabla existe
+    // 8. Soft delete archivos multimedia relacionados si la tabla existe
     try {
       await tx.$executeRawUnsafe(
-        `DELETE FROM bot_media WHERE telefono_cliente = $1 OR session_id = ANY($2)`,
-        telefono, sessionIds
+        `UPDATE bot_media SET deleted_at = $1, is_deleted = true, sync_status = 'pending_delete' WHERE telefono_cliente = $2 OR session_id = ANY($3)`,
+        now, telefono, sessionIds
       );
     } catch (e) {
       console.log('[eliminarCliente] Tabla bot_media no encontrada, ignorando.');
     }
 
-    // 9. Intentar eliminar logs de auditoría si la tabla existe
+    // 9. Soft delete logs de auditoría si la tabla existe
     try {
       await tx.$executeRawUnsafe(
-        `DELETE FROM audit_logs WHERE referencia_id = $1 OR referencia_id = ANY($2)`,
-        telefono, sessionIds
+        `UPDATE audit_logs SET deleted_at = $1, is_deleted = true, sync_status = 'pending_delete' WHERE referencia_id = $2 OR referencia_id = ANY($3)`,
+        now, telefono, sessionIds
       );
     } catch (e) {
       console.log('[eliminarCliente] Tabla audit_logs no encontrada, ignorando.');
     }
 
-    // 10. Finalmente eliminar el cliente
-    const clienteEliminado = await tx.botClient.delete({
+    // 10. Finalmente soft delete del cliente
+    const clienteEliminado = await tx.botClient.update({
       where: { telefono },
+      data: {
+        deleted_at: now,
+        is_deleted: true,
+        sync_status: 'pending_delete',
+        actualizado_en: now,
+      },
     });
 
     return clienteEliminado;

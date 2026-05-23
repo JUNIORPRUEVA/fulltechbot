@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/services/sync_service.dart';
 import '../models/bot_quotation_model.dart';
 import '../services/quotation_api_service.dart';
 
 class QuotationProvider extends ChangeNotifier {
   final QuotationApiService _apiService = QuotationApiService();
+  final SyncService _syncService = SyncService.instance;
 
   List<BotQuotationModel> _cotizaciones = [];
   BotQuotationModel? _cotizacionSeleccionada;
@@ -79,15 +81,19 @@ class QuotationProvider extends ChangeNotifier {
   }
 
   Future<void> eliminarCotizacion(String id) async {
-    _setLoading(true);
-    try {
-      await _apiService.eliminarCotizacion(id, botId: _currentBotId);
-      await cargarCotizaciones(botId: _currentBotId);
-      _error = null;
-    } catch (e) {
-      _error = e.toString();
-      _setLoading(false);
-    }
+    // Eliminación optimista: quitar de la UI inmediatamente
+    _cotizaciones.removeWhere((c) => c.id == id);
+    notifyListeners();
+
+    // Encolar operación de eliminación para sincronización
+    await _syncService.encolarOperacion(
+      tabla: 'cotizaciones',
+      operacion: 'delete',
+      id: id,
+      datos: {'botId': _currentBotId},
+    );
+
+    _error = null;
   }
 
   void seleccionarCotizacion(BotQuotationModel cotizacion) {

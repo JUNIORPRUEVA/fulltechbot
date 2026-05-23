@@ -21,6 +21,7 @@ const campaignContextRoutes = require('./routes/campaignContext.routes');
 
 const orderRoutes = require('./routes/order.routes');
 const quotationRoutes = require('./routes/quotation.routes');
+const syncRoutes = require('./routes/sync.routes');
 
 const app = express();
 const BACKEND_VERSION = 'campaign-module-003-simple';
@@ -94,6 +95,9 @@ app.use('/api/orders', (req, res, next) => {
   next();
 }, orderRoutes);
 app.use('/api/quotations', quotationRoutes);
+
+// Ruta de sincronización entre dispositivos
+app.use('/api/sync', syncRoutes);
 
 app.use((req, res) => {
   res.status(404).json({

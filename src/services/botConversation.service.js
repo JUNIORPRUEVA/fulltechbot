@@ -1,7 +1,10 @@
 const prisma = require('../lib/prisma');
 
 async function listarConversaciones(botId = null) {
-  const where = {};
+  const where = {
+    deleted_at: null,
+    is_deleted: false,
+  };
   if (botId) where.botId = botId;
   return prisma.botConversation.findMany({
     where,
@@ -41,24 +44,26 @@ async function crearConversacion(data) {
 }
 
 /**
- * Elimina todas las conversaciones de un sessionId en una transacción.
- * También limpia datos relacionados si es necesario.
+ * Elimina (soft delete) todas las conversaciones de un sessionId.
+ * Marca como eliminado para propagar a otros dispositivos vía sync.
  */
 async function eliminarPorSessionId(sessionId, botId = null) {
   if (!sessionId) {
     throw new Error('El sessionId es obligatorio');
   }
 
-  return prisma.$transaction(async (tx) => {
-    // Eliminar todas las conversaciones con ese session_id
-    const deleted = await tx.botConversation.deleteMany({
-      where: {
-        session_id: sessionId,
-        ...(botId ? { botId } : {}),
-      },
-    });
+  const now = new Date();
 
-    return deleted;
+  return prisma.botConversation.updateMany({
+    where: {
+      session_id: sessionId,
+      ...(botId ? { botId } : {}),
+    },
+    data: {
+      deleted_at: now,
+      is_deleted: true,
+      sync_status: 'pending_delete',
+    },
   });
 }
 
