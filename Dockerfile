@@ -1,3 +1,4 @@
+# FULLTECH BOT - v2.0.0 - Force rebuild
 FROM node:22-alpine
 
 WORKDIR /app
