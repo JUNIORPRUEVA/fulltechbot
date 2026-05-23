@@ -1,10 +1,7 @@
 const prisma = require('../lib/prisma');
 
 async function listarCotizaciones(filtros = {}) {
-  const where = {
-    deleted_at: null,
-    is_deleted: false,
-  };
+  const where = {};
   if (filtros.estado) where.estado = filtros.estado;
   if (filtros.telefono) where.telefono_cliente = filtros.telefono;
   if (filtros.botId) where.botId = filtros.botId;
