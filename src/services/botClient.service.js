@@ -150,6 +150,12 @@ async function buscarOCrearCliente(data) {
       presupuesto_estimado:
         data.presupuesto_estimado ?? existente.presupuesto_estimado,
       ultimo_mensaje: data.ultimo_mensaje ?? existente.ultimo_mensaje,
+      source_bot_id: data.source_bot_id ?? existente.source_bot_id,
+      ultima_instancia_whatsapp:
+        data.ultima_instancia_whatsapp ?? existente.ultima_instancia_whatsapp,
+      origen: data.origen ?? existente.origen,
+      preferencia_respuesta:
+        data.preferencia_respuesta ?? existente.preferencia_respuesta,
       total_mensajes: {
         increment: 1,
       },
@@ -201,6 +207,10 @@ async function buscarOCrearCliente(data) {
       bot_pausado: data.bot_pausado ?? false,
       humano_tomo_control: data.humano_tomo_control ?? false,
       metadata: data.metadata ?? {},
+      source_bot_id: data.source_bot_id ?? null,
+      ultima_instancia_whatsapp: data.ultima_instancia_whatsapp ?? null,
+      origen: data.origen ?? null,
+      preferencia_respuesta: data.preferencia_respuesta ?? 'auto',
       botId: botId || null,
       creado_en: new Date(),
       actualizado_en: new Date(),

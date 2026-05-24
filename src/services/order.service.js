@@ -24,6 +24,7 @@ function normalizeOrderRow(row, index = 0) {
   return {
     id: String(fallbackId),
     bot_id: row.bot_id ?? null,
+    source_bot_id: row.source_bot_id ?? null,
     telefono_cliente: row.telefono_cliente ?? '',
     nombre_cliente: row.nombre_cliente ?? null,
     producto_servicio: row.producto_servicio ?? null,
@@ -32,6 +33,10 @@ function normalizeOrderRow(row, index = 0) {
     fecha_deseada: row.fecha_deseada ?? null,
     estado_pedido: row.estado_pedido ?? 'pendiente',
     resumen_pedido: row.resumen_pedido ?? null,
+    instancia_whatsapp: row.instancia_whatsapp ?? null,
+    origen: row.origen ?? null,
+    metadata: row.metadata ?? {},
+    ubicacion_gps_url: row.ubicacion_gps_url ?? null,
     creado_en: row.creado_en ?? null,
     actualizado_en: row.actualizado_en ?? null,
   };
@@ -74,9 +79,14 @@ function buildListQuery({ telefono, estado, botId }, columns) {
         fecha_deseada,
         estado_pedido,
         resumen_pedido,
+        ${columns.has('instancia_whatsapp') ? 'instancia_whatsapp,' : 'NULL AS instancia_whatsapp,'}
+        ${columns.has('origen') ? 'origen,' : 'NULL AS origen,'}
+        ${columns.has('metadata') ? 'metadata,' : `'{}'::jsonb AS metadata,`}
+        ${columns.has('ubicacion_gps_url') ? 'ubicacion_gps_url,' : 'NULL AS ubicacion_gps_url,'}
         creado_en,
         actualizado_en
         ${columns.has('bot_id') ? ', bot_id' : ''}
+        ${columns.has('source_bot_id') ? ', source_bot_id' : ', NULL AS source_bot_id'}
       FROM bot_orders
       ${whereClause}
       ${orderByClause}
@@ -121,9 +131,14 @@ async function obtenerOrdenPorId(id) {
       fecha_deseada,
       estado_pedido,
       resumen_pedido,
+      ${columns.has('instancia_whatsapp') ? 'instancia_whatsapp,' : 'NULL AS instancia_whatsapp,'}
+      ${columns.has('origen') ? 'origen,' : 'NULL AS origen,'}
+      ${columns.has('metadata') ? 'metadata,' : `'{}'::jsonb AS metadata,`}
+      ${columns.has('ubicacion_gps_url') ? 'ubicacion_gps_url,' : 'NULL AS ubicacion_gps_url,'}
       creado_en,
       actualizado_en
       ${columns.has('bot_id') ? ', bot_id' : ''}
+      ${columns.has('source_bot_id') ? ', source_bot_id' : ', NULL AS source_bot_id'}
     FROM bot_orders
     WHERE ${idCondition}
     LIMIT 1
@@ -144,6 +159,11 @@ async function crearOrden(data) {
     estadoPedido,
     resumenPedido,
     botId,
+    sourceBotId,
+    instanciaWhatsapp,
+    origen,
+    metadata,
+    ubicacionGpsUrl,
   } = data;
 
   if (!telefonoCliente) {
@@ -177,6 +197,31 @@ async function crearOrden(data) {
     values.push(botId);
   }
 
+  if (sourceBotId && columns.has('source_bot_id')) {
+    insertColumns.push('source_bot_id');
+    values.push(sourceBotId);
+  }
+
+  if (instanciaWhatsapp !== undefined && columns.has('instancia_whatsapp')) {
+    insertColumns.push('instancia_whatsapp');
+    values.push(instanciaWhatsapp ?? null);
+  }
+
+  if (origen !== undefined && columns.has('origen')) {
+    insertColumns.push('origen');
+    values.push(origen ?? null);
+  }
+
+  if (metadata !== undefined && columns.has('metadata')) {
+    insertColumns.push('metadata');
+    values.push(metadata ?? {});
+  }
+
+  if (ubicacionGpsUrl !== undefined && columns.has('ubicacion_gps_url')) {
+    insertColumns.push('ubicacion_gps_url');
+    values.push(ubicacionGpsUrl ?? null);
+  }
+
   const placeholders = values.map((_, index) => `$${index + 1}`).join(', ');
   const idSelect = columns.has('id') ? 'id::text AS _row_id,' : 'ctid::text AS _row_id,';
 
@@ -193,9 +238,14 @@ async function crearOrden(data) {
       fecha_deseada,
       estado_pedido,
       resumen_pedido,
+      ${columns.has('instancia_whatsapp') ? 'instancia_whatsapp,' : 'NULL AS instancia_whatsapp,'}
+      ${columns.has('origen') ? 'origen,' : 'NULL AS origen,'}
+      ${columns.has('metadata') ? 'metadata,' : `'{}'::jsonb AS metadata,`}
+      ${columns.has('ubicacion_gps_url') ? 'ubicacion_gps_url,' : 'NULL AS ubicacion_gps_url,'}
       creado_en,
       actualizado_en
       ${columns.has('bot_id') ? ', bot_id' : ''}
+      ${columns.has('source_bot_id') ? ', source_bot_id' : ', NULL AS source_bot_id'}
   `, ...values);
 
   return normalizeOrderRow(rows[0]);
@@ -218,12 +268,18 @@ async function actualizarOrden(id, data) {
     fechaDeseada: 'fecha_deseada',
     estadoPedido: 'estado_pedido',
     resumenPedido: 'resumen_pedido',
+    sourceBotId: 'source_bot_id',
+    instanciaWhatsapp: 'instancia_whatsapp',
+    origen: 'origen',
+    metadata: 'metadata',
+    ubicacionGpsUrl: 'ubicacion_gps_url',
   };
 
   const assignments = [];
   const values = [];
 
   for (const [key, column] of Object.entries(fieldMap)) {
+    if (!columns.has(column)) continue;
     if (data[key] !== undefined) {
       values.push(data[key]);
       assignments.push(`${column} = $${values.length}`);
@@ -255,9 +311,14 @@ async function actualizarOrden(id, data) {
       fecha_deseada,
       estado_pedido,
       resumen_pedido,
+      ${columns.has('instancia_whatsapp') ? 'instancia_whatsapp,' : 'NULL AS instancia_whatsapp,'}
+      ${columns.has('origen') ? 'origen,' : 'NULL AS origen,'}
+      ${columns.has('metadata') ? 'metadata,' : `'{}'::jsonb AS metadata,`}
+      ${columns.has('ubicacion_gps_url') ? 'ubicacion_gps_url,' : 'NULL AS ubicacion_gps_url,'}
       creado_en,
       actualizado_en
       ${columns.has('bot_id') ? ', bot_id' : ''}
+      ${columns.has('source_bot_id') ? ', source_bot_id' : ', NULL AS source_bot_id'}
   `, ...values);
 
   return rows[0] ? normalizeOrderRow(rows[0]) : null;

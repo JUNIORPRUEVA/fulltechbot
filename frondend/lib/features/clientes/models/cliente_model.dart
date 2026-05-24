@@ -4,6 +4,9 @@ class ClienteModel {
   final String? nombre;
   final String? botId;
   final String? sourceBotId;
+  final String? ultimaInstanciaWhatsapp;
+  final String? origen;
+  final String? preferenciaRespuesta;
   final String? usuarioWhatsapp;
   final String? direccion;
   final String? ciudad;
@@ -47,6 +50,9 @@ class ClienteModel {
     this.nombre,
     this.botId,
     this.sourceBotId,
+    this.ultimaInstanciaWhatsapp,
+    this.origen,
+    this.preferenciaRespuesta,
     this.usuarioWhatsapp,
     this.direccion,
     this.ciudad,
@@ -93,6 +99,13 @@ class ClienteModel {
       botId: json['bot_id']?.toString() ?? json['botId']?.toString(),
       sourceBotId:
           json['source_bot_id']?.toString() ?? json['sourceBotId']?.toString(),
+      ultimaInstanciaWhatsapp:
+          json['ultima_instancia_whatsapp']?.toString() ??
+          json['ultimaInstanciaWhatsapp']?.toString(),
+      origen: json['origen']?.toString(),
+      preferenciaRespuesta:
+          json['preferencia_respuesta']?.toString() ??
+          json['preferenciaRespuesta']?.toString(),
       usuarioWhatsapp: json['usuario_whatsapp']?.toString(),
       direccion: json['direccion']?.toString(),
       ciudad: json['ciudad']?.toString(),
@@ -139,6 +152,10 @@ class ClienteModel {
       'telefono': telefono,
       'chatid': chatid,
       'nombre': nombre,
+      'source_bot_id': sourceBotId,
+      'ultima_instancia_whatsapp': ultimaInstanciaWhatsapp,
+      'origen': origen,
+      'preferencia_respuesta': preferenciaRespuesta,
       'usuario_whatsapp': usuarioWhatsapp,
       'direccion': direccion,
       'ciudad': ciudad,
