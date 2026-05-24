@@ -1,14 +1,22 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/bot_model.dart';
 import '../providers/bot_provider.dart';
 import '../../campaigns/pages/bot_campaigns_page.dart';
+import '../../campaigns/providers/bot_campaign_provider.dart';
 import '../../catalogo/pages/catalogo_page.dart';
+import '../../catalogo/providers/catalogo_provider.dart';
 import '../../clientes/pages/clientes_page.dart';
+import '../../clientes/providers/clientes_provider.dart';
 import '../../conversaciones/pages/conversaciones_page.dart';
+import '../../conversaciones/providers/conversaciones_provider.dart';
 import '../../orders/pages/orders_page.dart';
+import '../../orders/providers/order_provider.dart';
 import '../../quotations/pages/quotations_page.dart';
+import '../../quotations/providers/quotation_provider.dart';
 import 'bot_form_page.dart';
 import 'bot_selector_page.dart';
 
@@ -19,8 +27,13 @@ class BotDashboardPage extends StatefulWidget {
   State<BotDashboardPage> createState() => _BotDashboardPageState();
 }
 
-class _BotDashboardPageState extends State<BotDashboardPage> {
+class _BotDashboardPageState extends State<BotDashboardPage>
+    with WidgetsBindingObserver {
+  static const Duration _autoRefreshInterval = Duration(seconds: 12);
+
   int _currentIndex = 0;
+  String? _lastBotId;
+  Timer? _autoRefreshTimer;
 
   late final List<Widget> _pages = const [
     CatalogoPage(),
@@ -83,12 +96,40 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _startAutoRefresh();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _autoRefreshTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshCurrentView();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final botProvider = context.watch<BotProvider>();
     final bot = botProvider.botSeleccionado;
 
     if (bot == null) {
       return const _SinBotSeleccionado();
+    }
+
+    if (_lastBotId != bot.id) {
+      _lastBotId = bot.id;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _refreshCurrentView();
+      });
     }
 
     final isActive = bot.estado == 'activo';
@@ -103,19 +144,13 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
           children: [
             Text(
               bot.nombre,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               overflow: TextOverflow.ellipsis,
             ),
             if (bot.tipoNegocio != null)
               Text(
                 bot.tipoNegocio!,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey.shade500,
-                ),
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
                 overflow: TextOverflow.ellipsis,
               ),
           ],
@@ -153,9 +188,9 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
         children: [
           if (isDesktop) _buildSidebar(bot, isActive),
           Expanded(
-            child: IndexedStack(
-              index: _currentIndex,
-              children: _pages,
+            child: KeyedSubtree(
+              key: ValueKey(bot.id),
+              child: IndexedStack(index: _currentIndex, children: _pages),
             ),
           ),
         ],
@@ -163,11 +198,14 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
       bottomNavigationBar: isDesktop
           ? null
           : NavigationBar(
-              selectedIndex: _currentIndex < _navItems.length ? _currentIndex : 0,
+              selectedIndex: _currentIndex < _navItems.length
+                  ? _currentIndex
+                  : 0,
               onDestinationSelected: (index) {
                 setState(() {
                   _currentIndex = index;
                 });
+                _refreshCurrentView();
               },
               destinations: _navItems.map((item) {
                 return NavigationDestination(
@@ -199,13 +237,17 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: isActive ? Colors.green.shade50 : Colors.grey.shade100,
+                      color: isActive
+                          ? Colors.green.shade50
+                          : Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
                       Icons.smart_toy_outlined,
                       size: 22,
-                      color: isActive ? Colors.green.shade600 : Colors.grey.shade400,
+                      color: isActive
+                          ? Colors.green.shade600
+                          : Colors.grey.shade400,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -232,12 +274,19 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
                   ],
                   const SizedBox(height: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
-                      color: isActive ? Colors.green.shade50 : Colors.red.shade50,
+                      color: isActive
+                          ? Colors.green.shade50
+                          : Colors.red.shade50,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: isActive ? Colors.green.shade200 : Colors.red.shade200,
+                        color: isActive
+                            ? Colors.green.shade200
+                            : Colors.red.shade200,
                       ),
                     ),
                     child: Text(
@@ -245,7 +294,9 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        color: isActive ? Colors.green.shade700 : Colors.red.shade700,
+                        color: isActive
+                            ? Colors.green.shade700
+                            : Colors.red.shade700,
                       ),
                     ),
                   ),
@@ -270,16 +321,18 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
                       title: Text(
                         _drawerItems[i].label,
                         style: TextStyle(
-                          fontWeight:
-                              _currentIndex == i ? FontWeight.w700 : FontWeight.w500,
+                          fontWeight: _currentIndex == i
+                              ? FontWeight.w700
+                              : FontWeight.w500,
                           color: _currentIndex == i
                               ? Theme.of(context).colorScheme.primary
                               : null,
                         ),
                       ),
                       selected: _currentIndex == i,
-                      selectedTileColor:
-                          Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+                      selectedTileColor: Theme.of(
+                        context,
+                      ).colorScheme.primaryContainer.withValues(alpha: 0.3),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -288,6 +341,7 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
                           _currentIndex = i;
                         });
                         Navigator.pop(context);
+                        _refreshCurrentView();
                       },
                     ),
                   ],
@@ -314,20 +368,19 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(color: Colors.grey.shade200),
-                ),
+                border: Border(top: BorderSide(color: Colors.grey.shade200)),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.smart_toy_outlined, size: 16, color: Colors.grey.shade400),
+                  Icon(
+                    Icons.smart_toy_outlined,
+                    size: 16,
+                    color: Colors.grey.shade400,
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     'FullTech Bot',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade500,
-                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                   ),
                 ],
               ),
@@ -343,18 +396,14 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
       width: 220,
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        border: Border(
-          right: BorderSide(color: Colors.grey.shade200),
-        ),
+        border: Border(right: BorderSide(color: Colors.grey.shade200)),
       ),
       child: Column(
         children: [
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade200),
-              ),
+              border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
             ),
             child: Row(
               children: [
@@ -362,13 +411,17 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: isActive ? Colors.green.shade50 : Colors.grey.shade100,
+                    color: isActive
+                        ? Colors.green.shade50
+                        : Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
                     Icons.smart_toy_outlined,
                     size: 18,
-                    color: isActive ? Colors.green.shade600 : Colors.grey.shade400,
+                    color: isActive
+                        ? Colors.green.shade600
+                        : Colors.grey.shade400,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -404,7 +457,10 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
               children: [
                 for (int i = 0; i < _drawerItems.length; i++)
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     child: ListTile(
                       dense: true,
                       leading: Icon(
@@ -420,18 +476,18 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
                         _drawerItems[i].label,
                         style: TextStyle(
                           fontSize: 13,
-                          fontWeight:
-                              _currentIndex == i ? FontWeight.w700 : FontWeight.w500,
+                          fontWeight: _currentIndex == i
+                              ? FontWeight.w700
+                              : FontWeight.w500,
                           color: _currentIndex == i
                               ? Theme.of(context).colorScheme.primary
                               : Colors.grey.shade700,
                         ),
                       ),
                       selected: _currentIndex == i,
-                      selectedTileColor: Theme.of(context)
-                          .colorScheme
-                          .primaryContainer
-                          .withValues(alpha: 0.3),
+                      selectedTileColor: Theme.of(
+                        context,
+                      ).colorScheme.primaryContainer.withValues(alpha: 0.3),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -439,6 +495,7 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
                         setState(() {
                           _currentIndex = i;
                         });
+                        _refreshCurrentView();
                       },
                     ),
                   ),
@@ -448,16 +505,17 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(color: Colors.grey.shade200),
-              ),
+              border: Border(top: BorderSide(color: Colors.grey.shade200)),
             ),
             child: SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: () => _cambiarBot(context),
                 icon: const Icon(Icons.swap_horiz_rounded, size: 18),
-                label: const Text('Cambiar bot', style: TextStyle(fontSize: 12)),
+                label: const Text(
+                  'Cambiar bot',
+                  style: TextStyle(fontSize: 12),
+                ),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   shape: RoundedRectangleBorder(
@@ -478,9 +536,7 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
 
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => BotFormPage(bot: bot),
-      ),
+      MaterialPageRoute(builder: (_) => BotFormPage(bot: bot)),
     );
   }
 
@@ -488,14 +544,62 @@ class _BotDashboardPageState extends State<BotDashboardPage> {
     final botProvider = context.read<BotProvider>();
     await botProvider.cargarBots();
 
-    if (!mounted) return;
+    if (!context.mounted) return;
 
     await Navigator.push<dynamic>(
       context,
-      MaterialPageRoute(
-        builder: (_) => const BotSelectorPage(),
-      ),
+      MaterialPageRoute(builder: (_) => const BotSelectorPage()),
     );
+  }
+
+  void _startAutoRefresh() {
+    _autoRefreshTimer?.cancel();
+    _autoRefreshTimer = Timer.periodic(_autoRefreshInterval, (_) {
+      _refreshCurrentView();
+    });
+  }
+
+  Future<void> _refreshCurrentView() async {
+    if (!mounted) return;
+
+    final bot = context.read<BotProvider>().botSeleccionado;
+    final botId = bot?.id;
+
+    if (botId == null || botId.isEmpty) {
+      return;
+    }
+
+    try {
+      switch (_currentIndex) {
+        case 0:
+          await context.read<CatalogoProvider>().cargarProductos(botId: botId);
+          break;
+        case 1:
+          await context.read<OrderProvider>().cargarOrdenes(botId: botId);
+          break;
+        case 2:
+          await context.read<ClientesProvider>().cargarClientes(botId: botId);
+          break;
+        case 3:
+          await context.read<QuotationProvider>().cargarCotizaciones(
+            botId: botId,
+          );
+          break;
+        case 4:
+          await Future.wait([
+            context.read<ConversacionesProvider>().listarConversaciones(
+              botId: botId,
+            ),
+            context.read<ClientesProvider>().cargarClientes(botId: botId),
+          ]);
+          break;
+        case 5:
+          await context.read<BotCampaignProvider>().cargarCampanas(botId);
+          break;
+      }
+    } catch (error) {
+      debugPrint('[BotDashboardPage] Error refrescando vista: $error');
+    }
   }
 }
 
@@ -505,10 +609,7 @@ class _SinBotSeleccionado extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('FullTech Bot'),
-        centerTitle: false,
-      ),
+      appBar: AppBar(title: const Text('FullTech Bot'), centerTitle: false),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -531,10 +632,7 @@ class _SinBotSeleccionado extends StatelessWidget {
               const SizedBox(height: 20),
               const Text(
                 'Selecciona un bot',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                ),
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 8),
               Text(
@@ -552,7 +650,10 @@ class _SinBotSeleccionado extends StatelessWidget {
                 icon: const Icon(Icons.touch_app_rounded, size: 20),
                 label: const Text('Seleccionar bot'),
                 style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 14,
+                  ),
                 ),
               ),
             ],
@@ -570,9 +671,7 @@ class _SinBotSeleccionado extends StatelessWidget {
 
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => const BotSelectorPage(),
-      ),
+      MaterialPageRoute(builder: (_) => const BotSelectorPage()),
     );
   }
 }

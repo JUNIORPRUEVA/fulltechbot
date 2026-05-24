@@ -1,4 +1,5 @@
 const prisma = require('../lib/prisma');
+const { claimUnassignedRecords } = require('./botScope.service');
 
 function normalizarTelefono(telefono) {
   if (!telefono) return '';
@@ -55,6 +56,8 @@ function limpiarDataCliente(data = {}) {
 async function listarClientes(botId = null) {
   console.log('[BOT CLIENT SERVICE] listarClientes botId:', botId);
 
+  await claimUnassignedRecords(prisma.botClient, botId);
+
   const where = {};
 
   if (botId) {
@@ -79,6 +82,8 @@ async function listarClientes(botId = null) {
 async function obtenerClientePorTelefono(telefono, botId = null) {
   const variantes = generarVariantesTelefono(telefono);
 
+  await claimUnassignedRecords(prisma.botClient, botId);
+
   console.log('[BOT CLIENT SERVICE] obtenerClientePorTelefono:', {
     telefono,
     variantes,
@@ -100,6 +105,8 @@ async function obtenerClientePorTelefono(telefono, botId = null) {
 
 async function obtenerClientePorChatId(chatid, botId = null) {
   if (!chatid) return null;
+
+  await claimUnassignedRecords(prisma.botClient, botId);
 
   return prisma.botClient.findFirst({
     where: {

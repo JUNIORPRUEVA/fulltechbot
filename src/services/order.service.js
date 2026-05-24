@@ -1,4 +1,5 @@
 const prisma = require('../lib/prisma');
+const { shouldAutoAssignSingleBot } = require('./botScope.service');
 
 let botOrdersColumnsPromise;
 
@@ -86,6 +87,19 @@ function buildListQuery({ telefono, estado, botId }, columns) {
 
 async function listarOrdenes(filtros = {}) {
   const columns = await getBotOrdersColumns();
+  const { botId } = filtros;
+
+  if (botId && columns.has('bot_id') && (await shouldAutoAssignSingleBot(botId))) {
+    await prisma.$executeRawUnsafe(
+      `
+      UPDATE bot_orders
+      SET bot_id = $1
+      WHERE bot_id IS NULL
+      `,
+      botId
+    );
+  }
+
   const { sql, values } = buildListQuery(filtros, columns);
   const rows = await prisma.$queryRawUnsafe(sql, ...values);
   return rows.map(normalizeOrderRow);

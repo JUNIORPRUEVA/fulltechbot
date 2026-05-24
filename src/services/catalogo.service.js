@@ -1,6 +1,9 @@
 const prisma = require('../lib/prisma');
+const { claimUnassignedRecords } = require('./botScope.service');
 
 async function listarCatalogo(botId = null) {
+  await claimUnassignedRecords(prisma.catalogo, botId);
+
   const where = {};
   if (botId) where.botId = botId;
   return prisma.catalogo.findMany({
@@ -12,6 +15,8 @@ async function listarCatalogo(botId = null) {
 }
 
 async function listarCatalogoActivo(botId = null) {
+  await claimUnassignedRecords(prisma.catalogo, botId);
+
   const where = {
     estado: 'activo',
   };

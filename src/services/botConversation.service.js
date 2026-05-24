@@ -1,6 +1,9 @@
 const prisma = require('../lib/prisma');
+const { claimUnassignedRecords } = require('./botScope.service');
 
 async function listarConversaciones(botId = null) {
+  await claimUnassignedRecords(prisma.botConversation, botId);
+
   const where = {};
   if (botId) where.botId = botId;
   return prisma.botConversation.findMany({
@@ -10,6 +13,8 @@ async function listarConversaciones(botId = null) {
 }
 
 async function obtenerPorSessionId(sessionId, botId = null) {
+  await claimUnassignedRecords(prisma.botConversation, botId);
+
   return prisma.botConversation.findMany({
     where: {
       session_id: sessionId,

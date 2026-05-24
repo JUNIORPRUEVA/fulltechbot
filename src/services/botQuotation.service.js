@@ -1,6 +1,9 @@
 const prisma = require('../lib/prisma');
+const { claimUnassignedRecords } = require('./botScope.service');
 
 async function listarCotizaciones(botId) {
+  await claimUnassignedRecords(prisma.botQuotation, botId);
+
   return prisma.botQuotation.findMany({
     where: {
       botId,
@@ -10,6 +13,8 @@ async function listarCotizaciones(botId) {
 }
 
 async function obtenerCotizacionPorId(id, botId) {
+  await claimUnassignedRecords(prisma.botQuotation, botId);
+
   return prisma.botQuotation.findFirst({
     where: { id, botId },
   });
