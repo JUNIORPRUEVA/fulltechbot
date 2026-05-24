@@ -222,6 +222,23 @@ function generarVariantesTelefono(telefono) {
   return Array.from(variantes).filter(Boolean);
 }
 
+function generarVariantesSessionId(telefono, chatid = null) {
+  const variantesTelefono = generarVariantesTelefono(telefono);
+  const sessionIds = new Set();
+
+  for (const variante of variantesTelefono) {
+    sessionIds.add(variante);
+    sessionIds.add(`${variante}@s.whatsapp.net`);
+    sessionIds.add(`${variante}@c.us`);
+  }
+
+  if (chatid) {
+    sessionIds.add(String(chatid));
+  }
+
+  return Array.from(sessionIds).filter(Boolean);
+}
+
 function limpiarDataCliente(data = {}) {
   const dataLimpia = { ...data };
 
@@ -500,19 +517,10 @@ async function eliminarCliente(telefono, botId = null) {
 
   const telefonoReal = existente.telefono;
   const variantesTelefono = generarVariantesTelefono(telefonoReal);
-
-  const sessionIds = new Set();
-  sessionIds.add(telefonoReal);
-
-  for (const variante of variantesTelefono) {
-    sessionIds.add(variante);
-  }
-
-  if (existente.chatid && existente.chatid !== telefonoReal) {
-    sessionIds.add(existente.chatid);
-  }
-
-  const sessionIdsArray = Array.from(sessionIds).filter(Boolean);
+  const sessionIdsArray = generarVariantesSessionId(
+    telefonoReal,
+    existente.chatid
+  );
 
   console.log('[BOT CLIENT SERVICE] eliminarCliente:', {
     telefonoSolicitado: telefono,
@@ -540,8 +548,12 @@ async function eliminarCliente(telefono, botId = null) {
     `
     DELETE FROM bot_conversations
     WHERE session_id = ANY($1::text[])
+       OR ${variantesTelefono
+         .map((_, index) => `session_id LIKE $${index + 2}`)
+         .join('\n       OR ')}
     `,
-    sessionIdsArray
+    sessionIdsArray,
+    ...variantesTelefono.map((variante) => `${variante}%`)
   );
 
   await ejecutarDeleteSeguro(
