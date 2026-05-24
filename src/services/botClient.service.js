@@ -33,16 +33,17 @@ function generarVariantesTelefono(telefono) {
 function limpiarDataCliente(data = {}) {
   const dataLimpia = { ...data };
 
-  // Campos que no deben actualizarse directamente
+  // Campos que no deben actualizarse directamente.
   delete dataLimpia.id;
   delete dataLimpia.telefono;
   delete dataLimpia.botId;
+  delete dataLimpia.bot_id;
   delete dataLimpia.createdAt;
   delete dataLimpia.updatedAt;
   delete dataLimpia.creado_en;
   delete dataLimpia.actualizado_en;
 
-  // Campos que tu modelo actual NO tiene y rompen Prisma
+  // Campos que NO existen en tu modelo actual de BotClient.
   delete dataLimpia.is_deleted;
   delete dataLimpia.deleted_at;
   delete dataLimpia.deletedAt;
@@ -98,6 +99,8 @@ async function obtenerClientePorTelefono(telefono, botId = null) {
 }
 
 async function obtenerClientePorChatId(chatid, botId = null) {
+  if (!chatid) return null;
+
   return prisma.botClient.findFirst({
     where: {
       chatid,
@@ -298,8 +301,11 @@ async function ejecutarDeleteSeguro(tx, sql, ...params) {
 }
 
 /**
- * Elimina un cliente y datos relacionados.
- * Esta versión NO usa is_deleted ni deleted_at porque tu modelo actual no los tiene.
+ * Elimina un cliente y sus datos relacionados.
+ *
+ * IMPORTANTE:
+ * Esta versión usa DELETE físico porque tu modelo actual de BotClient
+ * NO tiene deleted_at, is_deleted ni sync_status.
  */
 async function eliminarCliente(telefono, botId = null) {
   const existente = await obtenerClientePorTelefono(telefono, botId);
@@ -333,7 +339,19 @@ async function eliminarCliente(telefono, botId = null) {
   });
 
   return prisma.$transaction(async (tx) => {
-    // Conversaciones del bot
+    // 1. Contextos de campañas relacionados.
+    await ejecutarDeleteSeguro(
+      tx,
+      `
+      DELETE FROM conversation_campaign_context
+      WHERE customer_id = ANY($1::text[])
+         OR conversation_id = ANY($2::text[])
+      `,
+      variantesTelefono,
+      sessionIdsArray
+    );
+
+    // 2. Conversaciones del bot.
     await ejecutarDeleteSeguro(
       tx,
       `
@@ -343,7 +361,7 @@ async function eliminarCliente(telefono, botId = null) {
       sessionIdsArray
     );
 
-    // Cotizaciones del bot
+    // 3. Cotizaciones del bot.
     await ejecutarDeleteSeguro(
       tx,
       `
@@ -353,7 +371,7 @@ async function eliminarCliente(telefono, botId = null) {
       variantesTelefono
     );
 
-    // Órdenes del bot
+    // 4. Órdenes del bot.
     await ejecutarDeleteSeguro(
       tx,
       `
@@ -363,73 +381,7 @@ async function eliminarCliente(telefono, botId = null) {
       variantesTelefono
     );
 
-    // Cotizaciones globales
-    await ejecutarDeleteSeguro(
-      tx,
-      `
-      DELETE FROM quotations
-      WHERE telefono_cliente = ANY($1::text[])
-      `,
-      variantesTelefono
-    );
-
-    // Órdenes globales
-    await ejecutarDeleteSeguro(
-      tx,
-      `
-      DELETE FROM orders
-      WHERE telefono_cliente = ANY($1::text[])
-      `,
-      variantesTelefono
-    );
-
-    // Memorias
-    await ejecutarDeleteSeguro(
-      tx,
-      `
-      DELETE FROM bot_memories
-      WHERE telefono_cliente = ANY($1::text[])
-         OR session_id = ANY($2::text[])
-      `,
-      variantesTelefono,
-      sessionIdsArray
-    );
-
-    // Historial
-    await ejecutarDeleteSeguro(
-      tx,
-      `
-      DELETE FROM bot_history
-      WHERE telefono_cliente = ANY($1::text[])
-         OR session_id = ANY($2::text[])
-      `,
-      variantesTelefono,
-      sessionIdsArray
-    );
-
-    // Multimedia
-    await ejecutarDeleteSeguro(
-      tx,
-      `
-      DELETE FROM bot_media
-      WHERE telefono_cliente = ANY($1::text[])
-         OR session_id = ANY($2::text[])
-      `,
-      variantesTelefono,
-      sessionIdsArray
-    );
-
-    // Auditoría
-    await ejecutarDeleteSeguro(
-      tx,
-      `
-      DELETE FROM audit_logs
-      WHERE referencia_id = ANY($1::text[])
-      `,
-      sessionIdsArray
-    );
-
-    // Cliente principal
+    // 5. Cliente principal.
     const clienteEliminado = await tx.botClient.delete({
       where: {
         telefono: telefonoReal,
