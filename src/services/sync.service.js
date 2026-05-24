@@ -30,13 +30,15 @@ const SYNC_STATUS = {
  * Obtiene todos los registros activos (no eliminados) de una tabla
  */
 async function getActiveRecords(model, where = {}) {
+  // Usar created_at como fallback si actualizado_en no existe
+  const orderField = model.name === 'BotConversation' ? 'created_at' : 'actualizado_en';
   return model.findMany({
     where: {
       ...where,
       deleted_at: null,
       is_deleted: false,
     },
-    orderBy: { actualizado_en: 'desc' },
+    orderBy: { [orderField]: 'desc' },
   });
 }
 
@@ -45,17 +47,19 @@ async function getActiveRecords(model, where = {}) {
  */
 async function getAllRecordsForSync(model, where = {}, since = null) {
   const syncWhere = { ...where };
+  const isConversation = model.name === 'BotConversation';
+  const timeField = isConversation ? 'created_at' : 'actualizado_en';
   
   if (since) {
     syncWhere.OR = [
-      { actualizado_en: { gte: since } },
+      { [timeField]: { gte: since } },
       { deleted_at: { gte: since } },
     ];
   }
   
   return model.findMany({
     where: syncWhere,
-    orderBy: { actualizado_en: 'desc' },
+    orderBy: { [timeField]: 'desc' },
   });
 }
 
@@ -270,6 +274,9 @@ async function processSyncBatch(model, idField, changes, botId = null) {
  * Obtiene cambios pendientes desde una fecha específica
  */
 async function getPendingChanges(model, where = {}, since = null) {
+  const isConversation = model.name === 'BotConversation';
+  const timeField = isConversation ? 'created_at' : 'actualizado_en';
+  
   const pendingWhere = {
     ...where,
     sync_status: {
@@ -278,12 +285,12 @@ async function getPendingChanges(model, where = {}, since = null) {
   };
   
   if (since) {
-    pendingWhere.actualizado_en = { gte: since };
+    pendingWhere[timeField] = { gte: since };
   }
   
   return model.findMany({
     where: pendingWhere,
-    orderBy: { actualizado_en: 'asc' },
+    orderBy: { [timeField]: 'asc' },
   });
 }
 
