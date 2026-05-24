@@ -47,10 +47,6 @@ function generarVariantesTelefono(telefono) {
 
 function filtroNoEliminado() {
   return {
-    OR: [
-      { is_deleted: false },
-      { is_deleted: null },
-    ],
     deleted_at: null,
   };
 }
