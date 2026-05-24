@@ -129,6 +129,69 @@ async function queryClients(whereSql = '', params = [], orderSql = '') {
   return rows.map(normalizeClientRow);
 }
 
+async function updateClientByTelefono(telefono, data = {}) {
+  const columns = await getBotClientsColumns();
+  const assignments = [];
+  const values = [];
+
+  for (const [column, value] of Object.entries(data)) {
+    if (!columns.has(column)) continue;
+    values.push(value);
+    assignments.push(`${column} = $${values.length}`);
+  }
+
+  if (!assignments.length) {
+    const rows = await queryClients(
+      'WHERE telefono = $1',
+      [telefono],
+      'LIMIT 1'
+    );
+    return rows[0] || null;
+  }
+
+  values.push(telefono);
+
+  await prisma.$executeRawUnsafe(
+    `
+    UPDATE bot_clients
+    SET ${assignments.join(', ')}
+    WHERE telefono = $${values.length}
+    `,
+    ...values
+  );
+
+  const rows = await queryClients(
+    'WHERE telefono = $1',
+    [telefono],
+    'LIMIT 1'
+  );
+  return rows[0] || null;
+}
+
+async function createClient(data = {}) {
+  const columns = await getBotClientsColumns();
+  const insertData = Object.entries(data).filter(([column]) => columns.has(column));
+
+  const columnNames = insertData.map(([column]) => column);
+  const values = insertData.map(([, value]) => value);
+  const placeholders = values.map((_, index) => `$${index + 1}`);
+
+  await prisma.$executeRawUnsafe(
+    `
+    INSERT INTO bot_clients (${columnNames.join(', ')})
+    VALUES (${placeholders.join(', ')})
+    `,
+    ...values
+  );
+
+  const rows = await queryClients(
+    'WHERE telefono = $1',
+    [data.telefono],
+    'LIMIT 1'
+  );
+  return rows[0] || null;
+}
+
 function normalizarTelefono(telefono) {
   if (!telefono) return '';
   return String(telefono).replace(/[^\d]/g, '');
@@ -309,44 +372,40 @@ async function buscarOCrearCliente(data) {
       };
     }
 
-    return prisma.botClient.update({
-      where: {
-        telefono: existente.telefono,
-      },
-      data: updateData,
+    return updateClientByTelefono(existente.telefono, {
+      ...updateData,
+      total_mensajes: (existente.total_mensajes ?? 0) + 1,
     });
   }
 
-  return prisma.botClient.create({
-    data: {
-      telefono,
-      chatid: data.chatid ?? null,
-      nombre: data.nombre ?? null,
-      usuario_whatsapp: data.usuario_whatsapp ?? null,
-      direccion: data.direccion ?? null,
-      ciudad: data.ciudad ?? null,
-      sector: data.sector ?? null,
-      referencia_direccion: data.referencia_direccion ?? null,
-      interes_principal: data.interes_principal ?? null,
-      producto_servicio_interes: data.producto_servicio_interes ?? null,
-      categoria_interes: data.categoria_interes ?? null,
-      presupuesto_estimado: data.presupuesto_estimado ?? null,
-      estado_cliente: data.estado_cliente ?? 'prospecto',
-      etapa: data.etapa ?? 'inicio',
-      total_mensajes: data.total_mensajes ?? 1,
-      ultima_interaccion_at: new Date(),
-      requiere_seguimiento: data.requiere_seguimiento ?? true,
-      bot_pausado: data.bot_pausado ?? false,
-      humano_tomo_control: data.humano_tomo_control ?? false,
-      metadata: data.metadata ?? {},
-      source_bot_id: data.source_bot_id ?? null,
-      ultima_instancia_whatsapp: data.ultima_instancia_whatsapp ?? null,
-      origen: data.origen ?? null,
-      preferencia_respuesta: data.preferencia_respuesta ?? 'auto',
-      botId: botId || null,
-      creado_en: new Date(),
-      actualizado_en: new Date(),
-    },
+  return createClient({
+    telefono,
+    chatid: data.chatid ?? null,
+    nombre: data.nombre ?? null,
+    usuario_whatsapp: data.usuario_whatsapp ?? null,
+    direccion: data.direccion ?? null,
+    ciudad: data.ciudad ?? null,
+    sector: data.sector ?? null,
+    referencia_direccion: data.referencia_direccion ?? null,
+    interes_principal: data.interes_principal ?? null,
+    producto_servicio_interes: data.producto_servicio_interes ?? null,
+    categoria_interes: data.categoria_interes ?? null,
+    presupuesto_estimado: data.presupuesto_estimado ?? null,
+    estado_cliente: data.estado_cliente ?? 'prospecto',
+    etapa: data.etapa ?? 'inicio',
+    total_mensajes: data.total_mensajes ?? 1,
+    ultima_interaccion_at: new Date(),
+    requiere_seguimiento: data.requiere_seguimiento ?? true,
+    bot_pausado: data.bot_pausado ?? false,
+    humano_tomo_control: data.humano_tomo_control ?? false,
+    metadata: data.metadata ?? {},
+    source_bot_id: data.source_bot_id ?? null,
+    ultima_instancia_whatsapp: data.ultima_instancia_whatsapp ?? null,
+    origen: data.origen ?? null,
+    preferencia_respuesta: data.preferencia_respuesta ?? 'auto',
+    bot_id: botId || null,
+    creado_en: new Date(),
+    actualizado_en: new Date(),
   });
 }
 
@@ -359,14 +418,9 @@ async function actualizarCliente(telefono, data, botId = null) {
 
   const updateData = limpiarDataCliente(data);
 
-  return prisma.botClient.update({
-    where: {
-      telefono: existente.telefono,
-    },
-    data: {
-      ...updateData,
-      actualizado_en: new Date(),
-    },
+  return updateClientByTelefono(existente.telefono, {
+    ...updateData,
+    actualizado_en: new Date(),
   });
 }
 
@@ -379,29 +433,20 @@ async function asignarBotId(telefono, botId) {
     botId,
   });
 
-  const existente = await prisma.botClient.findFirst({
-    where: {
-      telefono: {
-        in: variantes,
-      },
-    },
-    orderBy: {
-      actualizado_en: 'desc',
-    },
-  });
+  const rows = await queryClients(
+    'WHERE telefono = ANY($1::text[])',
+    [variantes],
+    'ORDER BY actualizado_en DESC NULLS LAST LIMIT 1'
+  );
+  const existente = rows[0];
 
   if (!existente) {
     return null;
   }
 
-  return prisma.botClient.update({
-    where: {
-      telefono: existente.telefono,
-    },
-    data: {
-      botId,
-      actualizado_en: new Date(),
-    },
+  return updateClientByTelefono(existente.telefono, {
+    bot_id: botId,
+    actualizado_en: new Date(),
   });
 }
 
@@ -412,14 +457,9 @@ async function actualizarEstado(telefono, estado, botId = null) {
     return null;
   }
 
-  return prisma.botClient.update({
-    where: {
-      telefono: existente.telefono,
-    },
-    data: {
-      estado_cliente: estado,
-      actualizado_en: new Date(),
-    },
+  return updateClientByTelefono(existente.telefono, {
+    estado_cliente: estado,
+    actualizado_en: new Date(),
   });
 }
 
@@ -430,14 +470,9 @@ async function pausarBot(telefono, pausado, botId = null) {
     return null;
   }
 
-  return prisma.botClient.update({
-    where: {
-      telefono: existente.telefono,
-    },
-    data: {
-      bot_pausado: Boolean(pausado),
-      actualizado_en: new Date(),
-    },
+  return updateClientByTelefono(existente.telefono, {
+    bot_pausado: Boolean(pausado),
+    actualizado_en: new Date(),
   });
 }
 
@@ -527,13 +562,15 @@ async function eliminarCliente(telefono, botId = null) {
 
   // Cliente principal.
   // Este sí debe fallar si no puede eliminarse, porque es el objetivo real.
-  const clienteEliminado = await prisma.botClient.delete({
-    where: {
-      telefono: telefonoReal,
-    },
-  });
+  await prisma.$executeRawUnsafe(
+    `
+    DELETE FROM bot_clients
+    WHERE telefono = $1
+    `,
+    telefonoReal
+  );
 
-  return clienteEliminado;
+  return existente;
 }
 
 module.exports = {
