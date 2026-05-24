@@ -1,5 +1,4 @@
 const prisma = require('../lib/prisma');
-const { claimUnassignedRecords } = require('./botScope.service');
 
 class BotCampaignService {
   normalizeText(text = '') {
@@ -21,8 +20,6 @@ class BotCampaignService {
   }
 
   async listar(botId, filtros = {}) {
-    await claimUnassignedRecords(prisma.botCampaign, botId, 'bot_id');
-
     const where = { 
       bot_id: botId,
     };
@@ -54,8 +51,6 @@ class BotCampaignService {
   }
 
   async obtenerActivas(botId) {
-    await claimUnassignedRecords(prisma.botCampaign, botId, 'bot_id');
-
     return prisma.botCampaign.findMany({
       where: {
         bot_id: botId,
