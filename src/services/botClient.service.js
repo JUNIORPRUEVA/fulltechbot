@@ -1,6 +1,134 @@
 const prisma = require('../lib/prisma');
 const { claimUnassignedRecords } = require('./botScope.service');
 
+let botClientsColumnsPromise;
+
+async function getBotClientsColumns() {
+  if (!botClientsColumnsPromise) {
+    botClientsColumnsPromise = prisma.$queryRawUnsafe(`
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'bot_clients'
+    `).then((rows) => new Set(rows.map((row) => row.column_name)));
+  }
+
+  return botClientsColumnsPromise;
+}
+
+function textSelect(columns, columnName) {
+  return columns.has(columnName)
+    ? `${columnName},`
+    : `NULL::text AS ${columnName},`;
+}
+
+function intSelect(columns, columnName, fallback = '0') {
+  return columns.has(columnName)
+    ? `${columnName},`
+    : `${fallback}::integer AS ${columnName},`;
+}
+
+function boolSelect(columns, columnName, fallback = 'false') {
+  return columns.has(columnName)
+    ? `${columnName},`
+    : `${fallback}::boolean AS ${columnName},`;
+}
+
+function timestamptzSelect(columns, columnName) {
+  return columns.has(columnName)
+    ? `${columnName},`
+    : `NULL::timestamptz AS ${columnName},`;
+}
+
+function floatSelect(columns, columnName) {
+  return columns.has(columnName)
+    ? `${columnName},`
+    : `NULL::double precision AS ${columnName},`;
+}
+
+function jsonSelect(columns, columnName) {
+  return columns.has(columnName)
+    ? `${columnName},`
+    : `'{}'::jsonb AS ${columnName},`;
+}
+
+function buildClientSelect(columns) {
+  return `
+    telefono,
+    ${textSelect(columns, 'chatid')}
+    ${textSelect(columns, 'nombre')}
+    ${textSelect(columns, 'usuario_whatsapp')}
+    ${textSelect(columns, 'direccion')}
+    ${textSelect(columns, 'ciudad')}
+    ${textSelect(columns, 'sector')}
+    ${textSelect(columns, 'referencia_direccion')}
+    ${textSelect(columns, 'interes_principal')}
+    ${textSelect(columns, 'producto_servicio_interes')}
+    ${textSelect(columns, 'categoria_interes')}
+    ${floatSelect(columns, 'presupuesto_estimado')}
+    ${timestamptzSelect(columns, 'fecha_interes')}
+    ${textSelect(columns, 'estado_cliente')}
+    ${textSelect(columns, 'etapa')}
+    ${timestamptzSelect(columns, 'fecha_reserva')}
+    ${textSelect(columns, 'motivo_reserva')}
+    ${textSelect(columns, 'ultimo_mensaje')}
+    ${timestamptzSelect(columns, 'ultima_interaccion_at')}
+    ${intSelect(columns, 'dias_sin_responder')}
+    ${intSelect(columns, 'total_mensajes', '1')}
+    ${textSelect(columns, 'resumen_conversacion')}
+    ${textSelect(columns, 'preferencias_cliente')}
+    ${textSelect(columns, 'datos_importantes')}
+    ${textSelect(columns, 'notas_internas')}
+    ${textSelect(columns, 'satisfaccion')}
+    ${textSelect(columns, 'comentario_satisfaccion')}
+    ${timestamptzSelect(columns, 'ultima_compra_at')}
+    ${textSelect(columns, 'productos_comprados')}
+    ${boolSelect(columns, 'requiere_seguimiento', 'true')}
+    ${timestamptzSelect(columns, 'proximo_seguimiento_at')}
+    ${textSelect(columns, 'motivo_seguimiento')}
+    ${intSelect(columns, 'cantidad_seguimientos')}
+    ${timestamptzSelect(columns, 'ultimo_seguimiento_at')}
+    ${boolSelect(columns, 'bot_pausado', 'false')}
+    ${boolSelect(columns, 'humano_tomo_control', 'false')}
+    ${jsonSelect(columns, 'metadata')}
+    ${textSelect(columns, 'source_bot_id')}
+    ${textSelect(columns, 'ultima_instancia_whatsapp')}
+    ${textSelect(columns, 'origen')}
+    ${textSelect(columns, 'preferencia_respuesta')}
+    ${timestamptzSelect(columns, 'creado_en')}
+    ${timestamptzSelect(columns, 'actualizado_en')}
+    ${textSelect(columns, 'bot_id')}
+    ${textSelect(columns, 'ultima_instancia_whatsapp')}
+    ${textSelect(columns, 'origen')}
+    ${textSelect(columns, 'preferencia_respuesta')}
+    ${textSelect(columns, 'source_bot_id')}
+    NULL::text AS id
+  `;
+}
+
+function normalizeClientRow(row) {
+  return {
+    ...row,
+    metadata:
+      row.metadata && typeof row.metadata === 'object' ? row.metadata : {},
+  };
+}
+
+async function queryClients(whereSql = '', params = [], orderSql = '') {
+  const columns = await getBotClientsColumns();
+  const rows = await prisma.$queryRawUnsafe(
+    `
+    SELECT
+      ${buildClientSelect(columns)}
+    FROM bot_clients
+    ${whereSql}
+    ${orderSql}
+    `,
+    ...params
+  );
+
+  return rows.map(normalizeClientRow);
+}
+
 function normalizarTelefono(telefono) {
   if (!telefono) return '';
   return String(telefono).replace(/[^\d]/g, '');
@@ -58,25 +186,19 @@ async function listarClientes(botId = null) {
 
   await claimUnassignedRecords(prisma.botClient, botId);
 
-  const where = {};
+  const params = [];
+  let whereSql = '';
 
   if (botId) {
-    where.botId = botId;
+    params.push(botId);
+    whereSql = `WHERE bot_id = $${params.length}`;
   }
 
-  const totalGeneral = await prisma.botClient.count();
-  const totalDelBot = await prisma.botClient.count({ where });
-
-  console.log('[BOT CLIENT SERVICE] Total clientes en DB:', totalGeneral);
-  console.log('[BOT CLIENT SERVICE] Total clientes del bot:', totalDelBot);
-
-  return prisma.botClient.findMany({
-    where,
-    orderBy: [
-      { ultima_interaccion_at: 'desc' },
-      { actualizado_en: 'desc' },
-    ],
-  });
+  return queryClients(
+    whereSql,
+    params,
+    'ORDER BY ultima_interaccion_at DESC NULLS LAST, actualizado_en DESC NULLS LAST'
+  );
 }
 
 async function obtenerClientePorTelefono(telefono, botId = null) {
@@ -90,17 +212,21 @@ async function obtenerClientePorTelefono(telefono, botId = null) {
     botId,
   });
 
-  return prisma.botClient.findFirst({
-    where: {
-      telefono: {
-        in: variantes,
-      },
-      ...(botId ? { botId } : {}),
-    },
-    orderBy: {
-      actualizado_en: 'desc',
-    },
-  });
+  const params = [variantes];
+  let whereSql = 'WHERE telefono = ANY($1::text[])';
+
+  if (botId) {
+    params.push(botId);
+    whereSql += ` AND bot_id = $${params.length}`;
+  }
+
+  const rows = await queryClients(
+    whereSql,
+    params,
+    'ORDER BY actualizado_en DESC NULLS LAST LIMIT 1'
+  );
+
+  return rows[0] || null;
 }
 
 async function obtenerClientePorChatId(chatid, botId = null) {
@@ -108,15 +234,21 @@ async function obtenerClientePorChatId(chatid, botId = null) {
 
   await claimUnassignedRecords(prisma.botClient, botId);
 
-  return prisma.botClient.findFirst({
-    where: {
-      chatid,
-      ...(botId ? { botId } : {}),
-    },
-    orderBy: {
-      actualizado_en: 'desc',
-    },
-  });
+  const params = [chatid];
+  let whereSql = 'WHERE chatid = $1';
+
+  if (botId) {
+    params.push(botId);
+    whereSql += ` AND bot_id = $${params.length}`;
+  }
+
+  const rows = await queryClients(
+    whereSql,
+    params,
+    'ORDER BY actualizado_en DESC NULLS LAST LIMIT 1'
+  );
+
+  return rows[0] || null;
 }
 
 async function buscarOCrearCliente(data) {
