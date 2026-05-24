@@ -14,25 +14,98 @@ async function getBotOrdersColumns() {
   return botOrdersColumnsPromise;
 }
 
+function normalizarTelefono(telefono) {
+  if (!telefono) return '';
+  return String(telefono).replace(/[^\d]/g, '');
+}
+
+function generarVariantesTelefono(telefono) {
+  const limpio = normalizarTelefono(telefono);
+
+  const variantes = new Set();
+
+  if (telefono) variantes.add(String(telefono));
+  if (limpio) variantes.add(limpio);
+
+  if (limpio.length === 10) {
+    variantes.add(`1${limpio}`);
+    variantes.add(`+1${limpio}`);
+  }
+
+  if (limpio.length === 11 && limpio.startsWith('1')) {
+    variantes.add(limpio.substring(1));
+    variantes.add(`+${limpio}`);
+  }
+
+  if (limpio.startsWith('1') && limpio.length > 10) {
+    variantes.add(limpio);
+    variantes.add(`+${limpio}`);
+  }
+
+  return Array.from(variantes).filter(Boolean);
+}
+
+function filtroNoEliminado() {
+  return {
+    OR: [
+      { is_deleted: false },
+      { is_deleted: null },
+    ],
+    deleted_at: null,
+  };
+}
+
 async function listarClientes(botId = null) {
-  const where = {};
-  if (botId) where.botId = botId;
+  console.log('[BOT CLIENT SERVICE] listarClientes botId:', botId);
+
+  const where = {
+    ...filtroNoEliminado(),
+  };
+
+  if (botId) {
+    where.botId = botId;
+  }
+
+  const totalGeneral = await prisma.botClient.count();
+
+  const totalDelBot = await prisma.botClient.count({
+    where,
+  });
+
+  console.log('[BOT CLIENT SERVICE] Total clientes en DB:', totalGeneral);
+  console.log('[BOT CLIENT SERVICE] Total clientes visibles:', totalDelBot);
 
   return prisma.botClient.findMany({
     where,
-    orderBy: { ultima_interaccion_at: 'desc' },
+    orderBy: [
+      { ultima_interaccion_at: 'desc' },
+      { actualizado_en: 'desc' },
+    ],
   });
 }
 
 async function obtenerClientePorTelefono(telefono, botId = null) {
-  if (botId) {
-    return prisma.botClient.findFirst({
-      where: { telefono, botId },
-    });
-  }
+  const variantes = generarVariantesTelefono(telefono);
 
-  return prisma.botClient.findUnique({
-    where: { telefono },
+  console.log('[BOT CLIENT SERVICE] obtenerClientePorTelefono:', {
+    telefono,
+    variantes,
+    botId,
+  });
+
+  const where = {
+    telefono: {
+      in: variantes,
+    },
+    ...filtroNoEliminado(),
+    ...(botId ? { botId } : {}),
+  };
+
+  return prisma.botClient.findFirst({
+    where,
+    orderBy: {
+      actualizado_en: 'desc',
+    },
   });
 }
 
@@ -40,7 +113,11 @@ async function obtenerClientePorChatId(chatid, botId = null) {
   return prisma.botClient.findFirst({
     where: {
       chatid,
+      ...filtroNoEliminado(),
       ...(botId ? { botId } : {}),
+    },
+    orderBy: {
+      actualizado_en: 'desc',
     },
   });
 }
@@ -52,14 +129,10 @@ async function buscarOCrearCliente(data) {
     throw new Error('El telefono es obligatorio');
   }
 
-  let existente = await prisma.botClient.findUnique({
-    where: { telefono },
-  });
+  let existente = await obtenerClientePorTelefono(telefono, botId);
 
   if (!existente && chatid) {
-    existente = await prisma.botClient.findFirst({
-      where: { chatid },
-    });
+    existente = await obtenerClientePorChatId(chatid, botId);
   }
 
   if (existente) {
@@ -72,7 +145,8 @@ async function buscarOCrearCliente(data) {
       sector: data.sector ?? existente.sector,
       referencia_direccion: data.referencia_direccion ?? existente.referencia_direccion,
       interes_principal: data.interes_principal ?? existente.interes_principal,
-      producto_servicio_interes: data.producto_servicio_interes ?? existente.producto_servicio_interes,
+      producto_servicio_interes:
+        data.producto_servicio_interes ?? existente.producto_servicio_interes,
       categoria_interes: data.categoria_interes ?? existente.categoria_interes,
       presupuesto_estimado: data.presupuesto_estimado ?? existente.presupuesto_estimado,
       ultimo_mensaje: data.ultimo_mensaje ?? existente.ultimo_mensaje,
@@ -80,16 +154,28 @@ async function buscarOCrearCliente(data) {
       ultima_interaccion_at: new Date(),
       dias_sin_responder: 0,
       botId: botId || existente.botId,
+      is_deleted: false,
+      deleted_at: null,
+      sync_status: 'pending_update',
       actualizado_en: new Date(),
     };
 
     if (data.metadata) {
-      const existingMetadata = typeof existente.metadata === 'object' ? existente.metadata : {};
-      updateData.metadata = { ...existingMetadata, ...data.metadata };
+      const existingMetadata =
+        typeof existente.metadata === 'object' && existente.metadata !== null
+          ? existente.metadata
+          : {};
+
+      updateData.metadata = {
+        ...existingMetadata,
+        ...data.metadata,
+      };
     }
 
     return prisma.botClient.update({
-      where: { telefono: existente.telefono },
+      where: {
+        telefono: existente.telefono,
+      },
       data: updateData,
     });
   }
@@ -117,6 +203,9 @@ async function buscarOCrearCliente(data) {
       humano_tomo_control: false,
       metadata: data.metadata ?? {},
       botId: botId || null,
+      is_deleted: false,
+      deleted_at: null,
+      sync_status: 'pending_create',
       creado_en: new Date(),
       actualizado_en: new Date(),
     },
@@ -130,62 +219,98 @@ async function actualizarCliente(telefono, data, botId = null) {
     return null;
   }
 
-  const { telefono: _, ...updateData } = data;
+  const { telefono: telefonoIgnorado, botId: botIdIgnorado, ...updateData } = data;
 
   return prisma.botClient.update({
-    where: { telefono },
+    where: {
+      telefono: existente.telefono,
+    },
     data: {
       ...updateData,
+      sync_status: 'pending_update',
       actualizado_en: new Date(),
     },
   });
 }
 
-async function actualizarEstado(telefono, estado) {
-  const existente = await obtenerClientePorTelefono(telefono);
+async function asignarBotId(telefono, botId) {
+  const variantes = generarVariantesTelefono(telefono);
+
+  console.log('[BOT CLIENT SERVICE] asignarBotId:', {
+    telefono,
+    variantes,
+    botId,
+  });
+
+  const existente = await prisma.botClient.findFirst({
+    where: {
+      telefono: {
+        in: variantes,
+      },
+      ...filtroNoEliminado(),
+    },
+    orderBy: {
+      actualizado_en: 'desc',
+    },
+  });
 
   if (!existente) {
     return null;
   }
 
   return prisma.botClient.update({
-    where: { telefono },
+    where: {
+      telefono: existente.telefono,
+    },
+    data: {
+      botId,
+      sync_status: 'pending_update',
+      actualizado_en: new Date(),
+    },
+  });
+}
+
+async function actualizarEstado(telefono, estado, botId = null) {
+  const existente = await obtenerClientePorTelefono(telefono, botId);
+
+  if (!existente) {
+    return null;
+  }
+
+  return prisma.botClient.update({
+    where: {
+      telefono: existente.telefono,
+    },
     data: {
       estado_cliente: estado,
+      sync_status: 'pending_update',
       actualizado_en: new Date(),
     },
   });
 }
 
-async function pausarBot(telefono, pausado) {
-  const existente = await obtenerClientePorTelefono(telefono);
+async function pausarBot(telefono, pausado, botId = null) {
+  const existente = await obtenerClientePorTelefono(telefono, botId);
 
   if (!existente) {
     return null;
   }
 
   return prisma.botClient.update({
-    where: { telefono },
+    where: {
+      telefono: existente.telefono,
+    },
     data: {
-      bot_pausado: pausado,
+      bot_pausado: Boolean(pausado),
+      sync_status: 'pending_update',
       actualizado_en: new Date(),
     },
   });
 }
 
 /**
- * Elimina un cliente y TODOS sus datos relacionados usando SOFT DELETE.
- * 
- * En lugar de borrar físicamente, marca todos los registros como eliminados
- * para que la eliminación se propague a otros dispositivos vía sync.
- * 
- * ORDEN DE ELIMINACIÓN (de dependencias a principal):
- * 1. Conversaciones (bot_conversations) por session_id
- * 2. Cotizaciones del bot (bot_quotations) por telefono_cliente
- * 3. Órdenes del bot (bot_orders) por telefono_cliente
- * 4. Cotizaciones globales (quotations) por telefono_cliente
- * 5. Órdenes globales (orders) por telefono_cliente
- * 6. Cliente (bot_clients)
+ * Elimina un cliente y todos sus datos relacionados usando SOFT DELETE.
+ * No borra físico. Marca como eliminado para que no vuelva a aparecer.
  */
 async function eliminarCliente(telefono, botId = null) {
   const existente = await obtenerClientePorTelefono(telefono, botId);
@@ -194,20 +319,40 @@ async function eliminarCliente(telefono, botId = null) {
     return null;
   }
 
-  // Determinar sessionIds a eliminar (chatid y/o telefono)
-  const sessionIds = [telefono];
-  if (existente.chatid && existente.chatid !== telefono) {
-    sessionIds.push(existente.chatid);
+  const telefonoReal = existente.telefono;
+  const variantesTelefono = generarVariantesTelefono(telefonoReal);
+
+  const sessionIds = new Set();
+
+  sessionIds.add(telefonoReal);
+
+  for (const variante of variantesTelefono) {
+    sessionIds.add(variante);
   }
 
+  if (existente.chatid && existente.chatid !== telefonoReal) {
+    sessionIds.add(existente.chatid);
+  }
+
+  const sessionIdsArray = Array.from(sessionIds).filter(Boolean);
   const now = new Date();
 
+  console.log('[BOT CLIENT SERVICE] eliminarCliente:', {
+    telefonoSolicitado: telefono,
+    telefonoReal,
+    variantesTelefono,
+    sessionIdsArray,
+    botId,
+  });
+
   return prisma.$transaction(async (tx) => {
-    // 1. Soft delete conversaciones del bot por session_id
-    if (sessionIds.length > 0) {
+    // 1. Conversaciones del bot
+    try {
       await tx.botConversation.updateMany({
         where: {
-          session_id: { in: sessionIds },
+          session_id: {
+            in: sessionIdsArray,
+          },
           ...(botId ? { botId } : {}),
         },
         data: {
@@ -216,105 +361,179 @@ async function eliminarCliente(telefono, botId = null) {
           sync_status: 'pending_delete',
         },
       });
+    } catch (e) {
+      console.log('[eliminarCliente] No se pudieron marcar conversaciones:', e.message);
     }
 
-    // 2. Soft delete cotizaciones del bot asociadas al cliente
-    await tx.botQuotation.updateMany({
-      where: {
-        telefono_cliente: telefono,
-        ...(botId ? { botId } : {}),
-      },
-      data: {
-        deleted_at: now,
-        is_deleted: true,
-        sync_status: 'pending_delete',
-        actualizado_en: now,
-      },
-    });
+    // 2. Cotizaciones del bot
+    try {
+      await tx.botQuotation.updateMany({
+        where: {
+          telefono_cliente: {
+            in: variantesTelefono,
+          },
+          ...(botId ? { botId } : {}),
+        },
+        data: {
+          deleted_at: now,
+          is_deleted: true,
+          sync_status: 'pending_delete',
+          actualizado_en: now,
+        },
+      });
+    } catch (e) {
+      console.log('[eliminarCliente] No se pudieron marcar cotizaciones del bot:', e.message);
+    }
 
-    // 3. Soft delete órdenes del bot asociadas al cliente
+    // 3. Órdenes del bot
     try {
       const botOrdersColumns = await getBotOrdersColumns();
       const canFilterByBot = botId && botOrdersColumns.has('bot_id');
 
       if (canFilterByBot) {
         await tx.$executeRawUnsafe(
-          `UPDATE bot_orders SET deleted_at = $1, is_deleted = true, sync_status = 'pending_delete' WHERE telefono_cliente = $2 AND bot_id = $3`,
-          now, telefono, botId
+          `
+          UPDATE bot_orders
+          SET deleted_at = $1,
+              is_deleted = true,
+              sync_status = 'pending_delete'
+          WHERE telefono_cliente = ANY($2::text[])
+            AND bot_id = $3
+          `,
+          now,
+          variantesTelefono,
+          botId
         );
       } else {
         await tx.$executeRawUnsafe(
-          `UPDATE bot_orders SET deleted_at = $1, is_deleted = true, sync_status = 'pending_delete' WHERE telefono_cliente = $2`,
-          now, telefono
+          `
+          UPDATE bot_orders
+          SET deleted_at = $1,
+              is_deleted = true,
+              sync_status = 'pending_delete'
+          WHERE telefono_cliente = ANY($2::text[])
+          `,
+          now,
+          variantesTelefono
         );
       }
     } catch (e) {
-      console.log('[eliminarCliente] No se pudieron marcar órdenes del bot, ignorando.', e.message);
+      console.log('[eliminarCliente] No se pudieron marcar órdenes del bot:', e.message);
     }
 
-    // 4. Soft delete cotizaciones globales si la tabla existe
+    // 4. Cotizaciones globales
     try {
       await tx.$executeRawUnsafe(
-        `UPDATE quotations SET deleted_at = $1, is_deleted = true, sync_status = 'pending_delete' WHERE telefono_cliente = $2`,
-        now, telefono
+        `
+        UPDATE quotations
+        SET deleted_at = $1,
+            is_deleted = true,
+            sync_status = 'pending_delete'
+        WHERE telefono_cliente = ANY($2::text[])
+        `,
+        now,
+        variantesTelefono
       );
     } catch (e) {
-      console.log('[eliminarCliente] Tabla quotations no encontrada, ignorando.');
+      console.log('[eliminarCliente] Tabla quotations no encontrada o sin columnas esperadas.');
     }
 
-    // 5. Soft delete órdenes globales si la tabla existe
+    // 5. Órdenes globales
     try {
       await tx.$executeRawUnsafe(
-        `UPDATE orders SET deleted_at = $1, is_deleted = true, sync_status = 'pending_delete' WHERE telefono_cliente = $2`,
-        now, telefono
+        `
+        UPDATE orders
+        SET deleted_at = $1,
+            is_deleted = true,
+            sync_status = 'pending_delete'
+        WHERE telefono_cliente = ANY($2::text[])
+        `,
+        now,
+        variantesTelefono
       );
     } catch (e) {
-      console.log('[eliminarCliente] Tabla orders no encontrada, ignorando.');
+      console.log('[eliminarCliente] Tabla orders no encontrada o sin columnas esperadas.');
     }
 
-    // 6. Soft delete memorias del bot si la tabla existe
+    // 6. Memorias
     try {
       await tx.$executeRawUnsafe(
-        `UPDATE bot_memories SET deleted_at = $1, is_deleted = true, sync_status = 'pending_delete' WHERE telefono_cliente = $2 OR session_id = ANY($3)`,
-        now, telefono, sessionIds
+        `
+        UPDATE bot_memories
+        SET deleted_at = $1,
+            is_deleted = true,
+            sync_status = 'pending_delete'
+        WHERE telefono_cliente = ANY($2::text[])
+           OR session_id = ANY($3::text[])
+        `,
+        now,
+        variantesTelefono,
+        sessionIdsArray
       );
     } catch (e) {
-      console.log('[eliminarCliente] Tabla bot_memories no encontrada, ignorando.');
+      console.log('[eliminarCliente] Tabla bot_memories no encontrada o sin columnas esperadas.');
     }
 
-    // 7. Soft delete historial del bot si la tabla existe
+    // 7. Historial
     try {
       await tx.$executeRawUnsafe(
-        `UPDATE bot_history SET deleted_at = $1, is_deleted = true, sync_status = 'pending_delete' WHERE telefono_cliente = $2 OR session_id = ANY($3)`,
-        now, telefono, sessionIds
+        `
+        UPDATE bot_history
+        SET deleted_at = $1,
+            is_deleted = true,
+            sync_status = 'pending_delete'
+        WHERE telefono_cliente = ANY($2::text[])
+           OR session_id = ANY($3::text[])
+        `,
+        now,
+        variantesTelefono,
+        sessionIdsArray
       );
     } catch (e) {
-      console.log('[eliminarCliente] Tabla bot_history no encontrada, ignorando.');
+      console.log('[eliminarCliente] Tabla bot_history no encontrada o sin columnas esperadas.');
     }
 
-    // 8. Soft delete archivos multimedia relacionados si la tabla existe
+    // 8. Multimedia
     try {
       await tx.$executeRawUnsafe(
-        `UPDATE bot_media SET deleted_at = $1, is_deleted = true, sync_status = 'pending_delete' WHERE telefono_cliente = $2 OR session_id = ANY($3)`,
-        now, telefono, sessionIds
+        `
+        UPDATE bot_media
+        SET deleted_at = $1,
+            is_deleted = true,
+            sync_status = 'pending_delete'
+        WHERE telefono_cliente = ANY($2::text[])
+           OR session_id = ANY($3::text[])
+        `,
+        now,
+        variantesTelefono,
+        sessionIdsArray
       );
     } catch (e) {
-      console.log('[eliminarCliente] Tabla bot_media no encontrada, ignorando.');
+      console.log('[eliminarCliente] Tabla bot_media no encontrada o sin columnas esperadas.');
     }
 
-    // 9. Soft delete logs de auditoría si la tabla existe
+    // 9. Auditoría
     try {
       await tx.$executeRawUnsafe(
-        `UPDATE audit_logs SET deleted_at = $1, is_deleted = true, sync_status = 'pending_delete' WHERE referencia_id = $2 OR referencia_id = ANY($3)`,
-        now, telefono, sessionIds
+        `
+        UPDATE audit_logs
+        SET deleted_at = $1,
+            is_deleted = true,
+            sync_status = 'pending_delete'
+        WHERE referencia_id = ANY($2::text[])
+        `,
+        now,
+        sessionIdsArray
       );
     } catch (e) {
-      console.log('[eliminarCliente] Tabla audit_logs no encontrada, ignorando.');
+      console.log('[eliminarCliente] Tabla audit_logs no encontrada o sin columnas esperadas.');
     }
 
-    // 10. Finalmente soft delete del cliente
+    // 10. Cliente principal
     const clienteEliminado = await tx.botClient.update({
-      where: { telefono },
+      where: {
+        telefono: telefonoReal,
+      },
       data: {
         deleted_at: now,
         is_deleted: true,
@@ -333,6 +552,7 @@ module.exports = {
   obtenerClientePorChatId,
   buscarOCrearCliente,
   actualizarCliente,
+  asignarBotId,
   actualizarEstado,
   pausarBot,
   eliminarCliente,

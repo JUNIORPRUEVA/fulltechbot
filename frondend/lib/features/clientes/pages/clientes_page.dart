@@ -17,59 +17,110 @@ class _ClientesPageState extends State<ClientesPage> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
 
-  /// Rol del usuario actual. En producción esto debe venir del sistema de autenticación.
-  /// Por ahora se usa 'admin' para pruebas. Cambiar a 'user' para probar permisos.
+  /// Rol del usuario actual.
+  /// En producción debe venir del login/token.
   String get _userRole => 'admin';
 
-  /// Determina si el usuario puede eliminar clientes.
   bool get _canDelete => ['admin', 'owner', 'superadmin'].contains(_userRole);
 
   @override
   void initState() {
     super.initState();
+
     Future.microtask(() {
-      final bot = context.read<BotProvider>().botSeleccionado;
-      context.read<ClientesProvider>().cargarClientes(botId: bot?.id);
+      _cargarClientesDesdeCloud();
     });
   }
 
   @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
+void dispose() {
+  _searchController.dispose();
+  super.dispose();
+}
+
+Future<void> _cargarClientesDesdeCloud() async {
+  if (!mounted) return;
+
+  final botProvider = context.read<BotProvider>();
+  final clientesProvider = context.read<ClientesProvider>();
+  final messenger = ScaffoldMessenger.of(context);
+
+  final bot = botProvider.botSeleccionado;
+  final botId = bot?.id;
+
+  debugPrint('[ClientesPage] Bot seleccionado: ${bot?.nombre ?? 'SIN BOT'}');
+  debugPrint('[ClientesPage] botId usado para cargar clientes: $botId');
+
+  if (botId == null || botId.isEmpty) {
+    debugPrint(
+      '[ClientesPage] No hay un bot seleccionado. No se pueden cargar clientes.',
+    );
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: const Text(
+          'No hay un bot seleccionado. Selecciona un bot para cargar los clientes.',
+        ),
+        backgroundColor: Colors.red.shade600,
+        duration: const Duration(seconds: 4),
+      ),
+    );
+
+    return;
   }
+
+  await clientesProvider.cargarClientes(botId: botId);
+}
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ClientesProvider>();
+    final bot = context.watch<BotProvider>().botSeleccionado;
     final clientesFiltrados = _filtrarClientes(provider.clientes);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Clientes',
-          style: TextStyle(fontWeight: FontWeight.w700),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Clientes',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            if (bot != null)
+              Text(
+                bot.nombre ?? 'Bot seleccionado',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+          ],
         ),
         actions: [
           IconButton(
-            tooltip: 'Actualizar',
-            onPressed: provider.isLoading
-                ? null
-                : () {
-                    final bot = context.read<BotProvider>().botSeleccionado;
-                    context.read<ClientesProvider>().cargarClientes(botId: bot?.id);
-                  },
-            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'Actualizar desde la nube',
+            onPressed: provider.isLoading ? null : _cargarClientesDesdeCloud,
+            icon: provider.isLoading
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.refresh_rounded),
           ),
         ],
       ),
       body: Column(
         children: [
-          // Barra de búsqueda
           Container(
             margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              color: Theme.of(context)
+                  .colorScheme
+                  .surfaceContainerHighest
+                  .withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(16),
             ),
             child: TextField(
@@ -93,7 +144,6 @@ class _ClientesPageState extends State<ClientesPage> {
             ),
           ),
 
-          // Error banner
           if (provider.error != null)
             Container(
               width: double.infinity,
@@ -106,27 +156,38 @@ class _ClientesPageState extends State<ClientesPage> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.error_outline_rounded, color: Colors.red.shade400, size: 20),
+                  Icon(
+                    Icons.error_outline_rounded,
+                    color: Colors.red.shade400,
+                    size: 20,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       provider.error!,
-                      style: TextStyle(color: Colors.red.shade700, fontSize: 13),
+                      style: TextStyle(
+                        color: Colors.red.shade700,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                   IconButton(
-                    onPressed: () => context.read<ClientesProvider>().limpiarError(),
-                    icon: Icon(Icons.close_rounded, size: 18, color: Colors.red.shade400),
+                    onPressed: () {
+                      context.read<ClientesProvider>().limpiarError();
+                    },
+                    icon: Icon(
+                      Icons.close_rounded,
+                      size: 18,
+                      color: Colors.red.shade400,
+                    ),
                   ),
                 ],
               ),
             ),
 
-          // Estadísticas rápidas
           if (provider.clientes.isNotEmpty && !provider.isLoading)
             _buildStatsRow(provider.clientes),
 
-          // Lista de clientes
           Expanded(
             child: provider.isLoading && provider.clientes.isEmpty
                 ? const Center(
@@ -135,22 +196,21 @@ class _ClientesPageState extends State<ClientesPage> {
                 : clientesFiltrados.isEmpty
                     ? _buildEmptyState(provider.clientes.isEmpty)
                     : RefreshIndicator(
-                        onRefresh: () {
-                          final bot = context.read<BotProvider>().botSeleccionado;
-                          return context.read<ClientesProvider>().cargarClientes(
-                                botId: bot?.id,
-                              );
-                        },
+                        onRefresh: _cargarClientesDesdeCloud,
                         child: ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
                           padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
                           itemCount: clientesFiltrados.length,
                           itemBuilder: (context, index) {
                             final cliente = clientesFiltrados[index];
+
                             return _ClienteCard(
                               cliente: cliente,
                               canDelete: _canDelete,
                               onTap: () => _abrirDetalle(context, cliente),
-                              onDelete: () => _confirmarEliminarCliente(context, cliente),
+                              onDelete: () {
+                                _confirmarEliminarCliente(context, cliente);
+                              },
                             );
                           },
                         ),
@@ -163,8 +223,10 @@ class _ClientesPageState extends State<ClientesPage> {
 
   Widget _buildStatsRow(List<ClienteModel> clientes) {
     final total = clientes.length;
-    final prospectos = clientes.where((c) => c.estadoCliente == 'prospecto').length;
-    final seguimiento = clientes.where((c) => c.estadoCliente == 'seguimiento').length;
+    final prospectos =
+        clientes.where((c) => c.estadoCliente == 'prospecto').length;
+    final seguimiento =
+        clientes.where((c) => c.estadoCliente == 'seguimiento').length;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -194,20 +256,36 @@ class _ClientesPageState extends State<ClientesPage> {
                 color: Colors.blue.shade50,
                 borderRadius: BorderRadius.circular(24),
               ),
-              child: Icon(Icons.people_outline_rounded, size: 40, color: Colors.blue.shade300),
+              child: Icon(
+                Icons.people_outline_rounded,
+                size: 40,
+                color: Colors.blue.shade300,
+              ),
             ),
             const SizedBox(height: 20),
             Text(
               sinClientes ? 'No hay clientes registrados' : 'Sin resultados',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               sinClientes
-                  ? 'Los clientes aparecerán aquí cuando interactúen con el bot.'
+                  ? 'Los clientes aparecerán aquí cuando se sincronicen desde el bot.'
                   : 'No se encontraron clientes con ese criterio de búsqueda.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            const SizedBox(height: 18),
+            OutlinedButton.icon(
+              onPressed: _cargarClientesDesdeCloud,
+              icon: const Icon(Icons.cloud_sync_rounded),
+              label: const Text('Actualizar desde la nube'),
             ),
           ],
         ),
@@ -216,11 +294,13 @@ class _ClientesPageState extends State<ClientesPage> {
   }
 
   List<ClienteModel> _filtrarClientes(List<ClienteModel> clientes) {
-    if (_searchQuery.isEmpty) return clientes;
-    final query = _searchQuery.toLowerCase();
+    if (_searchQuery.trim().isEmpty) return clientes;
+
+    final query = _searchQuery.toLowerCase().trim();
+
     return clientes.where((c) {
       return (c.nombre?.toLowerCase().contains(query) ?? false) ||
-          c.telefono.contains(query) ||
+          c.telefono.toLowerCase().contains(query) ||
           (c.interesPrincipal?.toLowerCase().contains(query) ?? false) ||
           (c.ciudad?.toLowerCase().contains(query) ?? false) ||
           c.estadoCliente.toLowerCase().contains(query);
@@ -236,8 +316,20 @@ class _ClientesPageState extends State<ClientesPage> {
     );
   }
 
-  /// Muestra un diálogo de confirmación antes de eliminar un cliente.
-  Future<void> _confirmarEliminarCliente(BuildContext context, ClienteModel cliente) async {
+  Future<void> _confirmarEliminarCliente(
+    BuildContext context,
+    ClienteModel cliente,
+  ) async {
+    if (!_canDelete) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('No tienes permiso para eliminar clientes.'),
+          backgroundColor: Colors.red.shade600,
+        ),
+      );
+      return;
+    }
+
     final confirmado = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -247,7 +339,7 @@ class _ClientesPageState extends State<ClientesPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Se eliminará permanentemente a:',
+              'Se eliminará este cliente de la nube:',
               style: TextStyle(color: Colors.grey.shade700),
             ),
             const SizedBox(height: 8),
@@ -260,12 +352,19 @@ class _ClientesPageState extends State<ClientesPage> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.person_off_rounded, color: Colors.red.shade400, size: 22),
+                  Icon(
+                    Icons.person_off_rounded,
+                    color: Colors.red.shade400,
+                    size: 22,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       cliente.nombre ?? cliente.telefono,
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
                     ),
                   ),
                 ],
@@ -282,12 +381,19 @@ class _ClientesPageState extends State<ClientesPage> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.warning_amber_rounded, color: Colors.orange.shade600, size: 20),
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.orange.shade600,
+                    size: 20,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Esta acción eliminará también sus conversaciones, cotizaciones, órdenes y no se podrá deshacer.',
-                      style: TextStyle(color: Colors.orange.shade800, fontSize: 13),
+                      'También se marcarán como eliminados sus datos relacionados para que no vuelvan a aparecer en la sincronización.',
+                      style: TextStyle(
+                        color: Colors.orange.shade800,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                 ],
@@ -303,7 +409,7 @@ class _ClientesPageState extends State<ClientesPage> {
           FilledButton.tonalIcon(
             onPressed: () => Navigator.pop(ctx, true),
             icon: const Icon(Icons.delete_forever_rounded, size: 18),
-            label: const Text('Eliminar permanentemente'),
+            label: const Text('Eliminar'),
             style: FilledButton.styleFrom(
               backgroundColor: Colors.red.shade600,
               foregroundColor: Colors.white,
@@ -318,13 +424,30 @@ class _ClientesPageState extends State<ClientesPage> {
     }
   }
 
-  /// Ejecuta la eliminación del cliente con feedback visual.
-  Future<void> _ejecutarEliminacion(BuildContext context, ClienteModel cliente) async {
+  Future<void> _ejecutarEliminacion(
+    BuildContext context,
+    ClienteModel cliente,
+  ) async {
     final provider = context.read<ClientesProvider>();
-    final botId = context.read<BotProvider>().botSeleccionado?.id ?? cliente.botId;
+    final botSeleccionado = context.read<BotProvider>().botSeleccionado;
+    final botId = botSeleccionado?.id ?? cliente.botId;
     final messenger = ScaffoldMessenger.of(context);
 
-    // Mostrar loading
+    debugPrint('[ClientesPage] Eliminando cliente: ${cliente.telefono}');
+    debugPrint('[ClientesPage] botId usado para eliminar: $botId');
+
+    if (botId == null || botId.isEmpty) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: const Text(
+            'No se pudo eliminar: no hay botId válido para este cliente.',
+          ),
+          backgroundColor: Colors.red.shade600,
+        ),
+      );
+      return;
+    }
+
     messenger.showSnackBar(
       SnackBar(
         content: Row(
@@ -332,10 +455,17 @@ class _ClientesPageState extends State<ClientesPage> {
             const SizedBox(
               width: 18,
               height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
             ),
             const SizedBox(width: 12),
-            Text('Eliminando ${cliente.nombre ?? cliente.telefono}...'),
+            Expanded(
+              child: Text(
+                'Eliminando ${cliente.nombre ?? cliente.telefono}...',
+              ),
+            ),
           ],
         ),
         duration: const Duration(seconds: 30),
@@ -350,12 +480,16 @@ class _ClientesPageState extends State<ClientesPage> {
         userRole: _userRole,
       );
 
-      // Cerrar loading y mostrar éxito
+      await provider.cargarClientes(botId: botId);
+
       messenger.hideCurrentSnackBar();
+
       if (mounted) {
         messenger.showSnackBar(
           SnackBar(
-            content: Text('${cliente.nombre ?? cliente.telefono} eliminado correctamente.'),
+            content: Text(
+              '${cliente.nombre ?? cliente.telefono} eliminado correctamente.',
+            ),
             backgroundColor: Colors.green.shade600,
             duration: const Duration(seconds: 3),
           ),
@@ -363,10 +497,13 @@ class _ClientesPageState extends State<ClientesPage> {
       }
     } catch (e) {
       messenger.hideCurrentSnackBar();
+
       if (mounted) {
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Error: ${e.toString().replaceAll('Exception: ', '')}'),
+            content: Text(
+              'Error: ${e.toString().replaceAll('Exception: ', '')}',
+            ),
             backgroundColor: Colors.red.shade600,
             duration: const Duration(seconds: 5),
           ),
@@ -380,7 +517,10 @@ class _StatChip extends StatelessWidget {
   final String label;
   final Color color;
 
-  const _StatChip({required this.label, required this.color});
+  const _StatChip({
+    required this.label,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -439,7 +579,6 @@ class _ClienteCard extends StatelessWidget {
             padding: const EdgeInsets.all(14),
             child: Row(
               children: [
-                // Avatar
                 Container(
                   width: 52,
                   height: 52,
@@ -459,8 +598,6 @@ class _ClienteCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 14),
-
-                // Info
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -486,48 +623,55 @@ class _ClienteCard extends StatelessWidget {
                           icon: Icons.phone_outlined,
                           text: cliente.telefono,
                         ),
-                      if (cliente.interesPrincipal != null)
+                      if (cliente.interesPrincipal != null &&
+                          cliente.interesPrincipal!.trim().isNotEmpty)
                         _InfoText(
                           icon: Icons.shopping_bag_outlined,
                           text: cliente.interesPrincipal!,
                         ),
                       const SizedBox(height: 6),
-                      Row(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
                         children: [
                           _MiniTag(
                             icon: Icons.chat_bubble_outline_rounded,
                             label: '${cliente.totalMensajes} msgs',
                           ),
-                          const SizedBox(width: 8),
                           _MiniTag(
                             icon: Icons.trending_up_rounded,
                             label: cliente.etapa,
                           ),
-                          if (cliente.ciudad != null) ...[
-                            const SizedBox(width: 8),
+                          if (cliente.ciudad != null &&
+                              cliente.ciudad!.trim().isNotEmpty)
                             _MiniTag(
                               icon: Icons.location_on_outlined,
                               label: cliente.ciudad!,
                             ),
-                          ],
                         ],
                       ),
                     ],
                   ),
                 ),
-
-                // Botón eliminar (solo visible para admin/owner)
                 if (canDelete)
                   IconButton(
                     tooltip: 'Eliminar cliente',
-                    icon: Icon(Icons.delete_outline_rounded, color: Colors.red.shade300, size: 22),
+                    icon: Icon(
+                      Icons.delete_outline_rounded,
+                      color: Colors.red.shade300,
+                      size: 22,
+                    ),
                     onPressed: onDelete,
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                    constraints: const BoxConstraints(
+                      minWidth: 36,
+                      minHeight: 36,
+                    ),
                   ),
-
-                // Flecha
-                Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: Colors.grey.shade400,
+                ),
               ],
             ),
           ),
@@ -538,24 +682,33 @@ class _ClienteCard extends StatelessWidget {
 
   Color _getAvatarColor(String name) {
     const colors = [
-      Color(0xFF2563EB), // blue-600
-      Color(0xFF0D9488), // teal-600
-      Color(0xFFEA580C), // orange-600
-      Color(0xFF7C3AED), // violet-600
-      Color(0xFFDB2777), // pink-600
-      Color(0xFF4F46E5), // indigo-600
-      Color(0xFF059669), // emerald-600
-      Color(0xFF0891B2), // cyan-600
+      Color(0xFF2563EB),
+      Color(0xFF0D9488),
+      Color(0xFFEA580C),
+      Color(0xFF7C3AED),
+      Color(0xFFDB2777),
+      Color(0xFF4F46E5),
+      Color(0xFF059669),
+      Color(0xFF0891B2),
     ];
+
     return colors[name.hashCode.abs() % colors.length];
   }
 
   String _getInitials(String name) {
-    final parts = name.trim().split(' ');
-    if (parts.length >= 2) {
+    final clean = name.trim();
+
+    if (clean.isEmpty) return '?';
+
+    final parts = clean.split(RegExp(r'\s+'));
+
+    if (parts.length >= 2 &&
+        parts.first.isNotEmpty &&
+        parts[1].isNotEmpty) {
       return '${parts.first[0]}${parts[1][0]}'.toUpperCase();
     }
-    return name.isNotEmpty ? name[0].toUpperCase() : '?';
+
+    return clean[0].toUpperCase();
   }
 }
 
@@ -563,7 +716,10 @@ class _InfoText extends StatelessWidget {
   final IconData icon;
   final String text;
 
-  const _InfoText({required this.icon, required this.text});
+  const _InfoText({
+    required this.icon,
+    required this.text,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -573,10 +729,15 @@ class _InfoText extends StatelessWidget {
         children: [
           Icon(icon, size: 14, color: Colors.grey.shade500),
           const SizedBox(width: 5),
-          Text(
-            text,
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-            overflow: TextOverflow.ellipsis,
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade600,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),
@@ -588,7 +749,10 @@ class _MiniTag extends StatelessWidget {
   final IconData icon;
   final String label;
 
-  const _MiniTag({required this.icon, required this.label});
+  const _MiniTag({
+    required this.icon,
+    required this.label,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -620,7 +784,9 @@ class _MiniTag extends StatelessWidget {
 class _EstadoBadge extends StatelessWidget {
   final String estado;
 
-  const _EstadoBadge({required this.estado});
+  const _EstadoBadge({
+    required this.estado,
+  });
 
   @override
   Widget build(BuildContext context) {
