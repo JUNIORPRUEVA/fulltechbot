@@ -46,9 +46,7 @@ function generarVariantesTelefono(telefono) {
 }
 
 function filtroNoEliminado() {
-  return {
-    deleted_at: null,
-  };
+  return {};
 }
 
 async function listarClientes(botId = null) {
