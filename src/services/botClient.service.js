@@ -79,6 +79,7 @@ async function buscarOCrearCliente(data) {
       total_mensajes: { increment: 1 },
       ultima_interaccion_at: new Date(),
       dias_sin_responder: 0,
+      botId: botId || existente.botId,
       actualizado_en: new Date(),
     };
 

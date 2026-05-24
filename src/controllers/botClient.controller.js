@@ -68,6 +68,25 @@ async function actualizar(req, res) {
   }
 }
 
+/**
+ * PATCH /api/bots/:botId/clients/:telefono/assign-bot
+ * Asigna un botId a un cliente existente (para corregir clientes sin botId)
+ */
+async function assignBot(req, res) {
+  try {
+    const { botId } = req.params;
+    const { telefono } = req.params;
+    const cliente = await botClientService.asignarBotId(telefono, botId);
+    if (!cliente) {
+      return res.status(404).json({ ok: false, message: 'Cliente no encontrado' });
+    }
+    res.json({ ok: true, data: cliente });
+  } catch (error) {
+    console.error('Error al asignar botId:', error);
+    res.status(500).json({ ok: false, message: 'Error al asignar botId', error: error.message });
+  }
+}
+
 async function actualizarEstado(req, res) {
   try {
     const { telefono } = req.params;
