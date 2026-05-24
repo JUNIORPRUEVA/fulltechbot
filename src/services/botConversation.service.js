@@ -41,25 +41,19 @@ async function crearConversacion(data) {
 }
 
 /**
- * Elimina (soft delete) todas las conversaciones de un sessionId.
- * Marca como eliminado para propagar a otros dispositivos vía sync.
+ * Elimina físicamente todas las conversaciones de un sessionId.
+ * El modelo BotConversation NO tiene deleted_at/is_deleted/sync_status,
+ * por lo tanto se usa delete físico.
  */
 async function eliminarPorSessionId(sessionId, botId = null) {
   if (!sessionId) {
     throw new Error('El sessionId es obligatorio');
   }
 
-  const now = new Date();
-
-  return prisma.botConversation.updateMany({
+  return prisma.botConversation.deleteMany({
     where: {
       session_id: sessionId,
       ...(botId ? { botId } : {}),
-    },
-    data: {
-      deleted_at: now,
-      is_deleted: true,
-      sync_status: 'pending_delete',
     },
   });
 }

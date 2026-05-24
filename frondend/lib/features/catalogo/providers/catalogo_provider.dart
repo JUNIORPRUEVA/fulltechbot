@@ -10,7 +10,6 @@ class CatalogoProvider extends ChangeNotifier {
 
   List<CatalogoModel> _productos = [];
   bool _isLoading = false;
-  bool _isLoadingMore = false;
   String? _error;
 
   List<CatalogoModel> get productos => _productos;
@@ -18,28 +17,19 @@ class CatalogoProvider extends ChangeNotifier {
   String? get error => _error;
 
   Future<void> cargarProductos({String? botId}) async {
-    if (_isLoadingMore) return;
-    _isLoadingMore = true;
-
     _setLoading(true);
     try {
       _productos = await _apiService.listarProductos(botId: botId);
       _error = null;
     } catch (e, st) {
-      if (_productos.isEmpty) {
-        _error = e.toString();
-      }
+      _error = e.toString();
       debugPrint('[CatalogoProvider] Error cargando productos: $e');
       debugPrint('$st');
     }
-    _isLoadingMore = false;
     _setLoading(false);
   }
 
   Future<void> crearProducto(CatalogoModel producto, {String? botId}) async {
-    if (_isLoadingMore) return;
-    _isLoadingMore = true;
-
     _setLoading(true);
     try {
       await _apiService.crearProducto(producto, botId: botId);
@@ -49,16 +39,12 @@ class CatalogoProvider extends ChangeNotifier {
       _error = e.toString();
       debugPrint('[CatalogoProvider] Error creando producto: $e');
       debugPrint('$st');
-      _isLoadingMore = false;
       _setLoading(false);
     }
   }
 
   Future<void> actualizarProducto(CatalogoModel producto,
       {String? botId}) async {
-    if (_isLoadingMore) return;
-    _isLoadingMore = true;
-
     _setLoading(true);
     try {
       await _apiService.actualizarProducto(producto, botId: botId);
@@ -68,7 +54,6 @@ class CatalogoProvider extends ChangeNotifier {
       _error = e.toString();
       debugPrint('[CatalogoProvider] Error actualizando producto: $e');
       debugPrint('$st');
-      _isLoadingMore = false;
       _setLoading(false);
     }
   }
@@ -78,9 +63,6 @@ class CatalogoProvider extends ChangeNotifier {
     required String estado,
     String? botId,
   }) async {
-    if (_isLoadingMore) return;
-    _isLoadingMore = true;
-
     _setLoading(true);
     try {
       await _apiService.cambiarEstado(id: id, estado: estado, botId: botId);
@@ -90,25 +72,38 @@ class CatalogoProvider extends ChangeNotifier {
       _error = e.toString();
       debugPrint('[CatalogoProvider] Error cambiando estado: $e');
       debugPrint('$st');
-      _isLoadingMore = false;
       _setLoading(false);
     }
   }
 
   Future<void> eliminarProducto(String id, {String? botId}) async {
-    // Eliminación optimista: quitar de la UI inmediatamente
-    _productos.removeWhere((p) => p.id == id);
-    notifyListeners();
+    _setLoading(true);
+    try {
+      debugPrint('[CatalogoProvider] Eliminando producto en cloud...');
+      debugPrint('[CatalogoProvider] id: $id');
+      debugPrint('[CatalogoProvider] botId: $botId');
 
-    // Encolar operación de eliminación para sincronización
-    await _syncService.encolarOperacion(
-      tabla: 'productos',
-      operacion: 'delete',
-      id: id,
-      datos: {'botId': botId},
-    );
+      await _apiService.eliminarProducto(id, botId: botId);
 
-    _error = null;
+      // Recargar desde cloud después de eliminar
+      await cargarProductos(botId: botId);
+      _error = null;
+      debugPrint('[CatalogoProvider] Producto eliminado correctamente.');
+    } catch (e, st) {
+      _error = e.toString();
+      debugPrint('[CatalogoProvider] Error eliminando producto: $e');
+      debugPrint('$st');
+
+      // Encolar para reintento
+      await _syncService.encolarOperacion(
+        tabla: 'productos',
+        operacion: 'delete',
+        id: id,
+        datos: {'botId': botId},
+      );
+
+      _setLoading(false);
+    }
   }
 
   void limpiarError() {

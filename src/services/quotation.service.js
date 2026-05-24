@@ -197,6 +197,11 @@ async function cambiarEstado(id, estado) {
   });
 }
 
+/**
+ * Elimina físicamente una cotización.
+ * El modelo BotQuotation NO tiene deleted_at/is_deleted/sync_status,
+ * por lo tanto se usa delete físico.
+ */
 async function eliminarCotizacion(id) {
   const existente = await prisma.botQuotation.findUnique({
     where: { id },
@@ -206,15 +211,8 @@ async function eliminarCotizacion(id) {
     return null;
   }
 
-  const now = new Date();
-  return prisma.botQuotation.update({
+  return prisma.botQuotation.delete({
     where: { id },
-    data: {
-      deleted_at: now,
-      is_deleted: true,
-      sync_status: 'pending_delete',
-      actualizado_en: now,
-    },
   });
 }
 

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/constants/api_config.dart';
@@ -13,72 +14,62 @@ class OrderApiService {
       ? '${ApiConfig.baseUrl}/api/bots/$botId/orders'
       : '${ApiConfig.baseUrl}/api/orders';
 
-  Map<String, dynamic> _validateAndDecode(http.Response response) {
-    final body = response.body;
-
-    if (body.isEmpty) {
-      throw Exception('Respuesta vacia del servidor');
-    }
-
-    if (body.trimLeft().startsWith('<!DOCTYPE html>') ||
-        body.trimLeft().startsWith('<html') ||
-        body.trimLeft().startsWith('<')) {
-      throw Exception(
-        'La API devolvio HTML. Revisa la URL del backend o la ruta del endpoint.\n'
-        'URL: ${response.request?.url}\n'
-        'Status: ${response.statusCode}',
-      );
-    }
-
-    try {
-      final decoded = jsonDecode(body);
-      if (decoded is! Map<String, dynamic>) {
-        throw Exception(
-          'Formato de respuesta invalido: se esperaba un objeto JSON',
-        );
-      }
-      return decoded;
-    } on FormatException catch (e) {
-      throw Exception(
-        'Error al decodificar respuesta del servidor. '
-        'Status: ${response.statusCode}, Content-Type: ${response.headers['content-type']}\n'
-        'Detalle: $e',
-      );
-    }
-  }
-
   Future<Map<String, dynamic>> _request(
+    String label,
+    String url,
     Future<http.Response> Function() requestFn,
   ) async {
     try {
+      debugPrint('[$label] URL: $url');
+
       final response = await requestFn().timeout(_timeout);
-      return _validateAndDecode(response);
+
+      debugPrint('[$label] STATUS: ${response.statusCode}');
+      debugPrint('[$label] BODY: ${response.body}');
+
+      if (response.body.isEmpty) {
+        throw Exception('Respuesta vacía del servidor. Status: ${response.statusCode}');
+      }
+
+      if (response.body.trimLeft().startsWith('<!DOCTYPE html>') ||
+          response.body.trimLeft().startsWith('<html') ||
+          response.body.trimLeft().startsWith('<')) {
+        throw Exception(
+          'La API devolvió HTML. Revisa la URL del backend o la ruta del endpoint.\n'
+          'URL: $url\n'
+          'Status: ${response.statusCode}',
+        );
+      }
+
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) {
+        throw Exception(
+          'Formato de respuesta inválido: se esperaba un objeto JSON',
+        );
+      }
+
+      if (response.statusCode >= 400) {
+        final message = decoded['message']?.toString();
+        final error = decoded['error']?.toString();
+        throw Exception(
+          [
+            if (message != null && message.isNotEmpty) message,
+            if (error != null && error.isNotEmpty) error,
+          ].join(' | ').isNotEmpty
+              ? [
+                  if (message != null && message.isNotEmpty) message,
+                  if (error != null && error.isNotEmpty) error,
+                ].join(' | ')
+              : 'Error HTTP ${response.statusCode}',
+        );
+      }
+
+      return decoded;
     } on TimeoutException {
-      throw Exception('La solicitud tardo demasiado. Verifica tu conexion.');
+      throw Exception('La solicitud tardó demasiado. Verifica tu conexión.');
     } catch (e) {
       if (e is Exception) rethrow;
-      throw Exception('Error de conexion: $e');
-    }
-  }
-
-  bool _shouldFallbackToGlobal(Object error) {
-    final message = error.toString().toLowerCase();
-    return (message.contains('html') && message.contains('404')) ||
-        message.contains('ruta no encontrada') ||
-        message.contains('status: 404');
-  }
-
-  Future<Map<String, dynamic>> _requestWithFallback({
-    required Future<Map<String, dynamic>> Function() primary,
-    required Future<Map<String, dynamic>> Function() fallback,
-  }) async {
-    try {
-      return await primary();
-    } catch (error) {
-      if (_shouldFallbackToGlobal(error)) {
-        return fallback();
-      }
-      rethrow;
+      throw Exception('Error de conexión: $e');
     }
   }
 
@@ -94,42 +85,46 @@ class OrderApiService {
     if (telefono != null) params['telefono'] = telefono;
     if (botId != null) params['botId'] = botId;
 
-    final nestedUri = Uri.parse(_baseUrl(botId: botId));
-    final globalUri = Uri.parse(
-      _baseUrl(),
-    ).replace(queryParameters: params.isNotEmpty ? params : null);
+    final url = _baseUrl(botId: botId);
+    final uri = Uri.parse(url).replace(
+      queryParameters: botId == null && params.isNotEmpty ? params : null,
+    );
 
-    final body = botId != null && botId.isNotEmpty
-        ? await _requestWithFallback(
-            primary: () => _request(() => http.get(nestedUri)),
-            fallback: () => _request(() => http.get(globalUri)),
-          )
-        : await _request(() => http.get(globalUri));
+    final body = await _request(
+      'OrderApiService.listarOrdenes',
+      uri.toString(),
+      () => http.get(uri),
+    );
 
     if (body['ok'] == true) {
       final List data = body['data'] ?? [];
       return data.map((item) => BotOrderModel.fromJson(item)).toList();
     }
 
-    throw Exception(body['message'] ?? 'Error al listar ordenes');
+    final message = body['message']?.toString() ?? 'Error al listar órdenes';
+    final error = body['error']?.toString();
+    throw Exception(
+      error == null || error.isEmpty ? message : '$message | $error',
+    );
   }
 
   Future<BotOrderModel> obtenerOrden(String id, {String? botId}) async {
-    final nestedUri = Uri.parse('${_baseUrl(botId: botId)}/$id');
-    final globalUri = Uri.parse('${_baseUrl()}/$id');
-
-    final body = botId != null && botId.isNotEmpty
-        ? await _requestWithFallback(
-            primary: () => _request(() => http.get(nestedUri)),
-            fallback: () => _request(() => http.get(globalUri)),
-          )
-        : await _request(() => http.get(globalUri));
+    final url = '${_baseUrl(botId: botId)}/$id';
+    final body = await _request(
+      'OrderApiService.obtenerOrden',
+      url,
+      () => http.get(Uri.parse(url)),
+    );
 
     if (body['ok'] == true) {
       return BotOrderModel.fromJson(body['data']);
     }
 
-    throw Exception(body['message'] ?? 'Error al obtener orden');
+    final message = body['message']?.toString() ?? 'Error al obtener orden';
+    final error = body['error']?.toString();
+    throw Exception(
+      error == null || error.isEmpty ? message : '$message | $error',
+    );
   }
 
   Future<BotOrderModel> crearOrden(
@@ -137,44 +132,26 @@ class OrderApiService {
     String? botId,
   }) async {
     final resolvedBotId = botId ?? data['botId']?.toString();
-    final nestedUri = Uri.parse(_baseUrl(botId: resolvedBotId));
-    final globalUri = Uri.parse(_baseUrl());
-    final globalPayload = {
-      ...data,
-      if (resolvedBotId != null && resolvedBotId.isNotEmpty)
-        'botId': resolvedBotId,
-    };
-
-    final body = resolvedBotId != null && resolvedBotId.isNotEmpty
-        ? await _requestWithFallback(
-            primary: () => _request(
-              () => http.post(
-                nestedUri,
-                headers: {'Content-Type': 'application/json'},
-                body: jsonEncode(data),
-              ),
-            ),
-            fallback: () => _request(
-              () => http.post(
-                globalUri,
-                headers: {'Content-Type': 'application/json'},
-                body: jsonEncode(globalPayload),
-              ),
-            ),
-          )
-        : await _request(
-            () => http.post(
-              globalUri,
-              headers: {'Content-Type': 'application/json'},
-              body: jsonEncode(globalPayload),
-            ),
-          );
+    final url = _baseUrl(botId: resolvedBotId);
+    final body = await _request(
+      'OrderApiService.crearOrden',
+      url,
+      () => http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(data),
+      ),
+    );
 
     if (body['ok'] == true) {
       return BotOrderModel.fromJson(body['data']);
     }
 
-    throw Exception(body['message'] ?? 'Error al crear orden');
+    final message = body['message']?.toString() ?? 'Error al crear orden';
+    final error = body['error']?.toString();
+    throw Exception(
+      error == null || error.isEmpty ? message : '$message | $error',
+    );
   }
 
   Future<BotOrderModel> actualizarOrden(
@@ -183,39 +160,26 @@ class OrderApiService {
     String? botId,
   }) async {
     final resolvedBotId = botId ?? data['botId']?.toString();
-    final nestedUri = Uri.parse('${_baseUrl(botId: resolvedBotId)}/$id');
-    final globalUri = Uri.parse('${_baseUrl()}/$id');
-
-    final body = resolvedBotId != null && resolvedBotId.isNotEmpty
-        ? await _requestWithFallback(
-            primary: () => _request(
-              () => http.put(
-                nestedUri,
-                headers: {'Content-Type': 'application/json'},
-                body: jsonEncode(data),
-              ),
-            ),
-            fallback: () => _request(
-              () => http.put(
-                globalUri,
-                headers: {'Content-Type': 'application/json'},
-                body: jsonEncode(data),
-              ),
-            ),
-          )
-        : await _request(
-            () => http.put(
-              globalUri,
-              headers: {'Content-Type': 'application/json'},
-              body: jsonEncode(data),
-            ),
-          );
+    final url = '${_baseUrl(botId: resolvedBotId)}/$id';
+    final body = await _request(
+      'OrderApiService.actualizarOrden',
+      url,
+      () => http.put(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(data),
+      ),
+    );
 
     if (body['ok'] == true) {
       return BotOrderModel.fromJson(body['data']);
     }
 
-    throw Exception(body['message'] ?? 'Error al actualizar orden');
+    final message = body['message']?.toString() ?? 'Error al actualizar orden';
+    final error = body['error']?.toString();
+    throw Exception(
+      error == null || error.isEmpty ? message : '$message | $error',
+    );
   }
 
   Future<BotOrderModel> cambiarEstado(
@@ -223,57 +187,44 @@ class OrderApiService {
     String estado, {
     String? botId,
   }) async {
-    final nestedUri = Uri.parse('${_baseUrl(botId: botId)}/$id/status');
-    final globalUri = Uri.parse('${_baseUrl()}/$id/status');
-    final payload = {'estado': estado};
-
-    final body = botId != null && botId.isNotEmpty
-        ? await _requestWithFallback(
-            primary: () => _request(
-              () => http.patch(
-                nestedUri,
-                headers: {'Content-Type': 'application/json'},
-                body: jsonEncode(payload),
-              ),
-            ),
-            fallback: () => _request(
-              () => http.patch(
-                globalUri,
-                headers: {'Content-Type': 'application/json'},
-                body: jsonEncode(payload),
-              ),
-            ),
-          )
-        : await _request(
-            () => http.patch(
-              globalUri,
-              headers: {'Content-Type': 'application/json'},
-              body: jsonEncode(payload),
-            ),
-          );
+    final url = '${_baseUrl(botId: botId)}/$id/status';
+    final body = await _request(
+      'OrderApiService.cambiarEstado',
+      url,
+      () => http.patch(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'estado': estado}),
+      ),
+    );
 
     if (body['ok'] == true) {
       return BotOrderModel.fromJson(body['data']);
     }
 
-    throw Exception(body['message'] ?? 'Error al cambiar estado');
+    final message = body['message']?.toString() ?? 'Error al cambiar estado';
+    final error = body['error']?.toString();
+    throw Exception(
+      error == null || error.isEmpty ? message : '$message | $error',
+    );
   }
 
   Future<void> eliminarOrden(String id, {String? botId}) async {
-    final nestedUri = Uri.parse('${_baseUrl(botId: botId)}/$id');
-    final globalUri = Uri.parse('${_baseUrl()}/$id');
-
-    final body = botId != null && botId.isNotEmpty
-        ? await _requestWithFallback(
-            primary: () => _request(() => http.delete(nestedUri)),
-            fallback: () => _request(() => http.delete(globalUri)),
-          )
-        : await _request(() => http.delete(globalUri));
+    final url = '${_baseUrl(botId: botId)}/$id';
+    final body = await _request(
+      'OrderApiService.eliminarOrden',
+      url,
+      () => http.delete(Uri.parse(url)),
+    );
 
     if (body['ok'] == true) {
       return;
     }
 
-    throw Exception(body['message'] ?? 'Error al eliminar orden');
+    final message = body['message']?.toString() ?? 'Error al eliminar orden';
+    final error = body['error']?.toString();
+    throw Exception(
+      error == null || error.isEmpty ? message : '$message | $error',
+    );
   }
 }

@@ -87,16 +87,15 @@ class BotCampaignService {
     });
   }
 
+  /**
+   * Elimina físicamente una campaña.
+   * El modelo BotCampaign NO tiene deleted_at/is_deleted/sync_status,
+   * por lo tanto se usa delete físico.
+   */
   async eliminar(id) {
     await this.obtenerPorId(id);
-    const now = new Date();
-    await prisma.botCampaign.update({
+    await prisma.botCampaign.delete({
       where: { id },
-      data: {
-        deleted_at: now,
-        is_deleted: true,
-        sync_status: 'pending_delete',
-      },
     });
     return { message: 'Campaña eliminada exitosamente' };
   }

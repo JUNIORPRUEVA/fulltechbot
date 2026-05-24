@@ -1,9 +1,10 @@
 /**
- * CONTROLADOR DE SINCRONIZACIÓN
+ * CONTROLADOR DE SINCRONIZACIÓN - VERSIÓN CORREGIDA
  * 
  * Endpoints para sincronización entre dispositivos.
- * POST /api/sync - Recibe cambios de un dispositivo y devuelve cambios pendientes
- * GET /api/sync/status - Estado de la sincronización
+ * 
+ * IMPORTANTE: Los modelos actuales NO tienen campos sync_status, deleted_at, is_deleted.
+ * Este controlador ha sido corregido para no usar esos campos inexistentes.
  */
 
 const prisma = require('../lib/prisma');
@@ -14,21 +15,6 @@ const syncService = require('../services/sync.service');
  * 
  * Recibe un lote de cambios desde un dispositivo y devuelve los cambios
  * que el dispositivo necesita aplicar.
- * 
- * Body esperado:
- * {
- *   deviceId: "string",
- *   lastSyncAt: "ISO date string",
- *   changes: {
- *     clients: [...],
- *     conversations: [...],
- *     quotations: [...],
- *     orders: [...],
- *     catalog: [...],
- *     campaigns: [...],
- *     bots: [...]
- *   }
- * }
  */
 async function sync(req, res) {
   try {
@@ -146,33 +132,27 @@ async function sync(req, res) {
 /**
  * GET /api/sync/status
  * Devuelve el estado de la sincronización
+ * NOTA: Como los modelos no tienen sync_status, este endpoint devuelve 0 pendientes.
+ * Si se agrega sync_status en el futuro, actualizar este método.
  */
 async function syncStatus(req, res) {
   try {
-    const counts = await Promise.all([
-      prisma.botClient.count({ where: { sync_status: { not: 'synced' } } }),
-      prisma.botConversation.count({ where: { sync_status: { not: 'synced' } } }),
-      prisma.botQuotation.count({ where: { sync_status: { not: 'synced' } } }),
-      prisma.botOrder.count({ where: { sync_status: { not: 'synced' } } }),
-      prisma.catalogo.count({ where: { sync_status: { not: 'synced' } } }),
-      prisma.botCampaign.count({ where: { sync_status: { not: 'synced' } } }),
-      prisma.bot.count({ where: { sync_status: { not: 'synced' } } }),
-    ]);
-    
+    // Los modelos actuales NO tienen sync_status, así que devolvemos 0
     res.json({
       ok: true,
       data: {
         pendingChanges: {
-          clients: counts[0],
-          conversations: counts[1],
-          quotations: counts[2],
-          orders: counts[3],
-          catalog: counts[4],
-          campaigns: counts[5],
-          bots: counts[6],
+          clients: 0,
+          conversations: 0,
+          quotations: 0,
+          orders: 0,
+          catalog: 0,
+          campaigns: 0,
+          bots: 0,
         },
-        totalPending: counts.reduce((a, b) => a + b, 0),
+        totalPending: 0,
         serverTime: new Date().toISOString(),
+        message: 'Los modelos actuales no tienen campo sync_status. Todos los registros se consideran sincronizados.',
       },
     });
   } catch (error) {

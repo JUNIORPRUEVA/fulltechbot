@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/constants/api_config.dart';
@@ -20,17 +21,41 @@ class ConversacionesApiService {
   }
 
   Future<Map<String, dynamic>> _request(
+    String label,
+    String url,
     Future<http.Response> Function() requestFn,
   ) async {
     try {
+      debugPrint('[$label] URL: $url');
+
       final response = await requestFn().timeout(_timeout);
+
+      debugPrint('[$label] STATUS: ${response.statusCode}');
+      debugPrint('[$label] BODY: ${response.body}');
+
       if (response.body.isEmpty) {
-        throw Exception('Respuesta vacía del servidor');
+        throw Exception('Respuesta vacía del servidor. Status: ${response.statusCode}');
       }
 
       final body = jsonDecode(response.body);
       if (body is! Map<String, dynamic>) {
-        throw Exception('Formato de respuesta inválido');
+        throw Exception('Formato de respuesta inválido. Body: ${response.body}');
+      }
+
+      if (response.statusCode >= 400) {
+        final message = body['message']?.toString();
+        final error = body['error']?.toString();
+        throw Exception(
+          [
+            if (message != null && message.isNotEmpty) message,
+            if (error != null && error.isNotEmpty) error,
+          ].join(' | ').isNotEmpty
+              ? [
+                  if (message != null && message.isNotEmpty) message,
+                  if (error != null && error.isNotEmpty) error,
+                ].join(' | ')
+              : 'Error HTTP ${response.statusCode}',
+        );
       }
 
       return body;
@@ -43,8 +68,11 @@ class ConversacionesApiService {
   }
 
   Future<List<ConversacionModel>> listarConversaciones(String botId) async {
+    final url = ApiConfig.botConversationsEndpoint(botId);
     final body = await _request(
-      () => http.get(Uri.parse(ApiConfig.botConversationsEndpoint(botId))),
+      'ConversacionesApiService.listarConversaciones',
+      url,
+      () => http.get(Uri.parse(url)),
     );
 
     if (body['ok'] == true) {
@@ -52,17 +80,22 @@ class ConversacionesApiService {
       return data.map((item) => ConversacionModel.fromJson(item)).toList();
     }
 
-    throw Exception(body['message'] ?? 'Error al listar conversaciones');
+    final message = body['message']?.toString() ?? 'Error al listar conversaciones';
+    final error = body['error']?.toString();
+    throw Exception(
+      error == null || error.isEmpty ? message : '$message | $error',
+    );
   }
 
   Future<List<ConversacionModel>> listarPorSessionId(
     String botId,
     String sessionId,
   ) async {
+    final url = ApiConfig.botConversationBySessionEndpoint(botId, sessionId);
     final body = await _request(
-      () => http.get(
-        Uri.parse(ApiConfig.botConversationBySessionEndpoint(botId, sessionId)),
-      ),
+      'ConversacionesApiService.listarPorSessionId',
+      url,
+      () => http.get(Uri.parse(url)),
     );
 
     if (body['ok'] == true) {
@@ -70,7 +103,11 @@ class ConversacionesApiService {
       return data.map((item) => ConversacionModel.fromJson(item)).toList();
     }
 
-    throw Exception(body['message'] ?? 'Error al listar mensajes');
+    final message = body['message']?.toString() ?? 'Error al listar mensajes';
+    final error = body['error']?.toString();
+    throw Exception(
+      error == null || error.isEmpty ? message : '$message | $error',
+    );
   }
 
   Future<ConversacionModel> crearConversacion({
@@ -78,9 +115,12 @@ class ConversacionesApiService {
     required String sessionId,
     required Map<String, dynamic> message,
   }) async {
+    final url = ApiConfig.botConversationsEndpoint(botId);
     final body = await _request(
+      'ConversacionesApiService.crearConversacion',
+      url,
       () => http.post(
-        Uri.parse(ApiConfig.botConversationsEndpoint(botId)),
+        Uri.parse(url),
         headers: _getHeaders(),
         body: jsonEncode({
           'session_id': sessionId,
@@ -93,7 +133,11 @@ class ConversacionesApiService {
       return ConversacionModel.fromJson(body['data']);
     }
 
-    throw Exception(body['message'] ?? 'Error al crear conversación');
+    final msg = body['message']?.toString() ?? 'Error al crear conversación';
+    final error = body['error']?.toString();
+    throw Exception(
+      error == null || error.isEmpty ? msg : '$msg | $error',
+    );
   }
 
   Future<void> eliminarPorSessionId(
@@ -101,9 +145,12 @@ class ConversacionesApiService {
     String sessionId, {
     String? userRole,
   }) async {
+    final url = ApiConfig.botConversationBySessionEndpoint(botId, sessionId);
     final body = await _request(
+      'ConversacionesApiService.eliminarPorSessionId',
+      url,
       () => http.delete(
-        Uri.parse(ApiConfig.botConversationBySessionEndpoint(botId, sessionId)),
+        Uri.parse(url),
         headers: _getHeaders(userRole: userRole),
       ),
     );
@@ -112,6 +159,10 @@ class ConversacionesApiService {
       return;
     }
 
-    throw Exception(body['message'] ?? 'Error al eliminar conversaciones');
+    final message = body['message']?.toString() ?? 'Error al eliminar conversaciones';
+    final error = body['error']?.toString();
+    throw Exception(
+      error == null || error.isEmpty ? message : '$message | $error',
+    );
   }
 }

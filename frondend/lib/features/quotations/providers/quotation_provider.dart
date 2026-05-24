@@ -37,6 +37,7 @@ class QuotationProvider extends ChangeNotifier {
       _error = null;
     } catch (e) {
       _error = e.toString();
+      debugPrint('[QuotationProvider] Error cargando cotizaciones: $e');
     }
     _setLoading(false);
   }
@@ -49,6 +50,7 @@ class QuotationProvider extends ChangeNotifier {
       _error = null;
     } catch (e) {
       _error = e.toString();
+      debugPrint('[QuotationProvider] Error creando cotización: $e');
       _setLoading(false);
     }
   }
@@ -64,6 +66,7 @@ class QuotationProvider extends ChangeNotifier {
       _error = null;
     } catch (e) {
       _error = e.toString();
+      debugPrint('[QuotationProvider] Error actualizando cotización: $e');
       _setLoading(false);
     }
   }
@@ -76,24 +79,38 @@ class QuotationProvider extends ChangeNotifier {
       _error = null;
     } catch (e) {
       _error = e.toString();
+      debugPrint('[QuotationProvider] Error cambiando estado: $e');
       _setLoading(false);
     }
   }
 
   Future<void> eliminarCotizacion(String id) async {
-    // Eliminación optimista: quitar de la UI inmediatamente
-    _cotizaciones.removeWhere((c) => c.id == id);
-    notifyListeners();
+    _setLoading(true);
+    try {
+      debugPrint('[QuotationProvider] Eliminando cotización en cloud...');
+      debugPrint('[QuotationProvider] id: $id');
+      debugPrint('[QuotationProvider] botId: $_currentBotId');
 
-    // Encolar operación de eliminación para sincronización
-    await _syncService.encolarOperacion(
-      tabla: 'cotizaciones',
-      operacion: 'delete',
-      id: id,
-      datos: {'botId': _currentBotId},
-    );
+      await _apiService.eliminarCotizacion(id, botId: _currentBotId);
 
-    _error = null;
+      // Recargar desde cloud después de eliminar
+      await cargarCotizaciones(botId: _currentBotId);
+      _error = null;
+      debugPrint('[QuotationProvider] Cotización eliminada correctamente.');
+    } catch (e) {
+      _error = e.toString();
+      debugPrint('[QuotationProvider] Error eliminando cotización: $e');
+
+      // Encolar para reintento
+      await _syncService.encolarOperacion(
+        tabla: 'cotizaciones',
+        operacion: 'delete',
+        id: id,
+        datos: {'botId': _currentBotId},
+      );
+
+      _setLoading(false);
+    }
   }
 
   void seleccionarCotizacion(BotQuotationModel cotizacion) {

@@ -34,15 +34,13 @@ class ConversacionesProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _cargarConversacionesLocales();
       _conversaciones = await _apiService.listarConversaciones(botId);
 
       final jsonList = _conversaciones.map((c) => c.toJson()).toList();
       await LocalStorageService.guardarConversaciones(jsonList);
     } catch (e) {
-      if (_conversaciones.isEmpty) {
-        _error = e.toString();
-      }
+      _error = e.toString();
+      debugPrint('[ConversacionesProvider] Error cargando conversaciones: $e');
     }
 
     _cargando = false;
@@ -63,7 +61,6 @@ class ConversacionesProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _cargarMensajesLocales(sessionId);
       _mensajesActuales = await _apiService.listarPorSessionId(
         resolvedBotId,
         sessionId,
@@ -72,9 +69,8 @@ class ConversacionesProvider extends ChangeNotifier {
       final jsonList = _mensajesActuales.map((m) => m.toJson()).toList();
       await LocalStorageService.guardarMensajes(sessionId, jsonList);
     } catch (e) {
-      if (_mensajesActuales.isEmpty) {
-        _error = e.toString();
-      }
+      _error = e.toString();
+      debugPrint('[ConversacionesProvider] Error cargando mensajes: $e');
     }
 
     _cargando = false;
@@ -124,44 +120,53 @@ class ConversacionesProvider extends ChangeNotifier {
       );
     }
 
-    // Eliminación optimista: quitar de la UI inmediatamente
-    _conversaciones.removeWhere((c) => c.sessionId == sessionId);
-    _mensajesActuales = [];
+    _cargando = true;
+    _error = null;
     notifyListeners();
 
-    // Limpiar caché local
-    final jsonList = _conversaciones.map((c) => c.toJson()).toList();
-    await LocalStorageService.guardarConversaciones(jsonList);
-    await LocalStorageService.limpiarCacheConversacion(sessionId);
+    try {
+      debugPrint('[ConversacionesProvider] Eliminando conversación en cloud...');
+      debugPrint('[ConversacionesProvider] botId: $resolvedBotId');
+      debugPrint('[ConversacionesProvider] sessionId: $sessionId');
 
-    // Encolar operación de eliminación para sincronización
-    await _syncService.encolarOperacion(
-      tabla: 'conversaciones',
-      operacion: 'delete',
-      id: sessionId,
-      datos: {'botId': resolvedBotId},
-    );
+      await _apiService.eliminarPorSessionId(
+        resolvedBotId,
+        sessionId,
+        userRole: userRole,
+      );
 
+      // Eliminar de la lista local después de éxito en cloud
+      _conversaciones.removeWhere((c) => c.sessionId == sessionId);
+      _mensajesActuales = [];
+
+      // Limpiar caché local
+      final jsonList = _conversaciones.map((c) => c.toJson()).toList();
+      await LocalStorageService.guardarConversaciones(jsonList);
+      await LocalStorageService.limpiarCacheConversacion(sessionId);
+
+      _error = null;
+      debugPrint('[ConversacionesProvider] Conversación eliminada correctamente.');
+    } catch (e) {
+      _error = e.toString();
+      debugPrint('[ConversacionesProvider] Error eliminando conversación: $e');
+
+      // Encolar para reintento
+      await _syncService.encolarOperacion(
+        tabla: 'conversaciones',
+        operacion: 'delete',
+        id: sessionId,
+        datos: {'botId': resolvedBotId},
+      );
+
+      rethrow;
+    } finally {
+      _cargando = false;
+      notifyListeners();
+    }
+  }
+
+  void limpiarError() {
     _error = null;
-  }
-
-  Future<void> _cargarConversacionesLocales() async {
-    final data = await LocalStorageService.cargarConversaciones();
-    if (data != null && data.isNotEmpty) {
-      _conversaciones = data
-          .map((json) => ConversacionModel.fromJson(json))
-          .toList();
-      notifyListeners();
-    }
-  }
-
-  Future<void> _cargarMensajesLocales(String sessionId) async {
-    final data = await LocalStorageService.cargarMensajes(sessionId);
-    if (data != null && data.isNotEmpty) {
-      _mensajesActuales = data
-          .map((json) => ConversacionModel.fromJson(json))
-          .toList();
-      notifyListeners();
-    }
+    notifyListeners();
   }
 }

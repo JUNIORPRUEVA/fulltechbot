@@ -266,6 +266,11 @@ async function cambiarEstado(id, estado) {
   return actualizarOrden(id, { estadoPedido: estado });
 }
 
+/**
+ * Elimina físicamente una orden.
+ * El modelo BotOrder NO tiene deleted_at/is_deleted/sync_status,
+ * por lo tanto se usa delete físico.
+ */
 async function eliminarOrden(id) {
   const columns = await getBotOrdersColumns();
   const existente = await obtenerOrdenPorId(id);
@@ -274,17 +279,15 @@ async function eliminarOrden(id) {
     return null;
   }
 
-  const now = new Date().toISOString();
   const idCondition = columns.has('id') ? 'id::text = $1' : 'ctid::text = $1';
   
-  // Soft delete: marcar como eliminado en lugar de borrar
+  // Delete físico: la tabla bot_orders NO tiene campos de soft delete
   await prisma.$executeRawUnsafe(`
-    UPDATE bot_orders 
-    SET deleted_at = $2, is_deleted = true, sync_status = 'pending_delete'
+    DELETE FROM bot_orders 
     WHERE ${idCondition}
-  `, id, now);
+  `, id);
 
-  return { ...existente, deleted_at: now, is_deleted: true };
+  return existente;
 }
 
 module.exports = {
