@@ -292,9 +292,9 @@ async function pausarBot(telefono, pausado, botId = null) {
   });
 }
 
-async function ejecutarDeleteSeguro(tx, sql, ...params) {
+async function ejecutarDeleteSeguro(sql, ...params) {
   try {
-    await tx.$executeRawUnsafe(sql, ...params);
+    await prisma.$executeRawUnsafe(sql, ...params);
   } catch (error) {
     console.log('[eliminarCliente] Delete relacionado ignorado:', error.message);
   }
@@ -338,58 +338,53 @@ async function eliminarCliente(telefono, botId = null) {
     botId,
   });
 
-  return prisma.$transaction(async (tx) => {
-    // 1. Contextos de campañas relacionados.
-    await ejecutarDeleteSeguro(
-      tx,
-      `
-      DELETE FROM conversation_campaign_context
-      WHERE customer_id = ANY($1::text[])
-         OR conversation_id = ANY($2::text[])
-      `,
-      variantesTelefono,
-      sessionIdsArray
-    );
+  // IMPORTANTE:
+  // No usamos prisma.$transaction aquí porque si un DELETE relacionado falla,
+  // PostgreSQL aborta la transacción completa.
+  // Estos deletes son limpieza auxiliar. Si alguno falla, se ignora y seguimos.
+  await ejecutarDeleteSeguro(
+    `
+    DELETE FROM conversation_campaign_context
+    WHERE customer_id = ANY($1::text[])
+       OR conversation_id = ANY($2::text[])
+    `,
+    variantesTelefono,
+    sessionIdsArray
+  );
 
-    // 2. Conversaciones del bot.
-    await ejecutarDeleteSeguro(
-      tx,
-      `
-      DELETE FROM bot_conversations
-      WHERE session_id = ANY($1::text[])
-      `,
-      sessionIdsArray
-    );
+  await ejecutarDeleteSeguro(
+    `
+    DELETE FROM bot_conversations
+    WHERE session_id = ANY($1::text[])
+    `,
+    sessionIdsArray
+  );
 
-    // 3. Cotizaciones del bot.
-    await ejecutarDeleteSeguro(
-      tx,
-      `
-      DELETE FROM bot_quotations
-      WHERE telefono_cliente = ANY($1::text[])
-      `,
-      variantesTelefono
-    );
+  await ejecutarDeleteSeguro(
+    `
+    DELETE FROM bot_quotations
+    WHERE telefono_cliente = ANY($1::text[])
+    `,
+    variantesTelefono
+  );
 
-    // 4. Órdenes del bot.
-    await ejecutarDeleteSeguro(
-      tx,
-      `
-      DELETE FROM bot_orders
-      WHERE telefono_cliente = ANY($1::text[])
-      `,
-      variantesTelefono
-    );
+  await ejecutarDeleteSeguro(
+    `
+    DELETE FROM bot_orders
+    WHERE telefono_cliente = ANY($1::text[])
+    `,
+    variantesTelefono
+  );
 
-    // 5. Cliente principal.
-    const clienteEliminado = await tx.botClient.delete({
-      where: {
-        telefono: telefonoReal,
-      },
-    });
-
-    return clienteEliminado;
+  // Cliente principal.
+  // Este sí debe fallar si no puede eliminarse, porque es el objetivo real.
+  const clienteEliminado = await prisma.botClient.delete({
+    where: {
+      telefono: telefonoReal,
+    },
   });
+
+  return clienteEliminado;
 }
 
 module.exports = {
