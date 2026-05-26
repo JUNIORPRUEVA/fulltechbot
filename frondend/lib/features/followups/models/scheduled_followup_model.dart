@@ -13,7 +13,7 @@ class ScheduledFollowupModel {
   final DateTime? fechaObjetivo;
   final DateTime? proximoSeguimientoAt;
   final String? estado;
-  final String? nivel;
+  final int nivel;
   final DateTime? creadoEn;
   final DateTime? actualizadoEn;
   final String? tipoFollowup;
@@ -36,7 +36,7 @@ class ScheduledFollowupModel {
     this.fechaObjetivo,
     this.proximoSeguimientoAt,
     this.estado,
-    this.nivel,
+    this.nivel = 0,
     this.creadoEn,
     this.actualizadoEn,
     this.tipoFollowup,
@@ -61,14 +61,14 @@ class ScheduledFollowupModel {
       fechaObjetivo: _parseDate(json['fecha_objetivo']),
       proximoSeguimientoAt: _parseDate(json['proximo_seguimiento_at']),
       estado: json['estado']?.toString(),
-      nivel: json['nivel']?.toString(),
+      nivel: int.tryParse(json['nivel']?.toString() ?? '0') ?? 0,
       creadoEn: _parseDate(json['creado_en']),
       actualizadoEn: _parseDate(json['actualizado_en']),
       tipoFollowup: json['tipo_followup']?.toString(),
-      clienteCompro: json['cliente_compro'] is bool
-          ? json['cliente_compro']
-          : json['cliente_compro']?.toString() == 'true',
-      fechaUltimaRespuestaCliente: _parseDate(json['fecha_ultima_respuesta_cliente']),
+      clienteCompro: json['cliente_compro'] == true,
+      fechaUltimaRespuestaCliente: _parseDate(
+        json['fecha_ultima_respuesta_cliente'],
+      ),
       categoriaSeguimiento: json['categoria_seguimiento']?.toString(),
     );
   }
@@ -85,20 +85,25 @@ class ScheduledFollowupModel {
       if (motivo != null) 'motivo': motivo,
       if (mensajeCliente != null) 'mensaje_cliente': mensajeCliente,
       if (ultimoMensajeBot != null) 'ultimo_mensaje_bot': ultimoMensajeBot,
-      if (fechaMencionada != null) 'fecha_mencionada': fechaMencionada!.toIso8601String(),
-      if (fechaObjetivo != null) 'fecha_objetivo': fechaObjetivo!.toIso8601String(),
-      if (proximoSeguimientoAt != null) 'proximo_seguimiento_at': proximoSeguimientoAt!.toIso8601String(),
+      if (fechaMencionada != null)
+        'fecha_mencionada': fechaMencionada!.toIso8601String(),
+      if (fechaObjetivo != null)
+        'fecha_objetivo': fechaObjetivo!.toIso8601String(),
+      if (proximoSeguimientoAt != null)
+        'proximo_seguimiento_at': proximoSeguimientoAt!.toIso8601String(),
       if (estado != null) 'estado': estado,
-      if (nivel != null) 'nivel': nivel,
+      'nivel': nivel,
       if (tipoFollowup != null) 'tipo_followup': tipoFollowup,
       if (clienteCompro != null) 'cliente_compro': clienteCompro,
-      if (categoriaSeguimiento != null) 'categoria_seguimiento': categoriaSeguimiento,
+      if (categoriaSeguimiento != null)
+        'categoria_seguimiento': categoriaSeguimiento,
     };
   }
 
   bool get estaVencido {
     if (proximoSeguimientoAt == null) return false;
-    return proximoSeguimientoAt!.isBefore(DateTime.now()) && estado == 'pendiente';
+    return proximoSeguimientoAt!.isBefore(DateTime.now()) &&
+        estado == 'pendiente';
   }
 
   bool get esFinalizado => estado == 'finalizado';

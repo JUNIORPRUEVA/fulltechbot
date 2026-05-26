@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/bot_order_model.dart';
 import '../providers/bot_order_provider.dart';
@@ -27,7 +28,10 @@ class BotOrderDetailPage extends StatelessWidget {
             onSelected: (value) => _handleMenu(context, value),
             itemBuilder: (context) => [
               const PopupMenuItem(value: 'editar', child: Text('Editar')),
-              const PopupMenuItem(value: 'estado', child: Text('Cambiar estado')),
+              const PopupMenuItem(
+                value: 'estado',
+                child: Text('Cambiar estado'),
+              ),
               const PopupMenuItem(value: 'eliminar', child: Text('Eliminar')),
             ],
           ),
@@ -74,7 +78,10 @@ class BotOrderDetailPage extends StatelessWidget {
             title: 'Cliente',
             icon: Icons.person_outlined,
             children: [
-              _InfoRow(label: 'Nombre', value: orden.nombreCliente ?? 'No especificado'),
+              _InfoRow(
+                label: 'Nombre',
+                value: orden.nombreCliente ?? 'No especificado',
+              ),
               _InfoRow(label: 'Teléfono', value: orden.telefonoCliente),
             ],
           ),
@@ -85,7 +92,10 @@ class BotOrderDetailPage extends StatelessWidget {
             title: 'Servicio',
             icon: Icons.build_outlined,
             children: [
-              _InfoRow(label: 'Tipo', value: orden.tipoServicio ?? 'No especificado'),
+              _InfoRow(
+                label: 'Tipo',
+                value: orden.tipoServicio ?? 'No especificado',
+              ),
               if (orden.direccion != null)
                 _InfoRow(label: 'Dirección', value: orden.direccion!),
               if (orden.fechaDeseada != null)
@@ -93,6 +103,19 @@ class BotOrderDetailPage extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
+
+          if ((orden.ubicacionGpsUrl ?? '').trim().isNotEmpty) ...[
+            _InfoSection(
+              title: 'Ubicacion',
+              icon: Icons.map_outlined,
+              child: _LocationCard(
+                ubicacionUrl: orden.ubicacionGpsUrl!.trim(),
+                onOpen: () =>
+                    _abrirMapa(context, orden.ubicacionGpsUrl!.trim()),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
 
           // Resumen
           if (orden.resumenPedido != null && orden.resumenPedido!.isNotEmpty)
@@ -112,10 +135,7 @@ class BotOrderDetailPage extends StatelessWidget {
             icon: Icons.schedule_outlined,
             children: [
               if (orden.creadoEn != null)
-                _InfoRow(
-                  label: 'Creado',
-                  value: _formatDate(orden.creadoEn!),
-                ),
+                _InfoRow(label: 'Creado', value: _formatDate(orden.creadoEn!)),
               if (orden.actualizadoEn != null)
                 _InfoRow(
                   label: 'Actualizado',
@@ -186,11 +206,8 @@ class BotOrderDetailPage extends StatelessWidget {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => BotOrderFormPage(
-          botId: botId,
-          botNombre: '',
-          orden: orden,
-        ),
+        builder: (_) =>
+            BotOrderFormPage(botId: botId, botNombre: '', orden: orden),
       ),
     );
   }
@@ -224,7 +241,9 @@ class BotOrderDetailPage extends StatelessWidget {
                 final isSelected = orden.estadoPedido == estado;
                 return ListTile(
                   leading: Icon(
-                    isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+                    isSelected
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_off,
                     color: isSelected ? _getColorEstado(estado) : null,
                   ),
                   title: Text(estado[0].toUpperCase() + estado.substring(1)),
@@ -257,9 +276,11 @@ class BotOrderDetailPage extends StatelessWidget {
             onPressed: () async {
               Navigator.pop(ctx);
               try {
-                await context
-                    .read<BotOrderProvider>()
-                    .cambiarEstado(botId, orden.id, nuevoEstado);
+                await context.read<BotOrderProvider>().cambiarEstado(
+                  botId,
+                  orden.id,
+                  nuevoEstado,
+                );
                 if (!context.mounted) return;
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -271,7 +292,10 @@ class BotOrderDetailPage extends StatelessWidget {
               } catch (e) {
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                  SnackBar(
+                    content: Text('Error: $e'),
+                    backgroundColor: Colors.red,
+                  ),
                 );
               }
             },
@@ -297,9 +321,10 @@ class BotOrderDetailPage extends StatelessWidget {
             onPressed: () async {
               Navigator.pop(ctx);
               try {
-                await context
-                    .read<BotOrderProvider>()
-                    .eliminarOrden(botId, orden.id);
+                await context.read<BotOrderProvider>().eliminarOrden(
+                  botId,
+                  orden.id,
+                );
                 if (!context.mounted) return;
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -311,13 +336,42 @@ class BotOrderDetailPage extends StatelessWidget {
               } catch (e) {
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                  SnackBar(
+                    content: Text('Error: $e'),
+                    backgroundColor: Colors.red,
+                  ),
                 );
               }
             },
             child: const Text('Confirmar'),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _abrirMapa(BuildContext context, String rawUrl) async {
+    final uri = Uri.tryParse(rawUrl.trim());
+    if (uri == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('La ubicacion no tiene un enlace valido'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      return;
+    }
+
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('No se pudo abrir el mapa'),
+        backgroundColor: Colors.red,
       ),
     );
   }
@@ -386,8 +440,7 @@ class _InfoSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          if (child != null) child!,
-          if (children != null) ...children!,
+          ...[child, ...?children].whereType<Widget>(),
         ],
       ),
     );
@@ -411,19 +464,60 @@ class _InfoRow extends StatelessWidget {
             width: 100,
             child: Text(
               label,
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey.shade500,
-              ),
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LocationCard extends StatelessWidget {
+  final String ubicacionUrl;
+  final VoidCallback onOpen;
+
+  const _LocationCard({required this.ubicacionUrl, required this.onOpen});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'La ubicacion compartida en este pedido puede abrirse directo en el mapa.',
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+          ),
+          const SizedBox(height: 10),
+          SelectableText(
+            ubicacionUrl,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.blue.shade700,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: FilledButton.icon(
+              onPressed: onOpen,
+              icon: const Icon(Icons.map_rounded, size: 18),
+              label: const Text('Abrir mapa'),
             ),
           ),
         ],

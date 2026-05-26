@@ -1,6 +1,44 @@
 const prisma = require('../lib/prisma');
 
 class FollowupService {
+  _serializeScheduledFollowup(row) {
+    if (!row) return null;
+
+    const toIso = (value) => {
+      if (!value) return null;
+      if (value instanceof Date) return value.toISOString();
+      if (typeof value?.toISOString === 'function') return value.toISOString();
+      return value;
+    };
+
+    return {
+      id: row.id != null ? row.id.toString() : null,
+      telefono_cliente: row.telefono_cliente ?? null,
+      bot_id: row.bot_id ?? null,
+      instancia_whatsapp: row.instancia_whatsapp ?? null,
+      nombre_cliente: row.nombre_cliente ?? null,
+      session_key: row.session_key ?? null,
+      tipo_seguimiento: row.tipo_seguimiento ?? null,
+      motivo: row.motivo ?? null,
+      mensaje_cliente: row.mensaje_cliente ?? null,
+      ultimo_mensaje_bot: row.ultimo_mensaje_bot ?? null,
+      fecha_mencionada: toIso(row.fecha_mencionada),
+      fecha_objetivo: toIso(row.fecha_objetivo),
+      proximo_seguimiento_at: toIso(row.proximo_seguimiento_at),
+      estado: row.estado ?? null,
+      nivel: row.nivel != null ? Number(row.nivel) : 0,
+      creado_en: toIso(row.creado_en),
+      actualizado_en: toIso(row.actualizado_en),
+      tipo_followup: row.tipo_followup ?? null,
+      cliente_compro:
+          row.cliente_compro == null ? null : Boolean(row.cliente_compro),
+      fecha_ultima_respuesta_cliente: toIso(
+        row.fecha_ultima_respuesta_cliente
+      ),
+      categoria_seguimiento: row.categoria_seguimiento ?? null,
+    };
+  }
+
   // ================================================================
   // BOT_SCHEDULED_FOLLOWUPS (Seguimientos Programados)
   // ================================================================
@@ -73,7 +111,7 @@ class FollowupService {
     );
 
     return {
-      data: rows,
+      data: rows.map((row) => this._serializeScheduledFollowup(row)),
       pagination: {
         total,
         limit,
@@ -91,7 +129,7 @@ class FollowupService {
     if (!rows || rows.length === 0) {
       throw new Error('Seguimiento no encontrado');
     }
-    return rows[0];
+    return this._serializeScheduledFollowup(rows[0]);
   }
 
   async actualizarScheduled(id, data) {

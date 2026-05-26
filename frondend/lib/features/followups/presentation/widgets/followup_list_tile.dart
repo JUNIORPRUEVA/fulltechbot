@@ -33,7 +33,7 @@ class ScheduledFollowupTile extends StatelessWidget {
       telefono: followup.telefonoCliente ?? '',
       estado: followup.estado ?? 'pendiente',
       tipo: followup.tipoSeguimiento,
-      nivel: followup.nivel,
+      nivel: followup.nivel > 0 ? followup.nivel.toString() : null,
       motivo: followup.motivo,
       ultimoMensaje: followup.ultimoMensajeBot,
       mensajeCliente: followup.mensajeCliente,
@@ -205,7 +205,9 @@ class _BaseFollowupTile extends StatelessWidget {
                             if (estaVencido && isPendiente)
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 6, vertical: 2),
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.red.shade50,
                                   borderRadius: BorderRadius.circular(6),
@@ -229,7 +231,9 @@ class _BaseFollowupTile extends StatelessWidget {
                               const SizedBox(width: 6),
                               Flexible(
                                 child: FollowupTypeBadge(
-                                    tipo: tipo!, fontSize: 9),
+                                  tipo: tipo!,
+                                  fontSize: 9,
+                                ),
                               ),
                             ],
                             if (nivel != null) ...[
@@ -298,7 +302,9 @@ class _BaseFollowupTile extends StatelessWidget {
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.green.shade50,
                         borderRadius: BorderRadius.circular(6),
@@ -426,7 +432,11 @@ class _BaseFollowupTile extends StatelessWidget {
         const SizedBox(width: 3),
         Text(
           text,
-          style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w500),
+          style: TextStyle(
+            fontSize: 11,
+            color: color,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ],
     );

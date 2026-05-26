@@ -21,15 +21,20 @@ class FollowupDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final nombre = scheduled?.nombreCliente ?? recovery?.nombreCliente ?? 'Sin nombre';
-    final telefono = scheduled?.telefonoCliente ?? recovery?.telefonoCliente ?? '';
+    final nombre =
+        scheduled?.nombreCliente ?? recovery?.nombreCliente ?? 'Sin nombre';
+    final telefono =
+        scheduled?.telefonoCliente ?? recovery?.telefonoCliente ?? '';
     final estado = scheduled?.estado ?? recovery?.estado ?? 'pendiente';
     final nivel = scheduled?.nivel ?? recovery?.nivel;
     final tipo = scheduled?.tipoSeguimiento ?? recovery?.etapa;
     final motivo = scheduled?.motivo ?? recovery?.motivoSeguimiento;
-    final ultimoMensajeBot = scheduled?.ultimoMensajeBot ?? recovery?.ultimoMensajeBot;
-    final ultimoMensajeCliente = scheduled?.mensajeCliente ?? recovery?.ultimoMensajeCliente;
-    final proximoSeguimiento = scheduled?.proximoSeguimientoAt ?? recovery?.proximoSeguimientoAt;
+    final ultimoMensajeBot =
+        scheduled?.ultimoMensajeBot ?? recovery?.ultimoMensajeBot;
+    final ultimoMensajeCliente =
+        scheduled?.mensajeCliente ?? recovery?.ultimoMensajeCliente;
+    final proximoSeguimiento =
+        scheduled?.proximoSeguimientoAt ?? recovery?.proximoSeguimientoAt;
     final creadoEn = scheduled?.creadoEn ?? recovery?.creadoEn;
     final actualizadoEn = scheduled?.actualizadoEn ?? recovery?.actualizadoEn;
 
@@ -111,7 +116,10 @@ class FollowupDetailScreen extends StatelessWidget {
                                   FollowupStatusBadge(estado: estado),
                                   if (nivel != null) ...[
                                     const SizedBox(width: 8),
-                                    _buildInfoChip('Nivel: $nivel', Colors.grey),
+                                    _buildInfoChip(
+                                      'Nivel: $nivel',
+                                      Colors.grey,
+                                    ),
                                   ],
                                 ],
                               ),
@@ -124,7 +132,11 @@ class FollowupDetailScreen extends StatelessWidget {
                       const SizedBox(height: 12),
                       Row(
                         children: [
-                          Icon(Icons.phone_outlined, size: 16, color: Colors.grey.shade600),
+                          Icon(
+                            Icons.phone_outlined,
+                            size: 16,
+                            color: Colors.grey.shade600,
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             telefono,
@@ -142,80 +154,72 @@ class FollowupDetailScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             // Info card
-            _buildSectionCard(
-              'Información del seguimiento',
-              [
-                if (tipo != null)
-                  _buildInfoRow('Tipo', FollowupTypeBadge(tipo: tipo)),
-                if (motivo != null && motivo.isNotEmpty)
-                  _buildInfoRow('Motivo', motivo),
-                if (proximoSeguimiento != null)
-                  _buildInfoRow(
-                    'Próximo seguimiento',
-                    _formatFechaDetalle(proximoSeguimiento),
-                  ),
-                if (scheduled?.fechaObjetivo != null)
-                  _buildInfoRow(
-                    'Fecha objetivo',
-                    _formatFechaDetalle(scheduled!.fechaObjetivo!),
-                  ),
-                if (scheduled?.clienteCompro != null)
-                  _buildInfoRow(
-                    'Cliente compró',
-                    scheduled!.clienteCompro! ? 'Sí' : 'No',
-                  ),
-                if (scheduled?.fechaUltimaRespuestaCliente != null)
-                  _buildInfoRow(
-                    'Última respuesta cliente',
-                    _formatFechaDetalle(scheduled!.fechaUltimaRespuestaCliente!),
-                  ),
-                if (scheduled?.categoriaSeguimiento != null)
-                  _buildInfoRow(
-                    'Categoría',
-                    scheduled!.categoriaSeguimiento!,
-                  ),
-              ],
-            ),
+            _buildSectionCard('Información del seguimiento', [
+              if (tipo != null)
+                _buildInfoRow('Tipo', FollowupTypeBadge(tipo: tipo)),
+              if (motivo != null && motivo.isNotEmpty)
+                _buildInfoRow('Motivo', motivo),
+              if (proximoSeguimiento != null)
+                _buildInfoRow(
+                  'Próximo seguimiento',
+                  _formatFechaDetalle(proximoSeguimiento),
+                ),
+              if (scheduled?.fechaObjetivo != null)
+                _buildInfoRow(
+                  'Fecha objetivo',
+                  _formatFechaDetalle(scheduled!.fechaObjetivo!),
+                ),
+              if (scheduled?.clienteCompro != null)
+                _buildInfoRow(
+                  'Cliente compró',
+                  scheduled!.clienteCompro! ? 'Sí' : 'No',
+                ),
+              if (scheduled?.fechaUltimaRespuestaCliente != null)
+                _buildInfoRow(
+                  'Última respuesta cliente',
+                  _formatFechaDetalle(scheduled!.fechaUltimaRespuestaCliente!),
+                ),
+              if (scheduled?.categoriaSeguimiento != null)
+                _buildInfoRow('Categoría', scheduled!.categoriaSeguimiento!),
+            ]),
             const SizedBox(height: 12),
             // Messages card
             if (ultimoMensajeBot != null || ultimoMensajeCliente != null)
-              _buildSectionCard(
-                'Últimos mensajes',
-                [
-                  if (ultimoMensajeBot != null && ultimoMensajeBot.isNotEmpty)
-                    _buildMessageBubble(
-                      'Bot',
-                      ultimoMensajeBot,
-                      Colors.blue.shade50,
-                      Colors.blue.shade700,
-                    ),
-                  if (ultimoMensajeCliente != null && ultimoMensajeCliente.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    _buildMessageBubble(
-                      'Cliente',
-                      ultimoMensajeCliente,
-                      Colors.green.shade50,
-                      Colors.green.shade700,
-                    ),
-                  ],
+              _buildSectionCard('Últimos mensajes', [
+                if (ultimoMensajeBot != null && ultimoMensajeBot.isNotEmpty)
+                  _buildMessageBubble(
+                    'Bot',
+                    ultimoMensajeBot,
+                    Colors.blue.shade50,
+                    Colors.blue.shade700,
+                  ),
+                if (ultimoMensajeCliente != null &&
+                    ultimoMensajeCliente.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  _buildMessageBubble(
+                    'Cliente',
+                    ultimoMensajeCliente,
+                    Colors.green.shade50,
+                    Colors.green.shade700,
+                  ),
                 ],
-              ),
+              ]),
             const SizedBox(height: 12),
             // Dates card
-            _buildSectionCard(
-              'Fechas',
-              [
-                if (creadoEn != null)
-                  _buildInfoRow('Creado', _formatFechaDetalle(creadoEn)),
-                if (actualizadoEn != null)
-                  _buildInfoRow('Actualizado', _formatFechaDetalle(actualizadoEn)),
-                if (recovery?.ultimoSeguimientoAt != null)
-                  _buildInfoRow(
-                    'Último seguimiento',
-                    _formatFechaDetalle(recovery!.ultimoSeguimientoAt!),
-                  ),
-              ],
-            ),
+            _buildSectionCard('Fechas', [
+              if (creadoEn != null)
+                _buildInfoRow('Creado', _formatFechaDetalle(creadoEn)),
+              if (actualizadoEn != null)
+                _buildInfoRow(
+                  'Actualizado',
+                  _formatFechaDetalle(actualizadoEn),
+                ),
+              if (recovery?.ultimoSeguimientoAt != null)
+                _buildInfoRow(
+                  'Último seguimiento',
+                  _formatFechaDetalle(recovery!.ultimoSeguimientoAt!),
+                ),
+            ]),
             const SizedBox(height: 24),
             // Actions
             if (onAbrirCRM != null || telefono.isNotEmpty)
@@ -286,10 +290,7 @@ class FollowupDetailScreen extends StatelessWidget {
             width: 140,
             child: Text(
               label,
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey.shade600,
-              ),
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
             ),
           ),
           Expanded(
@@ -308,7 +309,12 @@ class FollowupDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMessageBubble(String sender, String message, Color bgColor, Color textColor) {
+  Widget _buildMessageBubble(
+    String sender,
+    String message,
+    Color bgColor,
+    Color textColor,
+  ) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),

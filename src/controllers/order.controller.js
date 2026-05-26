@@ -36,7 +36,18 @@ async function obtener(req, res) {
 
 async function crear(req, res) {
   try {
-    const data = { ...req.body };
+    const payload = req.body ?? {};
+    const data = {
+      ...payload,
+      telefonoCliente: payload.telefonoCliente || payload.telefono_cliente,
+      nombreCliente: payload.nombreCliente || payload.nombre_cliente,
+      productoServicio: payload.productoServicio || payload.producto_servicio,
+      tipoServicio: payload.tipoServicio || payload.tipo_servicio,
+      fechaDeseada: payload.fechaDeseada || payload.fecha_deseada,
+      estadoPedido: payload.estadoPedido || payload.estado_pedido,
+      resumenPedido: payload.resumenPedido || payload.resumen_pedido,
+      ubicacionGpsUrl: payload.ubicacionGpsUrl || payload.ubicacion_gps_url,
+    };
     const orden = await orderService.crearOrden(data);
     res.status(201).json({ ok: true, message: 'Orden creada exitosamente', data: orden });
   } catch (error) {
@@ -48,7 +59,19 @@ async function crear(req, res) {
 async function actualizar(req, res) {
   try {
     const { id } = req.params;
-    const orden = await orderService.actualizarOrden(id, req.body);
+    const payload = req.body ?? {};
+    const data = {
+      ...payload,
+      telefonoCliente: payload.telefonoCliente || payload.telefono_cliente,
+      nombreCliente: payload.nombreCliente || payload.nombre_cliente,
+      productoServicio: payload.productoServicio || payload.producto_servicio,
+      tipoServicio: payload.tipoServicio || payload.tipo_servicio,
+      fechaDeseada: payload.fechaDeseada || payload.fecha_deseada,
+      estadoPedido: payload.estadoPedido || payload.estado_pedido,
+      resumenPedido: payload.resumenPedido || payload.resumen_pedido,
+      ubicacionGpsUrl: payload.ubicacionGpsUrl || payload.ubicacion_gps_url,
+    };
+    const orden = await orderService.actualizarOrden(id, data);
 
     if (!orden) {
       return res.status(404).json({ ok: false, message: 'Orden no encontrada' });

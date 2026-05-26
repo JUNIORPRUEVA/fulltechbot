@@ -26,6 +26,7 @@ class _BotOrderFormPageState extends State<BotOrderFormPage> {
   late final TextEditingController _nombreController;
   late final TextEditingController _productoController;
   late final TextEditingController _direccionController;
+  late final TextEditingController _ubicacionController;
   late final TextEditingController _fechaController;
   late final TextEditingController _resumenController;
   String _tipoServicio = 'otro';
@@ -67,6 +68,9 @@ class _BotOrderFormPageState extends State<BotOrderFormPage> {
     _direccionController = TextEditingController(
       text: widget.orden?.direccion ?? '',
     );
+    _ubicacionController = TextEditingController(
+      text: widget.orden?.ubicacionGpsUrl ?? '',
+    );
     _fechaController = TextEditingController(
       text: widget.orden?.fechaDeseada ?? '',
     );
@@ -83,6 +87,7 @@ class _BotOrderFormPageState extends State<BotOrderFormPage> {
     _nombreController.dispose();
     _productoController.dispose();
     _direccionController.dispose();
+    _ubicacionController.dispose();
     _fechaController.dispose();
     _resumenController.dispose();
     super.dispose();
@@ -91,9 +96,7 @@ class _BotOrderFormPageState extends State<BotOrderFormPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_isEditing ? 'Editar orden' : 'Nueva orden'),
-      ),
+      appBar: AppBar(title: Text(_isEditing ? 'Editar orden' : 'Nueva orden')),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -109,7 +112,11 @@ class _BotOrderFormPageState extends State<BotOrderFormPage> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.smart_toy_outlined, size: 18, color: Colors.blue.shade600),
+                  Icon(
+                    Icons.smart_toy_outlined,
+                    size: 18,
+                    color: Colors.blue.shade600,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -198,6 +205,18 @@ class _BotOrderFormPageState extends State<BotOrderFormPage> {
             ),
             const SizedBox(height: 16),
 
+            TextFormField(
+              controller: _ubicacionController,
+              decoration: const InputDecoration(
+                labelText: 'Link de ubicacion / mapa',
+                prefixIcon: Icon(Icons.map_outlined),
+                border: OutlineInputBorder(),
+                hintText: 'Ej: https://maps.google.com/...',
+              ),
+              keyboardType: TextInputType.url,
+            ),
+            const SizedBox(height: 16),
+
             // Fecha deseada
             TextFormField(
               controller: _fechaController,
@@ -251,7 +270,10 @@ class _BotOrderFormPageState extends State<BotOrderFormPage> {
                   ? const SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : const Icon(Icons.save_rounded),
               label: Text(_isEditing ? 'Actualizar orden' : 'Crear orden'),
@@ -282,6 +304,9 @@ class _BotOrderFormPageState extends State<BotOrderFormPage> {
       'direccion': _direccionController.text.trim().isEmpty
           ? null
           : _direccionController.text.trim(),
+      'ubicacion_gps_url': _ubicacionController.text.trim().isEmpty
+          ? null
+          : _ubicacionController.text.trim(),
       'fecha_deseada': _fechaController.text.trim().isEmpty
           ? null
           : _fechaController.text.trim(),
@@ -313,10 +338,7 @@ class _BotOrderFormPageState extends State<BotOrderFormPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $e'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) setState(() => _isSaving = false);

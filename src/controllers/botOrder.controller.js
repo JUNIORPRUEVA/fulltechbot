@@ -66,6 +66,7 @@ async function crear(req, res) {
       fechaDeseada: data.fechaDeseada || data.fecha_deseada || null,
       estadoPedido: data.estadoPedido || data.estado_pedido || 'pendiente',
       resumenPedido: data.resumenPedido || data.resumen_pedido || null,
+      ubicacionGpsUrl: data.ubicacionGpsUrl || data.ubicacion_gps_url || null,
       botId,
     };
 
@@ -100,6 +101,7 @@ async function actualizar(req, res) {
       fechaDeseada: data.fechaDeseada || data.fecha_deseada,
       estadoPedido: data.estadoPedido || data.estado_pedido,
       resumenPedido: data.resumenPedido || data.resumen_pedido,
+      ubicacionGpsUrl: data.ubicacionGpsUrl || data.ubicacion_gps_url,
     };
 
     const orden = await botOrderService.actualizarOrden(id, normalizedData, botId);

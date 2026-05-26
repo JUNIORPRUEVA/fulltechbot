@@ -11,13 +11,11 @@ import 'followup_detail_screen.dart';
 class ScheduledFollowupsScreen extends StatefulWidget {
   final String botId;
 
-  const ScheduledFollowupsScreen({
-    super.key,
-    required this.botId,
-  });
+  const ScheduledFollowupsScreen({super.key, required this.botId});
 
   @override
-  State<ScheduledFollowupsScreen> createState() => _ScheduledFollowupsScreenState();
+  State<ScheduledFollowupsScreen> createState() =>
+      _ScheduledFollowupsScreenState();
 }
 
 class _ScheduledFollowupsScreenState extends State<ScheduledFollowupsScreen> {
@@ -58,15 +56,15 @@ class _ScheduledFollowupsScreenState extends State<ScheduledFollowupsScreen> {
 
   Future<void> _cargar({required bool refresh}) async {
     await context.read<FollowupsProvider>().cargarScheduled(
-          botId: widget.botId,
-          refresh: refresh,
-          estado: _estado,
-          tipoSeguimiento: _tipoSeguimiento,
-          nivel: _nivel,
-          clienteCompro: _clienteCompro,
-          fecha: _fecha,
-          search: _search,
-        );
+      botId: widget.botId,
+      refresh: refresh,
+      estado: _estado,
+      tipoSeguimiento: _tipoSeguimiento,
+      nivel: _nivel,
+      clienteCompro: _clienteCompro,
+      fecha: _fecha,
+      search: _search,
+    );
   }
 
   void _onEstadoChanged(String? value) {
@@ -161,16 +159,40 @@ class _ScheduledFollowupsScreenState extends State<ScheduledFollowupsScreen> {
               ],
               secondaryOptions: const [
                 FilterOption(label: 'Fecha futura', value: 'fecha_futura'),
-                FilterOption(label: 'Reserva instalación', value: 'reserva_instalacion'),
-                FilterOption(label: 'Seg. cotización', value: 'seguimiento_cotizacion'),
+                FilterOption(
+                  label: 'Reserva instalación',
+                  value: 'reserva_instalacion',
+                ),
+                FilterOption(
+                  label: 'Seg. cotización',
+                  value: 'seguimiento_cotizacion',
+                ),
                 FilterOption(label: 'Esperando pago', value: 'esperando_pago'),
-                FilterOption(label: 'Coord. visita', value: 'coordinacion_visita'),
-                FilterOption(label: 'Cliente interesado', value: 'cliente_interesado'),
-                FilterOption(label: 'Seg. instalación', value: 'seguimiento_instalacion'),
+                FilterOption(
+                  label: 'Coord. visita',
+                  value: 'coordinacion_visita',
+                ),
+                FilterOption(
+                  label: 'Cliente interesado',
+                  value: 'cliente_interesado',
+                ),
+                FilterOption(
+                  label: 'Seg. instalación',
+                  value: 'seguimiento_instalacion',
+                ),
                 FilterOption(label: 'Seg. motor', value: 'seguimiento_motor'),
-                FilterOption(label: 'Seg. cámaras', value: 'seguimiento_camaras'),
-                FilterOption(label: 'Seg. componente', value: 'seguimiento_componente'),
-                FilterOption(label: 'Seg. confirmación', value: 'seguimiento_confirmacion'),
+                FilterOption(
+                  label: 'Seg. cámaras',
+                  value: 'seguimiento_camaras',
+                ),
+                FilterOption(
+                  label: 'Seg. componente',
+                  value: 'seguimiento_componente',
+                ),
+                FilterOption(
+                  label: 'Seg. confirmación',
+                  value: 'seguimiento_confirmacion',
+                ),
               ],
               secondaryLabel: 'Tipo',
               fechaOptions: const [
@@ -194,11 +216,13 @@ class _ScheduledFollowupsScreenState extends State<ScheduledFollowupsScreen> {
           Expanded(
             child: Consumer<FollowupsProvider>(
               builder: (context, provider, _) {
-                if (provider.isLoadingScheduled && provider.scheduledFollowups.isEmpty) {
+                if (provider.isLoadingScheduled &&
+                    provider.scheduledFollowups.isEmpty) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                if (provider.errorScheduled != null && provider.scheduledFollowups.isEmpty) {
+                if (provider.errorScheduled != null &&
+                    provider.scheduledFollowups.isEmpty) {
                   return FollowupEmptyState(
                     icon: Icons.error_outline_rounded,
                     title: 'Error al cargar',
@@ -213,7 +237,7 @@ class _ScheduledFollowupsScreenState extends State<ScheduledFollowupsScreen> {
                     title: 'Sin seguimientos',
                     subtitle: _isSearching
                         ? 'No se encontraron seguimientos con los filtros aplicados'
-                        : 'No hay seguimientos programados para este bot',
+                        : 'No hay seguimientos programados pendientes.',
                     onRefresh: () => _cargar(refresh: true),
                   );
                 }
@@ -223,7 +247,8 @@ class _ScheduledFollowupsScreenState extends State<ScheduledFollowupsScreen> {
                   child: ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.only(top: 4, bottom: 80),
-                    itemCount: provider.scheduledFollowups.length +
+                    itemCount:
+                        provider.scheduledFollowups.length +
                         (provider.hasMoreScheduled ? 1 : 0),
                     itemBuilder: (context, index) {
                       if (index >= provider.scheduledFollowups.length) {
@@ -239,19 +264,30 @@ class _ScheduledFollowupsScreenState extends State<ScheduledFollowupsScreen> {
                         onTap: () => _abrirDetalle(followup),
                         onFinalizar: () => _confirmAction(
                           '¿Finalizar este seguimiento?',
-                          () => provider.finalizarScheduled(widget.botId, followup.id),
+                          () => provider.finalizarScheduled(
+                            widget.botId,
+                            followup.id,
+                          ),
                         ),
                         onCancelar: () => _confirmAction(
                           '¿Cancelar este seguimiento?',
-                          () => provider.cancelarScheduled(widget.botId, followup.id),
+                          () => provider.cancelarScheduled(
+                            widget.botId,
+                            followup.id,
+                          ),
                         ),
                         onReactivar: () => _confirmAction(
                           '¿Reactivar este seguimiento?',
-                          () => provider.reactivarScheduled(widget.botId, followup.id),
+                          () => provider.reactivarScheduled(
+                            widget.botId,
+                            followup.id,
+                          ),
                         ),
                         onAbrirCRM: () {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Módulo CRM próximamente')),
+                            const SnackBar(
+                              content: Text('Módulo CRM próximamente'),
+                            ),
                           );
                         },
                       );
