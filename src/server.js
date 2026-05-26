@@ -23,6 +23,7 @@ const followupRoutes = require('./routes/followup.routes');
 const orderRoutes = require('./routes/order.routes');
 const quotationRoutes = require('./routes/quotation.routes');
 const syncRoutes = require('./routes/sync.routes');
+const storefrontRoutes = require('./routes/storefront.routes');
 
 const app = express();
 const BACKEND_VERSION = 'campaign-module-005-force-rebuild';
@@ -100,6 +101,9 @@ app.use('/api/quotations', quotationRoutes);
 
 // Ruta de sincronización entre dispositivos
 app.use('/api/sync', syncRoutes);
+
+// Storefront - Tienda online/PWA
+app.use('/api/storefront', storefrontRoutes);
 
 app.use((req, res) => {
   res.status(404).json({

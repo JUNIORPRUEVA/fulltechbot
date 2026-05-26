@@ -19,6 +19,7 @@ import '../../orders/pages/orders_page.dart';
 import '../../orders/providers/order_provider.dart';
 import '../../quotations/pages/quotations_page.dart';
 import '../../quotations/providers/quotation_provider.dart';
+import '../../storefront_admin/screens/storefront_admin_screen.dart';
 import 'bot_form_page.dart';
 import 'bot_selector_page.dart';
 
@@ -349,6 +350,14 @@ class _BotDashboardPageState extends State<BotDashboardPage>
                   ],
                   const Divider(height: 1),
                   ListTile(
+                    leading: const Icon(Icons.store_outlined),
+                    title: const Text('Tienda Online'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _abrirTiendaAdmin(context);
+                    },
+                  ),
+                  ListTile(
                     leading: const Icon(Icons.checklist_rounded),
                     title: const Text('Seguimientos'),
                     onTap: () {
@@ -523,6 +532,16 @@ class _BotDashboardPageState extends State<BotDashboardPage>
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   child: ListTile(
                     dense: true,
+                    leading: Icon(Icons.store_outlined, size: 20, color: Colors.grey.shade600),
+                    title: Text('Tienda Online', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.grey.shade700)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    onTap: () => _abrirTiendaAdmin(context),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  child: ListTile(
+                    dense: true,
                     leading: Icon(Icons.checklist_rounded, size: 20, color: Colors.grey.shade600),
                     title: Text('Seguimientos', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.grey.shade700)),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -567,6 +586,13 @@ class _BotDashboardPageState extends State<BotDashboardPage>
           ),
         ],
       ),
+    );
+  }
+
+  void _abrirTiendaAdmin(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const StorefrontAdminScreen()),
     );
   }
 

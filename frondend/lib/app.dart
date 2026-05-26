@@ -4,6 +4,12 @@ import 'package:provider/provider.dart';
 import 'features/bots/pages/bot_selector_page.dart';
 import 'features/bots/pages/bot_dashboard_page.dart';
 import 'features/bots/providers/bot_provider.dart';
+import 'features/storefront/screens/storefront_home_screen.dart';
+import 'features/storefront/screens/storefront_product_detail_screen.dart';
+import 'features/storefront/screens/storefront_cart_screen.dart';
+import 'features/storefront/screens/storefront_checkout_screen.dart';
+import 'features/storefront/screens/storefront_success_screen.dart';
+import 'features/storefront/screens/storefront_category_screen.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -27,6 +33,98 @@ class MyApp extends StatelessWidget {
           elevation: 0,
         ),
       ),
+      // Rutas públicas del storefront
+      onGenerateRoute: (settings) {
+        final uri = Uri.parse(settings.name ?? '/');
+
+        // /tienda/:slug
+        if (uri.pathSegments.length == 2 && uri.pathSegments[0] == 'tienda') {
+          return MaterialPageRoute(
+            builder: (_) => StorefrontHomeScreen(slug: uri.pathSegments[1]),
+            settings: settings,
+          );
+        }
+
+        // /tienda/:slug/producto/:id
+        if (uri.pathSegments.length == 4 &&
+            uri.pathSegments[0] == 'tienda' &&
+            uri.pathSegments[2] == 'producto') {
+          return MaterialPageRoute(
+            builder: (_) => StorefrontProductDetailScreen(
+              slug: uri.pathSegments[1],
+              productId: uri.pathSegments[3],
+            ),
+            settings: settings,
+          );
+        }
+
+        // /tienda/:slug/categoria/:categoria
+        if (uri.pathSegments.length == 4 &&
+            uri.pathSegments[0] == 'tienda' &&
+            uri.pathSegments[2] == 'categoria') {
+          return MaterialPageRoute(
+            builder: (_) => StorefrontCategoryScreen(
+              slug: uri.pathSegments[1],
+              categoria: Uri.decodeComponent(uri.pathSegments[3]),
+            ),
+            settings: settings,
+          );
+        }
+
+        // /tienda/:slug/busqueda
+        if (uri.pathSegments.length == 3 &&
+            uri.pathSegments[0] == 'tienda' &&
+            uri.pathSegments[2] == 'busqueda') {
+          final args = settings.arguments as Map<String, dynamic>?;
+          return MaterialPageRoute(
+            builder: (_) => StorefrontCategoryScreen(
+              slug: uri.pathSegments[1],
+              busqueda: args?['busqueda'] as String?,
+            ),
+            settings: settings,
+          );
+        }
+
+        // /tienda/:slug/carrito
+        if (uri.pathSegments.length == 3 &&
+            uri.pathSegments[0] == 'tienda' &&
+            uri.pathSegments[2] == 'carrito') {
+          return MaterialPageRoute(
+            builder: (_) => StorefrontCartScreen(slug: uri.pathSegments[1]),
+            settings: settings,
+          );
+        }
+
+        // /tienda/:slug/checkout
+        if (uri.pathSegments.length == 3 &&
+            uri.pathSegments[0] == 'tienda' &&
+            uri.pathSegments[2] == 'checkout') {
+          return MaterialPageRoute(
+            builder: (_) => StorefrontCheckoutScreen(slug: uri.pathSegments[1]),
+            settings: settings,
+          );
+        }
+
+        // /tienda/:slug/exito
+        if (uri.pathSegments.length == 3 &&
+            uri.pathSegments[0] == 'tienda' &&
+            uri.pathSegments[2] == 'exito') {
+          final args = settings.arguments as Map<String, dynamic>?;
+          return MaterialPageRoute(
+            builder: (_) => StorefrontSuccessScreen(
+              slug: uri.pathSegments[1],
+              data: args,
+            ),
+            settings: settings,
+          );
+        }
+
+        // Ruta por defecto: navegación principal
+        return MaterialPageRoute(
+          builder: (_) => const MainNavigation(),
+          settings: settings,
+        );
+      },
       home: const MainNavigation(),
     );
   }
