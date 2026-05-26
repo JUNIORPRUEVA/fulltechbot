@@ -14,6 +14,7 @@ import 'features/orders/providers/bot_order_provider.dart';
 import 'features/quotations/providers/bot_quotation_provider.dart';
 import 'features/orders/providers/order_provider.dart';
 import 'features/quotations/providers/quotation_provider.dart';
+import 'features/followups/providers/followups_provider.dart';
 
 void main() {
   runZonedGuarded(() async {
@@ -141,6 +142,9 @@ void main() {
           ),
           ChangeNotifierProvider(
             create: (_) => QuotationProvider(),
+          ),
+          ChangeNotifierProvider(
+            create: (_) => FollowupsProvider(),
           ),
         ],
         child: const MyApp(),

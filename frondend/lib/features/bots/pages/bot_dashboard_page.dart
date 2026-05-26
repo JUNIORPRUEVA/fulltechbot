@@ -13,6 +13,8 @@ import '../../clientes/pages/clientes_page.dart';
 import '../../clientes/providers/clientes_provider.dart';
 import '../../conversaciones/pages/conversaciones_page.dart';
 import '../../conversaciones/providers/conversaciones_provider.dart';
+import '../../followups/presentation/screens/scheduled_followups_screen.dart';
+import '../../followups/presentation/screens/conversation_recovery_screen.dart';
 import '../../orders/pages/orders_page.dart';
 import '../../orders/providers/order_provider.dart';
 import '../../quotations/pages/quotations_page.dart';
@@ -347,6 +349,23 @@ class _BotDashboardPageState extends State<BotDashboardPage>
                   ],
                   const Divider(height: 1),
                   ListTile(
+                    leading: const Icon(Icons.checklist_rounded),
+                    title: const Text('Seguimientos'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _abrirSeguimientos(context);
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.restore_page_rounded),
+                    title: const Text('Recuperación'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _abrirRecuperacion(context);
+                    },
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
                     leading: const Icon(Icons.edit_outlined),
                     title: const Text('Editar bot'),
                     onTap: () {
@@ -499,6 +518,27 @@ class _BotDashboardPageState extends State<BotDashboardPage>
                       },
                     ),
                   ),
+                const Divider(height: 1),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  child: ListTile(
+                    dense: true,
+                    leading: Icon(Icons.checklist_rounded, size: 20, color: Colors.grey.shade600),
+                    title: Text('Seguimientos', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.grey.shade700)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    onTap: () => _abrirSeguimientos(context),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  child: ListTile(
+                    dense: true,
+                    leading: Icon(Icons.restore_page_rounded, size: 20, color: Colors.grey.shade600),
+                    title: Text('Recuperación', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.grey.shade700)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    onTap: () => _abrirRecuperacion(context),
+                  ),
+                ),
               ],
             ),
           ),
@@ -526,6 +566,28 @@ class _BotDashboardPageState extends State<BotDashboardPage>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _abrirSeguimientos(BuildContext context) {
+    final bot = context.read<BotProvider>().botSeleccionado;
+    if (bot == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ScheduledFollowupsScreen(botId: bot.id),
+      ),
+    );
+  }
+
+  void _abrirRecuperacion(BuildContext context) {
+    final bot = context.read<BotProvider>().botSeleccionado;
+    if (bot == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ConversationRecoveryScreen(botId: bot.id),
       ),
     );
   }

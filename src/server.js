@@ -18,6 +18,7 @@ const botQuotationNestedRoutes = require('./routes/botQuotation.routes');
 const botOrderRoutes = require('./routes/botOrder.routes');
 const botCampaignRoutes = require('./routes/botCampaign.routes');
 const campaignContextRoutes = require('./routes/campaignContext.routes');
+const followupRoutes = require('./routes/followup.routes');
 
 const orderRoutes = require('./routes/order.routes');
 const quotationRoutes = require('./routes/quotation.routes');
@@ -88,6 +89,7 @@ app.use('/api/bots/:botId/conversations', botConversationNestedRoutes);
 app.use('/api/bots/:botId/quotations', botQuotationNestedRoutes);
 app.use('/api/bots/:botId/orders', botOrderRoutes);
 app.use('/api/bots/:botId/campaigns', botCampaignRoutes);
+app.use('/api/bots/:botId/followups', followupRoutes);
 app.use('/api', campaignContextRoutes);
 
 app.use('/api/orders', (req, res, next) => {
