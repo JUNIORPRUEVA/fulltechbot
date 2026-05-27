@@ -6,6 +6,8 @@ ARG API_BASE_URL
 ARG FLUTTER_BUILD_ARGS=""
 ARG GIT_SHA="unknown"
 
+ENV CI=true
+
 # Copy pubspec first to cache dependencies
 COPY pubspec.* ./
 RUN flutter pub get
@@ -15,9 +17,9 @@ COPY . .
 
 # Build the web app with optional dart-defines from EasyPanel.
 RUN if [ -n "$API_BASE_URL" ]; then \
-      flutter build web --release --dart-define=API_BASE_URL="$API_BASE_URL" $FLUTTER_BUILD_ARGS; \
+      flutter build web --release --no-wasm-dry-run --dart-define=API_BASE_URL="$API_BASE_URL" $FLUTTER_BUILD_ARGS; \
     else \
-      flutter build web --release $FLUTTER_BUILD_ARGS; \
+      flutter build web --release --no-wasm-dry-run $FLUTTER_BUILD_ARGS; \
     fi
 
 FROM nginx:alpine

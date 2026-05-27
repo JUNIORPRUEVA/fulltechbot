@@ -37,6 +37,7 @@ Notas:
 
 - EasyPanel ya soporta Root Directory en este proyecto; tu captura muestra `Ruta de compilacion`.
 - No necesitas `DATABASE_URL` para la PWA.
+- Si el servidor es pequeno y se reinicia durante `flutter build web`, usa la opcion de despliegue estatico descrita mas abajo.
 
 ## D. Configuracion del servicio backend
 
@@ -72,6 +73,34 @@ Si quieres compilar contra una API publica concreta:
 ```bash
 docker build -t fulltech-tienda-web --build-arg API_BASE_URL=https://api.midominio.com .
 ```
+
+## E2. Opcion para servidores con poca RAM
+
+Si EasyPanel reinicia el servidor mientras compila Flutter, el problema ya no es de codigo sino de recursos del host durante el build.
+
+En ese caso usa despliegue estatico:
+
+1. Compila la PWA en tu maquina local:
+
+```bash
+cd frondend
+flutter clean
+flutter pub get
+flutter build web --release --dart-define=API_BASE_URL=https://api.midominio.com
+```
+
+2. Copia el contenido de `build/web/` a `frondend/deploy_web/`.
+
+3. Sube esos archivos al repositorio.
+
+4. En EasyPanel usa:
+
+- Root Directory / Ruta de compilacion: `/frondend`
+- Tipo de compilacion: `Dockerfile`
+- Archivo: `Dockerfile.static`
+- Puerto interno: `80`
+
+Con esa variante EasyPanel ya no compila Flutter; solo sirve archivos estaticos con Nginx.
 
 ## F. Como verificar imagenes
 
@@ -111,6 +140,8 @@ Para produccion:
 ### Opcion recomendada
 
 Usar `Root Directory` = `/frondend` y `frondend/Dockerfile`.
+
+Si la maquina tiene poca RAM, usar `frondend/Dockerfile.static` con `deploy_web/` precompilado.
 
 ### Si alguna vez no puedes usar Root Directory
 
