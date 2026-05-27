@@ -110900,7 +110900,7 @@ if(a!=null&&B.c.Y(a).length!==0)return B.c.Y(a)
 if(b==null)s=null
 else{r=b.h(0,"envDefaultSlug")
 s=r==null?null:B.c.Y(J.x(r))}if(s!=null&&s.length!==0)return s
-r=B.c.Y("")
+r=B.c.Y("fulltech-seguridad")
 if(r.length!==0)return r
 return null},
 Mq(a,b){var s="/tienda/"+b
