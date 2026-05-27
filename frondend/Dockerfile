@@ -3,6 +3,7 @@ FROM ghcr.io/cirruslabs/flutter:stable AS build
 WORKDIR /app
 
 ARG API_BASE_URL
+ARG STORAGE_PUBLIC_URL
 ARG FLUTTER_BUILD_ARGS=""
 ARG GIT_SHA="unknown"
 
@@ -17,9 +18,9 @@ COPY . .
 
 # Build the web app with optional dart-defines from EasyPanel.
 RUN if [ -n "$API_BASE_URL" ]; then \
-      flutter build web --release --no-wasm-dry-run --dart-define=API_BASE_URL="$API_BASE_URL" $FLUTTER_BUILD_ARGS; \
+      flutter build web --release --no-wasm-dry-run --dart-define=API_BASE_URL="$API_BASE_URL" --dart-define=STORAGE_PUBLIC_URL="$STORAGE_PUBLIC_URL" $FLUTTER_BUILD_ARGS; \
     else \
-      flutter build web --release --no-wasm-dry-run $FLUTTER_BUILD_ARGS; \
+      flutter build web --release --no-wasm-dry-run --dart-define=STORAGE_PUBLIC_URL="$STORAGE_PUBLIC_URL" $FLUTTER_BUILD_ARGS; \
     fi
 
 FROM nginx:alpine

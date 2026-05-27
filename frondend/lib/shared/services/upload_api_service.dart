@@ -22,14 +22,18 @@ class UploadResult {
   });
 
   factory UploadResult.fromJson(Map<String, dynamic> json) {
+    final payload = json['data'] is Map<String, dynamic>
+        ? json['data'] as Map<String, dynamic>
+        : json;
+
     return UploadResult(
       ok: json['ok'] == true,
-      url: json['url']?.toString() ?? '',
-      key: json['key']?.toString() ?? '',
-      mimeType: json['mimeType']?.toString() ?? '',
-      size: json['size'] is int
-          ? json['size'] as int
-          : int.tryParse(json['size']?.toString() ?? '0') ?? 0,
+      url: payload['url']?.toString() ?? '',
+      key: payload['key']?.toString() ?? '',
+      mimeType: payload['mimeType']?.toString() ?? '',
+      size: payload['size'] is int
+          ? payload['size'] as int
+          : int.tryParse(payload['size']?.toString() ?? '0') ?? 0,
     );
   }
 }

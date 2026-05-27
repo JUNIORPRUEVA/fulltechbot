@@ -1,7 +1,11 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+
 import '../services/storefront_helpers.dart';
+import '../theme/storefront_theme.dart';
+import 'storefront_smart_image.dart';
 
 class StorefrontBannerSlider extends StatefulWidget {
   final List<dynamic> banners;
@@ -34,14 +38,16 @@ class _StorefrontBannerSliderState extends State<StorefrontBannerSlider> {
 
   void _startAutoPlay() {
     _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      if (_pageController.hasClients) {
-        final nextPage = (_currentPage + 1) % widget.banners.length;
-        _pageController.animateToPage(
-          nextPage,
-          duration: const Duration(milliseconds: 600),
-          curve: Curves.easeInOutCubic,
-        );
+      if (!_pageController.hasClients) {
+        return;
       }
+
+      final nextPage = (_currentPage + 1) % widget.banners.length;
+      _pageController.animateToPage(
+        nextPage,
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOutCubic,
+      );
     });
   }
 
@@ -54,27 +60,22 @@ class _StorefrontBannerSliderState extends State<StorefrontBannerSlider> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-
     return SizedBox(
-      height: 220,
+      height: 320,
       child: Stack(
         children: [
           PageView.builder(
             controller: _pageController,
-            onPageChanged: (i) => setState(() => _currentPage = i),
             itemCount: widget.banners.length,
+            onPageChanged: (index) => setState(() => _currentPage = index),
             itemBuilder: (context, index) {
-              final banner = widget.banners[index];
               return _BannerItem(
-                banner: banner,
-                screenWidth: screenWidth,
+                banner: widget.banners[index],
                 primaryColor: widget.primaryColor,
                 secondaryColor: widget.secondaryColor,
               );
             },
           ),
-          // Indicadores modernos
           if (widget.banners.length > 1)
             Positioned(
               bottom: 16,
@@ -84,16 +85,16 @@ class _StorefrontBannerSliderState extends State<StorefrontBannerSlider> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(
                   widget.banners.length,
-                  (i) => AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
+                  (index) => AnimatedContainer(
+                    duration: const Duration(milliseconds: 280),
                     margin: const EdgeInsets.symmetric(horizontal: 3),
-                    width: i == _currentPage ? 24 : 8,
+                    width: index == _currentPage ? 24 : 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(4),
-                      color: i == _currentPage
+                      borderRadius: BorderRadius.circular(999),
+                      color: index == _currentPage
                           ? (widget.secondaryColor ?? const Color(0xFF2563EB))
-                          : Colors.white.withValues(alpha: 0.5),
+                          : Colors.white.withValues(alpha: 0.45),
                     ),
                   ),
                 ),
@@ -107,107 +108,191 @@ class _StorefrontBannerSliderState extends State<StorefrontBannerSlider> {
 
 class _BannerItem extends StatelessWidget {
   final dynamic banner;
-  final double screenWidth;
   final Color? primaryColor;
   final Color? secondaryColor;
 
   const _BannerItem({
     required this.banner,
-    required this.screenWidth,
     this.primaryColor,
     this.secondaryColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = StorefrontHelpers.resolveMediaUrl(banner['imagen_url']);
+    final imageUrl = StorefrontHelpers.resolveMediaUrl(
+      banner['imagen_url'] ?? banner['imageUrl'] ?? banner['image'],
+    );
     final hasImage = imageUrl != null && imageUrl.isNotEmpty;
+    final title =
+        banner['titulo']?.toString().trim().isNotEmpty == true
+        ? banner['titulo'].toString().trim()
+        : 'Tecnología y seguridad para tu hogar y negocio';
+    final subtitle =
+        banner['subtitulo']?.toString().trim().isNotEmpty == true
+        ? banner['subtitulo'].toString().trim()
+        : 'Cámaras, automatización y soporte técnico con instalación profesional.';
+    final cta =
+        banner['boton_texto']?.toString().trim().isNotEmpty == true
+        ? banner['boton_texto'].toString().trim()
+        : 'Ver ofertas';
+    final primary = primaryColor ?? const Color(0xFF0F172A);
+    final secondary = secondaryColor ?? const Color(0xFF2563EB);
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        color: (secondaryColor ?? const Color(0xFF2563EB)).withValues(alpha: 0.08),
-        image: hasImage
-            ? DecorationImage(
-                image: NetworkImage(imageUrl!),
-                fit: BoxFit.cover,
-              )
-            : null,
+        borderRadius: BorderRadius.circular(28),
+        gradient: hasImage
+            ? null
+            : LinearGradient(
+                colors: [primary, secondary],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+        boxShadow: StorefrontShadows.strong,
       ),
       clipBehavior: Clip.antiAlias,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          gradient: LinearGradient(
-            colors: [
-              Colors.black.withValues(alpha: hasImage ? 0.45 : 0.0),
-              Colors.transparent,
-            ],
-            begin: Alignment.bottomCenter,
-            end: Alignment.topCenter,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (hasImage)
+            StorefrontSmartImage(
+              source: imageUrl,
+              fit: BoxFit.cover,
+              placeholder: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [primary, secondary],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+              ),
+            ),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.black.withValues(alpha: hasImage ? 0.58 : 0.1),
+                  Colors.black.withValues(alpha: hasImage ? 0.18 : 0.02),
+                ],
+                begin: Alignment.bottomLeft,
+                end: Alignment.topRight,
+              ),
+            ),
           ),
-        ),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (banner['titulo'] != null)
-              Text(
-                banner['titulo'],
-                style: TextStyle(
-                  color: hasImage ? Colors.white : (primaryColor ?? const Color(0xFF0F172A)),
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  height: 1.2,
+          Positioned(
+            top: 22,
+            right: 22,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.18),
                 ),
               ),
-            if (banner['subtitulo'] != null) ...[
-              const SizedBox(height: 6),
-              Text(
-                banner['subtitulo'],
+              child: Text(
+                'FULLTECH SRL',
                 style: TextStyle(
-                  color: hasImage
-                      ? Colors.white.withValues(alpha: 0.9)
-                      : const Color(0xFF6B7280),
-                  fontSize: 14,
-                  height: 1.3,
+                  color: Colors.white.withValues(alpha: 0.92),
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-            ],
-            if (banner['boton_texto'] != null) ...[
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: () {
-                  if (banner['link_url'] != null) {
-                    launchUrl(Uri.parse(banner['link_url']));
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: hasImage
-                      ? Colors.white
-                      : (secondaryColor ?? const Color(0xFF2563EB)),
-                  foregroundColor: hasImage
-                      ? (primaryColor ?? const Color(0xFF0F172A))
-                      : Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    'Instalación profesional',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.96),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
-                child: Text(
-                  banner['boton_texto'],
+                const SizedBox(height: 16),
+                Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                    fontSize: 30,
+                    fontWeight: FontWeight.w900,
+                    height: 1.05,
+                    letterSpacing: -0.8,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 520),
+                  child: Text(
+                    subtitle,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.88),
+                      fontSize: 15,
+                      height: 1.45,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: primary,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 14,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  onPressed: (banner['link_url'] != null &&
+                          banner['link_url'].toString().trim().isNotEmpty)
+                      ? () => launchUrl(Uri.parse(banner['link_url'].toString()))
+                      : null,
+                  child: Text(
+                    cta,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (!hasImage)
+            Positioned(
+              right: -40,
+              bottom: -20,
+              child: IgnorePointer(
+                child: Container(
+                  width: 180,
+                  height: 180,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.08),
                   ),
                 ),
               ),
-            ],
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }

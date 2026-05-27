@@ -1,13 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/storefront_api_service.dart';
 import '../services/storefront_helpers.dart';
+import '../theme/storefront_theme.dart';
 import '../widgets/storefront_banner_slider.dart';
 import '../widgets/storefront_error_state.dart';
 import '../widgets/storefront_footer.dart';
 import '../widgets/storefront_product_card.dart';
-import '../widgets/storefront_skeleton.dart';
+import '../widgets/storefront_skeleton.dart' hide StorefrontColors;
+import '../widgets/storefront_smart_image.dart';
 
 class StorefrontHomeScreen extends StatefulWidget {
   final String slug;
@@ -19,8 +23,6 @@ class StorefrontHomeScreen extends StatefulWidget {
 }
 
 class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
-  final TextEditingController _searchController = TextEditingController();
-
   Map<String, dynamic>? _config;
   List<dynamic> _banners = [];
   List<dynamic> _categories = [];
@@ -137,20 +139,48 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     }
   }
 
-  void _search() {
-    final query = _searchController.text.trim();
-    if (query.isEmpty) return;
-    Navigator.pushNamed(
-      context,
-      '/tienda/${widget.slug}/busqueda',
-      arguments: {'busqueda': query},
-    );
-  }
-
   Color _getColor(String hex) {
     var normalized = hex.replaceAll('#', '');
     if (normalized.length == 6) normalized = 'FF$normalized';
     return Color(int.parse(normalized, radix: 16));
+  }
+
+  List<Map<String, dynamic>> get _searchCatalog {
+    final unique = <String, Map<String, dynamic>>{};
+    for (final source in [
+      _products,
+      _featuredProducts,
+      _offerProducts,
+    ]) {
+      for (final item in source) {
+        final map = Map<String, dynamic>.from(item as Map);
+        final id = map['id']?.toString() ?? map['titulo']?.toString() ?? '';
+        if (id.isNotEmpty) {
+          unique[id] = map;
+        }
+      }
+    }
+    return unique.values.toList();
+  }
+
+  void _openSearch() {
+    final config = _config ?? {};
+    final primaryColor = _getColor(
+      config['color_principal']?.toString() ?? '#0F172A',
+    );
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return _StorefrontSearchSheet(
+          slug: widget.slug,
+          primaryColor: primaryColor,
+          initialProducts: _searchCatalog,
+        );
+      },
+    );
   }
 
   @override
@@ -174,120 +204,66 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
       config['color_secundario']?.toString() ?? '#2563EB',
     );
     final whatsapp = config['whatsapp_numero']?.toString() ?? '';
+    final logoUrl = config['logo_url'];
+    final heroTitle = config['mensaje_principal']?.toString().trim().isNotEmpty == true
+        ? config['mensaje_principal'].toString().trim()
+        : 'Tecnología y seguridad para tu hogar y negocio';
+    final heroSubtitle =
+        config['mensaje_secundario']?.toString().trim().isNotEmpty == true
+        ? config['mensaje_secundario'].toString().trim()
+        : 'Compra cámaras, motores, automatización y accesorios con asesoría profesional de FULLTECH SRL.';
+    final isSmallDevice = MediaQuery.of(context).size.width < 370;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: const Color(0xFFF4F7FB),
       body: CustomScrollView(
         slivers: [
-          SliverAppBar(
-            pinned: true,
-            expandedHeight: 150,
-            backgroundColor: primaryColor,
-            foregroundColor: Colors.white,
-            actions: [
-              IconButton(
-                onPressed: () => Navigator.pushNamed(
-                  context,
-                  '/tienda/${widget.slug}/carrito',
-                ),
-                icon: const Icon(Icons.shopping_cart_outlined),
-              ),
-            ],
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                padding: EdgeInsets.fromLTRB(
-                  18,
-                  MediaQuery.of(context).padding.top + 18,
-                  18,
-                  18,
-                ),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [primaryColor, secondaryColor],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Spacer(),
-                    Text(
-                      config['nombre_tienda']?.toString() ?? 'FULLTECH',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 25,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      config['mensaje_principal']?.toString() ??
-                          'Tecnología, seguridad e instalación profesional.',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        fontSize: 13,
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+          SliverToBoxAdapter(
+            child: _PremiumHero(
+              slug: widget.slug,
+              storeName: config['nombre_tienda']?.toString() ?? 'FULLTECH SRL',
+              logoUrl: logoUrl,
+              primaryColor: primaryColor,
+              secondaryColor: secondaryColor,
+              heroTitle: heroTitle,
+              heroSubtitle: heroSubtitle,
+              onSearchTap: _openSearch,
             ),
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
-              child: TextField(
-                controller: _searchController,
-                onSubmitted: (_) => _search(),
-                decoration: InputDecoration(
-                  hintText: 'Busca cámaras, motores, accesorios y más',
-                  prefixIcon: const Icon(Icons.search_rounded),
-                  suffixIcon: IconButton(
-                    onPressed: _search,
-                    icon: const Icon(Icons.arrow_forward_rounded),
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(18),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
+              padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
+              child: _SearchShortcutCard(onTap: _openSearch),
             ),
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _TrustStrip(secondaryColor: secondaryColor),
+              padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
+              child: _BenefitStrip(secondaryColor: secondaryColor),
             ),
           ),
-          if (_banners.isNotEmpty)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 14),
-                child: StorefrontBannerSlider(
-                  banners: _banners,
-                  primaryColor: primaryColor,
-                  secondaryColor: secondaryColor,
-                ),
-              ),
-            )
-          else
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-                child: _FallbackPromoCard(
-                  primaryColor: primaryColor,
-                  secondaryColor: secondaryColor,
-                ),
-              ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(0, 18, 0, 0),
+              child: _banners.isNotEmpty
+                  ? StorefrontBannerSlider(
+                      banners: _banners,
+                      primaryColor: primaryColor,
+                      secondaryColor: secondaryColor,
+                    )
+                  : Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: _FallbackPromoCard(
+                        primaryColor: primaryColor,
+                        secondaryColor: secondaryColor,
+                      ),
+                    ),
             ),
+          ),
           SliverToBoxAdapter(
             child: _SectionHeader(
               title: 'Categorías rápidas',
+              subtitle: 'Encuentra lo que necesitas en segundos.',
               actionLabel: _categories.isEmpty ? null : 'Explorar',
               onTap: _categories.isEmpty
                   ? null
@@ -301,10 +277,13 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
           ),
           SliverToBoxAdapter(
             child: SizedBox(
-              height: 112,
+              height: 156,
               child: _categories.isEmpty
-                  ? const _InlineEmptyState(
-                      title: 'No hay categorías visibles todavía.',
+                  ? const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: _InlineEmptyState(
+                        title: 'No hay categorías visibles todavía.',
+                      ),
                     )
                   : ListView.separated(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -321,7 +300,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
                           ),
                         );
                       },
-                      separatorBuilder: (_, __) => const SizedBox(width: 10),
+                      separatorBuilder: (_, __) => const SizedBox(width: 12),
                       itemCount: _categories.length,
                     ),
             ),
@@ -329,17 +308,21 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
           SliverToBoxAdapter(
             child: _SectionHeader(
               title: 'Ofertas del día',
+              subtitle: 'Promociones pensadas para vender hoy.',
               actionLabel: _offerProducts.isEmpty ? null : 'Ver productos',
-              onTap: _offerProducts.isEmpty ? null : _search,
+              onTap: _offerProducts.isEmpty ? null : _openSearch,
             ),
           ),
           SliverToBoxAdapter(
             child: SizedBox(
-              height: 330,
+              height: 348,
               child: _offerProducts.isEmpty
-                  ? const _InlineEmptyState(
-                      title:
-                          'Las ofertas aparecerán aquí cuando existan precios especiales.',
+                  ? const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: _InlineEmptyState(
+                        title:
+                            'Las ofertas aparecerán aquí cuando existan precios especiales.',
+                      ),
                     )
                   : ListView.separated(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -353,7 +336,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
                         secondaryColor: secondaryColor,
                         whatsapp: whatsapp,
                       ),
-                      separatorBuilder: (_, __) => const SizedBox(width: 12),
+                      separatorBuilder: (_, __) => const SizedBox(width: 14),
                       itemCount: _offerProducts.length,
                     ),
             ),
@@ -361,6 +344,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
           SliverToBoxAdapter(
             child: _SectionHeader(
               title: 'Destacados',
+              subtitle: 'Lo más buscado por nuestros clientes.',
               actionLabel: _featuredProducts.isEmpty ? null : 'Ver más',
               onTap: _featuredProducts.isEmpty
                   ? null
@@ -372,10 +356,13 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
           ),
           SliverToBoxAdapter(
             child: SizedBox(
-              height: 330,
+              height: 348,
               child: _featuredProducts.isEmpty
-                  ? const _InlineEmptyState(
-                      title: 'Los productos destacados aparecerán aquí.',
+                  ? const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: _InlineEmptyState(
+                        title: 'Los productos destacados aparecerán aquí.',
+                      ),
                     )
                   : ListView.separated(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -389,15 +376,15 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
                         secondaryColor: secondaryColor,
                         whatsapp: whatsapp,
                       ),
-                      separatorBuilder: (_, __) => const SizedBox(width: 12),
+                      separatorBuilder: (_, __) => const SizedBox(width: 14),
                       itemCount: _featuredProducts.length,
                     ),
             ),
           ),
           SliverToBoxAdapter(
             child: _SectionHeader(
-              title: 'Todos los productos',
-              actionLabel: null,
+              title: 'Todo el catálogo',
+              subtitle: 'Explora la tienda completa de FULLTECH SRL.',
             ),
           ),
           if (_products.isEmpty)
@@ -415,7 +402,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
               sliver: SliverGrid(
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
-                  childAspectRatio: 0.62,
+                  childAspectRatio: 0.61,
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
                 ),
@@ -433,13 +420,16 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
             ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+              padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
               child: _page < _totalPages
                   ? FilledButton(
                       onPressed: _loadingMore ? null : _loadMore,
                       style: FilledButton.styleFrom(
                         backgroundColor: primaryColor,
-                        minimumSize: const Size(double.infinity, 52),
+                        minimumSize: const Size(double.infinity, 54),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
                       ),
                       child: _loadingMore
                           ? const SizedBox(
@@ -464,117 +454,436 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
           ),
         ],
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: whatsapp.isEmpty
           ? null
-          : FloatingActionButton.extended(
-              onPressed: () {
-                final number = whatsapp.replaceAll(RegExp(r'[^\d]'), '');
-                launchUrl(Uri.parse('https://wa.me/$number'));
-              },
-              backgroundColor: const Color(0xFF25D366),
-              icon: const Icon(Icons.chat_rounded, color: Colors.white),
-              label: const Text('WhatsApp'),
+          : Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: FloatingActionButton.extended(
+                onPressed: () {
+                  final number = whatsapp.replaceAll(RegExp(r'[^\d]'), '');
+                  launchUrl(Uri.parse('https://wa.me/$number'));
+                },
+                backgroundColor: StorefrontColors.whatsapp,
+                icon: const Icon(Icons.chat_rounded, color: Colors.white),
+                label: Text(isSmallDevice ? 'Chat' : 'WhatsApp'),
+              ),
             ),
     );
   }
+}
+
+class _PremiumHero extends StatelessWidget {
+  final String slug;
+  final String storeName;
+  final dynamic logoUrl;
+  final Color primaryColor;
+  final Color secondaryColor;
+  final String heroTitle;
+  final String heroSubtitle;
+  final VoidCallback onSearchTap;
+
+  const _PremiumHero({
+    required this.slug,
+    required this.storeName,
+    required this.logoUrl,
+    required this.primaryColor,
+    required this.secondaryColor,
+    required this.heroTitle,
+    required this.heroSubtitle,
+    required this.onSearchTap,
+  });
 
   @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
+  Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
+    final canPop = Navigator.of(context).canPop();
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      padding: EdgeInsets.fromLTRB(18, topPadding + 10, 18, 24),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(30),
+        gradient: LinearGradient(
+          colors: [primaryColor, secondaryColor],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: StorefrontShadows.strong,
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -40,
+            top: -20,
+            child: Container(
+              width: 160,
+              height: 160,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.08),
+              ),
+            ),
+          ),
+          Positioned(
+            left: -30,
+            bottom: -55,
+            child: Container(
+              width: 150,
+              height: 150,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.08),
+              ),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  if (canPop)
+                    _GlassIconButton(
+                      icon: Icons.arrow_back_ios_new_rounded,
+                      onTap: () => Navigator.of(context).maybePop(),
+                    ),
+                  if (canPop) const SizedBox(width: 10),
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.16),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: StorefrontSmartImage(
+                      source: logoUrl,
+                      fit: BoxFit.cover,
+                      borderRadius: BorderRadius.circular(16),
+                      placeholder: const Center(
+                        child: Icon(
+                          Icons.shield_moon_outlined,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          storeName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.4,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Tienda oficial FULLTECH',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.78),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  _GlassIconButton(
+                    icon: Icons.search_rounded,
+                    onTap: onSearchTap,
+                  ),
+                  const SizedBox(width: 8),
+                  _GlassIconButton(
+                    icon: Icons.shopping_cart_outlined,
+                    onTap: () =>
+                        Navigator.pushNamed(context, '/tienda/$slug/carrito'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 26),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  'Garantía, soporte e instalación profesional',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.94),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                heroTitle,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 34,
+                  fontWeight: FontWeight.w900,
+                  height: 1.04,
+                  letterSpacing: -1,
+                ),
+              ),
+              const SizedBox(height: 10),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 620),
+                child: Text(
+                  heroSubtitle,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.84),
+                    fontSize: 15,
+                    height: 1.55,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  FilledButton.icon(
+                    onPressed: onSearchTap,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: primaryColor,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                    icon: const Icon(Icons.flash_on_rounded),
+                    label: const Text('Buscar productos'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.pushNamed(
+                      context,
+                      '/tienda/$slug/categoria/${Uri.encodeComponent('Cámaras')}',
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.3),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                    icon: const Icon(Icons.play_circle_outline_rounded),
+                    label: const Text('Ver ofertas'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GlassIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _GlassIconButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.14),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child: Icon(icon, color: Colors.white),
+        ),
+      ),
+    );
+  }
+}
+
+class _SearchShortcutCard extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _SearchShortcutCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: StorefrontShadows.card,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(
+                  Icons.search_rounded,
+                  color: Color(0xFF2563EB),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Buscar productos',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Toca para ver sugerencias en vivo por nombre, categoría o descripción.',
+                      style: TextStyle(
+                        color: Color(0xFF64748B),
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 16,
+                color: Color(0xFF94A3B8),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BenefitStrip extends StatelessWidget {
+  final Color secondaryColor;
+
+  const _BenefitStrip({required this.secondaryColor});
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      (Icons.verified_outlined, 'Garantía'),
+      (Icons.storefront_outlined, 'Tienda física'),
+      (Icons.support_agent_outlined, 'Soporte'),
+      (Icons.handyman_outlined, 'Instalación'),
+    ];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final item in items) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: StorefrontShadows.soft,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(item.$1, size: 18, color: secondaryColor),
+                  const SizedBox(width: 8),
+                  Text(
+                    item.$2,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+          ],
+        ],
+      ),
+    );
   }
 }
 
 class _SectionHeader extends StatelessWidget {
   final String title;
+  final String? subtitle;
   final String? actionLabel;
   final VoidCallback? onTap;
 
-  const _SectionHeader({required this.title, this.actionLabel, this.onTap});
+  const _SectionHeader({
+    required this.title,
+    this.subtitle,
+    this.actionLabel,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 14),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            title,
-            style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF0F172A),
+                    letterSpacing: -0.6,
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    subtitle!,
+                    style: const TextStyle(
+                      color: Color(0xFF64748B),
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
           if (actionLabel != null)
             TextButton(onPressed: onTap, child: Text(actionLabel!)),
         ],
       ),
-    );
-  }
-}
-
-class _TrustStrip extends StatelessWidget {
-  final Color secondaryColor;
-
-  const _TrustStrip({required this.secondaryColor});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _TrustItem(
-            icon: Icons.verified_outlined,
-            label: 'Garantía',
-            color: secondaryColor,
-          ),
-          _TrustItem(
-            icon: Icons.store_mall_directory_outlined,
-            label: 'Tienda física',
-            color: secondaryColor,
-          ),
-          _TrustItem(
-            icon: Icons.support_agent_outlined,
-            label: 'Soporte',
-            color: secondaryColor,
-          ),
-          _TrustItem(
-            icon: Icons.build_circle_outlined,
-            label: 'Instalación',
-            color: secondaryColor,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TrustItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  const _TrustItem({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Icon(icon, size: 20, color: color),
-        const SizedBox(height: 6),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
-        ),
-      ],
     );
   }
 }
@@ -593,52 +902,68 @@ class _CategoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = category['nombre']?.toString() ?? '';
-    final image = StorefrontHelpers.resolveMediaUrl(category['imagen']);
+    final normalizedName = switch (name.toLowerCase()) {
+      'camaras' => 'Cámaras',
+      _ => name,
+    };
     final count = category['cantidad']?.toString() ?? '0';
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 104,
-        padding: const EdgeInsets.all(10),
+        width: 140,
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: StorefrontShadows.card,
         ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               child: Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF4F7FB),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(18),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFF7FAFE), Color(0xFFEFF6FF)],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
                 ),
-                child: image != null && image.isNotEmpty
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(14),
-                        child: Image.network(
-                          image,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Icon(
-                            Icons.category_outlined,
-                            color: secondaryColor,
-                          ),
-                        ),
-                      )
-                    : Icon(Icons.category_outlined, color: secondaryColor),
+                child: StorefrontSmartImage(
+                  source: category['imagen'],
+                  fit: BoxFit.cover,
+                  borderRadius: BorderRadius.circular(18),
+                  placeholder: Center(
+                    child: Icon(
+                      Icons.category_outlined,
+                      color: secondaryColor,
+                      size: 26,
+                    ),
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Text(
-              name,
+              normalizedName,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF0F172A),
+              ),
             ),
+            const SizedBox(height: 4),
             Text(
               '$count productos',
-              style: const TextStyle(fontSize: 10, color: Color(0xFF6B7280)),
+              style: const TextStyle(
+                fontSize: 11,
+                color: Color(0xFF64748B),
+              ),
             ),
           ],
         ),
@@ -659,30 +984,61 @@ class _FallbackPromoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(26),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [primaryColor, secondaryColor],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: StorefrontShadows.strong,
       ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          Text(
-            'Tecnología lista para instalar',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
+          Positioned(
+            right: -30,
+            top: -20,
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.08),
+              ),
             ),
           ),
-          SizedBox(height: 8),
-          Text(
-            'Compra cámaras, motores, accesorios y kits con soporte de FULLTECH.',
-            style: TextStyle(color: Colors.white, height: 1.4),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Tecnología lista para instalar',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                  height: 1.05,
+                  letterSpacing: -0.8,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Compra cámaras, motores, accesorios y kits con soporte, garantía y acompañamiento comercial de FULLTECH.',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 18),
+              FilledButton(
+                onPressed: () {},
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: primaryColor,
+                ),
+                child: const Text('Ver catálogo'),
+              ),
+            ],
           ),
         ],
       ),
@@ -698,19 +1054,336 @@ class _InlineEmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 120,
+      height: 132,
       alignment: Alignment.center,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: StorefrontShadows.soft,
       ),
       child: Text(
         title,
         textAlign: TextAlign.center,
         style: const TextStyle(
-          color: Color(0xFF6B7280),
+          color: Color(0xFF64748B),
           fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+class _StorefrontSearchSheet extends StatefulWidget {
+  final String slug;
+  final Color primaryColor;
+  final List<Map<String, dynamic>> initialProducts;
+
+  const _StorefrontSearchSheet({
+    required this.slug,
+    required this.primaryColor,
+    required this.initialProducts,
+  });
+
+  @override
+  State<_StorefrontSearchSheet> createState() => _StorefrontSearchSheetState();
+}
+
+class _StorefrontSearchSheetState extends State<_StorefrontSearchSheet> {
+  final TextEditingController _controller = TextEditingController();
+  Timer? _debounce;
+  List<Map<String, dynamic>> _results = [];
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _results = widget.initialProducts.take(8).toList();
+    _controller.addListener(_onChanged);
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _controller.removeListener(_onChanged);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onChanged() {
+    final query = _controller.text.trim();
+
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 320), () {
+      _runSearch(query);
+    });
+  }
+
+  Future<void> _runSearch(String query) async {
+    if (!mounted) return;
+
+    if (query.length < 1) {
+      setState(() {
+        _loading = false;
+        _results = widget.initialProducts.take(8).toList();
+      });
+      return;
+    }
+
+    final normalized = query.toLowerCase();
+    final local = widget.initialProducts.where((product) {
+      final haystack = [
+        product['titulo'],
+        product['categoria'],
+        product['descripcion'],
+        product['descripcion_web'],
+        product['palabrasClave'],
+      ].whereType<Object?>().map((item) => item.toString().toLowerCase()).join(' ');
+      return haystack.contains(normalized);
+    }).toList();
+
+    setState(() {
+      _results = local;
+      _loading = query.length >= 2;
+    });
+
+    if (query.length < 2) {
+      return;
+    }
+
+    try {
+      final response = await StorefrontApiService.getProducts(
+        widget.slug,
+        search: query,
+        limit: 12,
+      );
+
+      final remote = List<Map<String, dynamic>>.from(
+        (response['items'] as List? ?? const []).map(
+          (item) => Map<String, dynamic>.from(item as Map),
+        ),
+      );
+
+      final merged = <String, Map<String, dynamic>>{};
+      for (final item in [...local, ...remote]) {
+        final id = item['id']?.toString() ?? item['titulo']?.toString() ?? '';
+        if (id.isNotEmpty) {
+          merged[id] = item;
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _results = merged.values.toList();
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Container(
+        height: MediaQuery.of(context).size.height * 0.88,
+        decoration: const BoxDecoration(
+          color: Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 10),
+            Container(
+              width: 48,
+              height: 5,
+              decoration: BoxDecoration(
+                color: const Color(0xFFCBD5E1),
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Buscar productos',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 8, 18, 0),
+              child: TextField(
+                controller: _controller,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'Busca cámaras, motores, routers y más',
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  suffixIcon: _controller.text.trim().isNotEmpty
+                      ? IconButton(
+                          onPressed: () {
+                            _controller.clear();
+                            _runSearch('');
+                          },
+                          icon: const Icon(Icons.close_rounded),
+                        )
+                      : null,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _results.isEmpty
+                  ? const _SearchEmptyState()
+                  : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
+                      itemBuilder: (context, index) {
+                        final product = _results[index];
+                        final image = StorefrontHelpers.getPrimaryImage(product);
+                        final price = StorefrontHelpers.getEffectivePrice(product);
+                        final hasOffer =
+                            StorefrontHelpers.getOriginalPrice(product) != null;
+
+                        return Material(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: () {
+                              Navigator.of(context).pop();
+                              Navigator.pushNamed(
+                                context,
+                                '/tienda/${widget.slug}/producto/${product['id']}',
+                              );
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Row(
+                                children: [
+                                  SizedBox(
+                                    width: 72,
+                                    height: 72,
+                                    child: StorefrontSmartImage(
+                                      source: image,
+                                      fit: BoxFit.contain,
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          product['categoria']?.toString() ?? '',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: Color(0xFF64748B),
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          product['titulo']?.toString() ?? '',
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF0F172A),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Row(
+                                          children: [
+                                            Text(
+                                              'RD\$${price.toStringAsFixed(0)}',
+                                              style: TextStyle(
+                                                color: widget.primaryColor,
+                                                fontWeight: FontWeight.w900,
+                                              ),
+                                            ),
+                                            if (hasOffer) ...[
+                                              const SizedBox(width: 8),
+                                              const Text(
+                                                'Oferta',
+                                                style: TextStyle(
+                                                  color: Color(0xFFDC2626),
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Icon(
+                                    Icons.arrow_forward_ios_rounded,
+                                    size: 16,
+                                    color: Color(0xFF94A3B8),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                      separatorBuilder: (_, __) => const SizedBox(height: 10),
+                      itemCount: _results.length,
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SearchEmptyState extends StatelessWidget {
+  const _SearchEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Icon(
+              Icons.search_off_rounded,
+              size: 40,
+              color: Color(0xFF94A3B8),
+            ),
+            SizedBox(height: 12),
+            Text(
+              'No encontramos productos con esa búsqueda.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Color(0xFF64748B),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
       ),
     );

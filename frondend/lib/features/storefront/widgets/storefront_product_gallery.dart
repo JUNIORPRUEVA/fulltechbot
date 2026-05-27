@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/storefront_theme.dart';
+import 'storefront_smart_image.dart';
 
 class StorefrontProductGallery extends StatefulWidget {
   final List<String> images;
@@ -70,20 +71,22 @@ class _StorefrontProductGalleryState extends State<StorefrontProductGallery> {
                           ? Hero(
                               tag:
                                   'product-image-${widget.title}-$_selectedIndex',
-                              child: Image.network(
-                                selectedImage!,
+                              child: StorefrontSmartImage(
                                 key: ValueKey(selectedImage),
+                                source: selectedImage,
                                 fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) {
-                                  WidgetsBinding.instance.addPostFrameCallback((
-                                    _,
-                                  ) {
-                                    _handleImageError(_selectedIndex);
-                                  });
-                                  return _GalleryPlaceholder(
-                                    isDesktop: widget.isDesktop,
-                                  );
-                                },
+                                placeholder: Builder(
+                                  builder: (context) {
+                                    WidgetsBinding.instance.addPostFrameCallback((
+                                      _,
+                                    ) {
+                                      _handleImageError(_selectedIndex);
+                                    });
+                                    return _GalleryPlaceholder(
+                                      isDesktop: widget.isDesktop,
+                                    );
+                                  },
+                                ),
                               ),
                             )
                           : _GalleryPlaceholder(
@@ -143,17 +146,16 @@ class _StorefrontProductGalleryState extends State<StorefrontProductGallery> {
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child: Image.network(
-                          widget.images[index],
+                        child: StorefrontSmartImage(
+                          source: widget.images[index],
                           fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) =>
-                              Container(
-                                color: const Color(0xFFF8FAFC),
-                                child: const Icon(
-                                  Icons.image_not_supported_outlined,
-                                  color: Color(0xFF94A3B8),
-                                ),
-                              ),
+                          placeholder: Container(
+                            color: const Color(0xFFF8FAFC),
+                            child: const Icon(
+                              Icons.image_not_supported_outlined,
+                              color: Color(0xFF94A3B8),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -215,14 +217,13 @@ class _StorefrontProductGalleryState extends State<StorefrontProductGallery> {
                       padding: const EdgeInsets.all(24),
                       child: Hero(
                         tag: 'product-image-${widget.title}-$_selectedIndex',
-                        child: Image.network(
-                          _getSelectedImage(),
+                        child: StorefrontSmartImage(
+                          source: _getSelectedImage(),
                           fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const _GalleryPlaceholder(
-                                isDesktop: true,
-                                compact: false,
-                              ),
+                          placeholder: const _GalleryPlaceholder(
+                            isDesktop: true,
+                            compact: false,
+                          ),
                         ),
                       ),
                     ),

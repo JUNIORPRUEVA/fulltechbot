@@ -1,43 +1,26 @@
 class ApiConfig {
-  // Puedes sobreescribir en tiempo de compilacion con:
-  // `--dart-define=API_BASE_URL=https://api.midominio.com`
-  static const String baseUrl = String.fromEnvironment(
+  static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
     defaultValue: 'http://localhost:3000',
   );
 
-  // =========================
-  // ENDPOINTS GENERALES
-  // =========================
+  static const String storagePublicUrl = String.fromEnvironment(
+    'STORAGE_PUBLIC_URL',
+    defaultValue: '',
+  );
 
-  static const String healthEndpoint = '$baseUrl/api/health';
+  // Alias para compatibilidad con codigo existente.
+  static const String baseUrl = apiBaseUrl;
 
-  static const String catalogoEndpoint = '$baseUrl/api/catalogo';
-
-  static const String storageUploadEndpoint = '$baseUrl/api/storage/upload';
-  static const String uploadsImageEndpoint = '$baseUrl/api/uploads/image';
-
-  static const String ordersEndpoint = '$baseUrl/api/orders';
-
-  static const String quotationsEndpoint = '$baseUrl/api/quotations';
-
-  // =========================
-  // IMPORTANTE
-  // =========================
-  // No usar endpoints viejos como:
-  // /api/bot/clients
-  // /api/bot/conversations
-  // /api/bot/quotations
-  //
-  // Todo lo relacionado al bot debe usar:
-  // /api/bots/:botId/...
-
-  // =========================
-  // BOT - CLIENTES
-  // =========================
+  static const String healthEndpoint = '$apiBaseUrl/api/health';
+  static const String catalogoEndpoint = '$apiBaseUrl/api/catalogo';
+  static const String storageUploadEndpoint = '$apiBaseUrl/api/storage/upload';
+  static const String uploadsImageEndpoint = '$apiBaseUrl/api/uploads/image';
+  static const String ordersEndpoint = '$apiBaseUrl/api/orders';
+  static const String quotationsEndpoint = '$apiBaseUrl/api/quotations';
 
   static String botClientsEndpoint(String botId) =>
-      '$baseUrl/api/bots/${Uri.encodeComponent(botId)}/clients';
+      '$apiBaseUrl/api/bots/${Uri.encodeComponent(botId)}/clients';
 
   static String botClientByPhoneEndpoint(String botId, String telefono) =>
       '${botClientsEndpoint(botId)}/${Uri.encodeComponent(telefono)}';
@@ -51,12 +34,8 @@ class ApiConfig {
   static String botClientAssignBotEndpoint(String botId, String telefono) =>
       '${botClientsEndpoint(botId)}/${Uri.encodeComponent(telefono)}/assign-bot';
 
-  // =========================
-  // BOT - CONVERSACIONES
-  // =========================
-
   static String botConversationsEndpoint(String botId) =>
-      '$baseUrl/api/bots/${Uri.encodeComponent(botId)}/conversations';
+      '$apiBaseUrl/api/bots/${Uri.encodeComponent(botId)}/conversations';
 
   static String botConversationBySessionEndpoint(
     String botId,
@@ -70,12 +49,8 @@ class ApiConfig {
   ) =>
       '${botConversationsEndpoint(botId)}/${Uri.encodeComponent(conversationId)}/change-campaign';
 
-  // =========================
-  // BOT - CAMPANAS
-  // =========================
-
   static String botCampaignsEndpoint(String botId) =>
-      '$baseUrl/api/bots/${Uri.encodeComponent(botId)}/campaigns';
+      '$apiBaseUrl/api/bots/${Uri.encodeComponent(botId)}/campaigns';
 
   static String botCampaignByIdEndpoint(String botId, String campaignId) =>
       '${botCampaignsEndpoint(botId)}/${Uri.encodeComponent(campaignId)}';
@@ -84,29 +59,22 @@ class ApiConfig {
       '${botCampaignsEndpoint(botId)}/detect';
 
   static String botCampaignContextEndpoint(String conversationId) =>
-      '$baseUrl/api/conversations/${Uri.encodeComponent(conversationId)}/campaign-context';
+      '$apiBaseUrl/api/conversations/${Uri.encodeComponent(conversationId)}/campaign-context';
 
   static String botCampaignContextHistoryEndpoint(String conversationId) =>
-      '$baseUrl/api/conversations/${Uri.encodeComponent(conversationId)}/campaign-context/history';
-
-  // =========================
-  // BOT - COTIZACIONES
-  // =========================
+      '$apiBaseUrl/api/conversations/${Uri.encodeComponent(conversationId)}/campaign-context/history';
 
   static String botQuotationsEndpoint(String botId) =>
-      '$baseUrl/api/bots/${Uri.encodeComponent(botId)}/quotations';
+      '$apiBaseUrl/api/bots/${Uri.encodeComponent(botId)}/quotations';
 
   static String botQuotationByIdEndpoint(String botId, String quotationId) =>
       '${botQuotationsEndpoint(botId)}/${Uri.encodeComponent(quotationId)}';
 
-  // =========================
-  // UTILIDADES
-  // =========================
-
   static Uri uri(String endpoint) => Uri.parse(endpoint);
 
   static void printDebugInfo() {
-    print('API BASE URL: $baseUrl');
+    print('API BASE URL: $apiBaseUrl');
+    print('STORAGE PUBLIC URL: $storagePublicUrl');
     print('HEALTH ENDPOINT: $healthEndpoint');
   }
 }

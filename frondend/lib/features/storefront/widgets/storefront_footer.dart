@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../services/storefront_helpers.dart';
+import 'storefront_smart_image.dart';
 
 class StorefrontFooter extends StatelessWidget {
   final Map<String, dynamic> config;
@@ -16,7 +16,6 @@ class StorefrontFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final logoUrl = StorefrontHelpers.resolveMediaUrl(config['logo_url']);
     final whatsapp = config['whatsapp_numero'] ?? '';
     final direccion = config['direccion'];
     final horario = config['horario'];
@@ -52,24 +51,18 @@ class StorefrontFooter extends StatelessWidget {
                     color: Colors.white.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: logoUrl != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.network(
-                            logoUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Icon(
-                              Icons.store_rounded,
-                              color: Colors.white,
-                              size: 22,
-                            ),
-                          ),
-                        )
-                      : const Icon(
-                          Icons.store_rounded,
-                          color: Colors.white,
-                          size: 22,
-                        ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: StorefrontSmartImage(
+                      source: config['logo_url'],
+                      fit: BoxFit.cover,
+                      placeholder: const Icon(
+                        Icons.store_rounded,
+                        color: Colors.white,
+                        size: 22,
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Text(

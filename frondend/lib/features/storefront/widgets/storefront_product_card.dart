@@ -3,7 +3,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../services/storefront_api_service.dart';
 import '../services/storefront_helpers.dart';
+import '../theme/storefront_theme.dart';
 import 'storefront_price_widget.dart';
+import 'storefront_smart_image.dart';
 
 class StorefrontProductCard extends StatefulWidget {
   final Map<String, dynamic> product;
@@ -61,14 +63,8 @@ class _StorefrontProductCardState extends State<StorefrontProductCard> {
               : Matrix4.identity(),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: _isHovered ? 0.08 : 0.04),
-                blurRadius: _isHovered ? 18 : 10,
-                offset: Offset(0, _isHovered ? 8 : 3),
-              ),
-            ],
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: _isHovered ? StorefrontShadows.medium : StorefrontShadows.card,
           ),
           clipBehavior: Clip.antiAlias,
           child: Column(
@@ -79,16 +75,19 @@ class _StorefrontProductCardState extends State<StorefrontProductCard> {
                   children: [
                     Positioned.fill(
                       child: Container(
-                        color: const Color(0xFFF4F7FB),
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Color(0xFFF7FAFE), Color(0xFFF1F5F9)],
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                          ),
+                        ),
                         padding: const EdgeInsets.all(14),
-                        child: imagen != null
-                            ? Image.network(
-                                imagen,
-                                fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) =>
-                                    _placeholderIcon(),
-                              )
-                            : _placeholderIcon(),
+                        child: StorefrontSmartImage(
+                          source: imagen,
+                          fit: BoxFit.contain,
+                          placeholder: _placeholderIcon(),
+                        ),
                       ),
                     ),
                     if (etiqueta.isNotEmpty)
@@ -308,8 +307,18 @@ class _StorefrontProductCardState extends State<StorefrontProductCard> {
   }
 
   Widget _placeholderIcon() {
-    return const Center(
-      child: Icon(Icons.image_outlined, size: 40, color: Color(0xFFCBD5E1)),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        gradient: const LinearGradient(
+          colors: [Color(0xFFF8FAFC), Color(0xFFE2E8F0)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
+      child: const Center(
+        child: Icon(Icons.image_outlined, size: 40, color: Color(0xFFCBD5E1)),
+      ),
     );
   }
 }

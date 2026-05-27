@@ -10,14 +10,15 @@ function construirBaseUrl(req) {
 async function subirArchivo(req, res) {
   try {
     const resultado = await storageService.subirArchivo(req.file);
-    const publicUrl = `${construirBaseUrl(req)}/api/storage/file/${resultado.key}`;
+    const proxyUrl = `${construirBaseUrl(req)}/api/storage/file/${resultado.key}`;
 
     res.status(201).json({
       ok: true,
       message: 'Archivo subido correctamente',
       data: {
         ...resultado,
-        url: publicUrl,
+        url: resultado.url || proxyUrl,
+        proxyUrl,
       },
     });
   } catch (error) {

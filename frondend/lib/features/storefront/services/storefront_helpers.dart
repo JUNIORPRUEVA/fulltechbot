@@ -1,29 +1,9 @@
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../../core/constants/api_config.dart';
+import 'storefront_image_resolver.dart';
 
 class StorefrontHelpers {
   static String? resolveMediaUrl(dynamic value) {
-    if (value == null) return null;
-
-    final text = value.toString().trim();
-    if (text.isEmpty) return null;
-
-    final lower = text.toLowerCase();
-    if (lower.startsWith('http://') || lower.startsWith('https://')) {
-      return text;
-    }
-
-    final clean = text.replaceAll(RegExp(r'^/+'), '');
-    if (clean.isEmpty) return null;
-
-    if (clean.startsWith('uploads/') ||
-        clean.startsWith('api/storage/') ||
-        clean.startsWith('api/')) {
-      final base = ApiConfig.baseUrl.replaceAll(RegExp(r'/+$'), '');
-      return '$base/$clean';
-    }
-
-    return text;
+    return StorefrontImageResolver.resolve(value)?.value;
   }
 
   static Future<String> ensureSessionId(String slug) async {
@@ -61,25 +41,21 @@ class StorefrontHelpers {
         product['imagen1'] ??
         product['imagen2'] ??
         product['imagen3'];
-    return resolveMediaUrl(image);
+    return StorefrontImageResolver.resolveUrl(image);
   }
 
   static List<String> getGallery(Map<String, dynamic> product) {
     final dynamic gallery = product['gallery'];
     if (gallery is List) {
-      return gallery.map(resolveMediaUrl).whereType<String>().toList();
+      return StorefrontImageResolver.resolveGallery(gallery);
     }
 
-    return [
+    return StorefrontImageResolver.resolveGallery([
           product['imagen_destacada_url'],
           product['imagen1'],
           product['imagen2'],
           product['imagen3'],
-        ]
-        .map(resolveMediaUrl)
-        .whereType<String>()
-        .toSet()
-        .toList();
+        ]);
   }
 
   static num? _toNum(dynamic value) {
