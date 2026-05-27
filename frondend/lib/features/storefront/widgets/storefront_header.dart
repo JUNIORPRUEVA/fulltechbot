@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/storefront_helpers.dart';
 
 class StorefrontHeader extends StatelessWidget {
   final Map<String, dynamic> config;
@@ -20,6 +21,8 @@ class StorefrontHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final logoUrl = StorefrontHelpers.resolveMediaUrl(config['logo_url']);
+
     return SliverAppBar(
       expandedHeight: 130,
       pinned: true,
@@ -48,7 +51,7 @@ class StorefrontHeader extends StatelessWidget {
               Row(
                 children: [
                   // Logo
-                  if (config['logo_url'] != null)
+                  if (logoUrl != null)
                     Container(
                       width: 36,
                       height: 36,
@@ -59,7 +62,7 @@ class StorefrontHeader extends StatelessWidget {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(10),
                         child: Image.network(
-                          config['logo_url'],
+                          logoUrl,
                           height: 36,
                           width: 36,
                           fit: BoxFit.cover,
@@ -71,7 +74,7 @@ class StorefrontHeader extends StatelessWidget {
                         ),
                       ),
                     ),
-                  if (config['logo_url'] != null) const SizedBox(width: 12),
+                  if (logoUrl != null) const SizedBox(width: 12),
                   // Nombre tienda
                   Expanded(
                     child: Text(

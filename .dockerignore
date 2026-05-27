@@ -1,6 +1,3 @@
-# Ignorar frontend completo
-frondend/
-
 # Ignorar node_modules
 node_modules
 
@@ -34,3 +31,7 @@ Dockerfile.dev
 dist
 build
 coverage
+frondend/build
+frondend/.dart_tool
+frondend/android/.gradle
+frondend/ios/Pods

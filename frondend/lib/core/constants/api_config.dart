@@ -1,10 +1,10 @@
 class ApiConfig {
-  // Backend desplegado en EasyPanel
-    // Puedes sobreescribir en tiempo de compilación con `--dart-define=API_BASE_URL=...`
-    static const String baseUrl = String.fromEnvironment(
-        'API_BASE_URL',
-        defaultValue: 'https://fulltech-bot-fulltechbot-app.gcdndd.easypanel.host',
-    );
+  // Puedes sobreescribir en tiempo de compilacion con:
+  // `--dart-define=API_BASE_URL=https://api.midominio.com`
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://localhost:3000',
+  );
 
   // =========================
   // ENDPOINTS GENERALES
@@ -71,7 +71,7 @@ class ApiConfig {
       '${botConversationsEndpoint(botId)}/${Uri.encodeComponent(conversationId)}/change-campaign';
 
   // =========================
-  // BOT - CAMPAÑAS
+  // BOT - CAMPANAS
   // =========================
 
   static String botCampaignsEndpoint(String botId) =>
@@ -106,7 +106,6 @@ class ApiConfig {
   static Uri uri(String endpoint) => Uri.parse(endpoint);
 
   static void printDebugInfo() {
-    // Úsalo temporalmente para confirmar que la app apunta a la nube correcta.
     print('API BASE URL: $baseUrl');
     print('HEALTH ENDPOINT: $healthEndpoint');
   }

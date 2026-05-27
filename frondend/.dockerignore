@@ -1,20 +1,12 @@
 .dart_tool
 build
 .git
-.github
 .idea
 .vscode
 android/.gradle
 ios/Pods
 node_modules
-pubspec.lock
 .DS_Store
 *.log
 tmp
-tmp/**
-uploads
-
-# Keep assets and web build sources
-!web/
-!lib/
-!pubspec.*
+temp

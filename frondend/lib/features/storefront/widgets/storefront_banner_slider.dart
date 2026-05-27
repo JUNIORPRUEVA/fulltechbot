@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../services/storefront_helpers.dart';
 
 class StorefrontBannerSlider extends StatefulWidget {
   final List<dynamic> banners;
@@ -119,8 +120,8 @@ class _BannerItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasImage = banner['imagen_url'] != null &&
-        banner['imagen_url'].toString().isNotEmpty;
+    final imageUrl = StorefrontHelpers.resolveMediaUrl(banner['imagen_url']);
+    final hasImage = imageUrl != null && imageUrl.isNotEmpty;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -129,7 +130,7 @@ class _BannerItem extends StatelessWidget {
         color: (secondaryColor ?? const Color(0xFF2563EB)).withValues(alpha: 0.08),
         image: hasImage
             ? DecorationImage(
-                image: NetworkImage(banner['imagen_url']),
+                image: NetworkImage(imageUrl!),
                 fit: BoxFit.cover,
               )
             : null,

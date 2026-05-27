@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/storefront_api_service.dart';
+import '../services/storefront_helpers.dart';
 import '../widgets/storefront_banner_slider.dart';
 import '../widgets/storefront_error_state.dart';
 import '../widgets/storefront_footer.dart';
@@ -592,7 +593,7 @@ class _CategoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = category['nombre']?.toString() ?? '';
-    final image = category['imagen']?.toString();
+    final image = StorefrontHelpers.resolveMediaUrl(category['imagen']);
     final count = category['cantidad']?.toString() ?? '0';
 
     return GestureDetector(

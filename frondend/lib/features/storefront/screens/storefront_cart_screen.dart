@@ -217,6 +217,7 @@ class _CartItemCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final quantity = int.tryParse(item['cantidad']?.toString() ?? '1') ?? 1;
+    final imageUrl = StorefrontHelpers.resolveMediaUrl(item['imagen_url']);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -233,11 +234,9 @@ class _CartItemCard extends StatelessWidget {
               width: 84,
               height: 84,
               color: const Color(0xFFF4F7FB),
-              child:
-                  item['imagen_url'] != null &&
-                      item['imagen_url'].toString().trim().isNotEmpty
+              child: imageUrl != null && imageUrl.isNotEmpty
                   ? Image.network(
-                      item['imagen_url'].toString(),
+                      imageUrl,
                       fit: BoxFit.contain,
                       errorBuilder: (_, __, ___) => const Icon(
                         Icons.image_outlined,

@@ -2,6 +2,30 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/api_config.dart';
 
 class StorefrontHelpers {
+  static String? resolveMediaUrl(dynamic value) {
+    if (value == null) return null;
+
+    final text = value.toString().trim();
+    if (text.isEmpty) return null;
+
+    final lower = text.toLowerCase();
+    if (lower.startsWith('http://') || lower.startsWith('https://')) {
+      return text;
+    }
+
+    final clean = text.replaceAll(RegExp(r'^/+'), '');
+    if (clean.isEmpty) return null;
+
+    if (clean.startsWith('uploads/') ||
+        clean.startsWith('api/storage/') ||
+        clean.startsWith('api/')) {
+      final base = ApiConfig.baseUrl.replaceAll(RegExp(r'/+$'), '');
+      return '$base/$clean';
+    }
+
+    return text;
+  }
+
   static Future<String> ensureSessionId(String slug) async {
     final prefs = await SharedPreferences.getInstance();
     final key = 'storefront_session_$slug';
@@ -37,47 +61,13 @@ class StorefrontHelpers {
         product['imagen1'] ??
         product['imagen2'] ??
         product['imagen3'];
-    if (image == null) return null;
-    final text = image.toString().trim();
-    if (text.isEmpty) return null;
-
-    // Normalizar: si la URL es relativa (p. ej. "/uploads/.." o "uploads/..")
-    // prefijar el baseUrl del API para que apunte al backend en producción.
-    final lower = text.toLowerCase();
-    if (lower.startsWith('http://') || lower.startsWith('https://')) {
-      return text;
-    }
-
-    final clean = text.replaceAll(RegExp(r'^/+'), '');
-    if (clean.isEmpty) return null;
-
-    // Si la ruta ya contiene 'uploads/' o 'api/storage', la convertimos en absoluta
-    if (clean.startsWith('uploads/') || clean.startsWith('api/storage/') || clean.startsWith('api/')) {
-      final base = ApiConfig.baseUrl.replaceAll(RegExp(r'/+$'), '');
-      return '$base/${clean}';
-    }
-
-    // Si no tiene esquema ni paths conocidos, lo devolvemos tal cual
-    return text;
+    return resolveMediaUrl(image);
   }
 
   static List<String> getGallery(Map<String, dynamic> product) {
     final dynamic gallery = product['gallery'];
     if (gallery is List) {
-      return gallery
-          .map((item) => item?.toString().trim() ?? '')
-          .where((item) => item.isNotEmpty)
-          .map((item) {
-            final text = item.trim();
-            if (text.toLowerCase().startsWith('http')) return text;
-            final clean = text.replaceAll(RegExp(r'^/+'), '');
-            if (clean.startsWith('uploads/') || clean.startsWith('api/storage/') || clean.startsWith('api/')) {
-              final base = ApiConfig.baseUrl.replaceAll(RegExp(r'/+$'), '');
-              return '$base/${clean}';
-            }
-            return text;
-          })
-          .toList();
+      return gallery.map(resolveMediaUrl).whereType<String>().toList();
     }
 
     return [
@@ -86,17 +76,8 @@ class StorefrontHelpers {
           product['imagen2'],
           product['imagen3'],
         ]
-        .map((item) => item?.toString().trim() ?? '')
-        .where((item) => item.isNotEmpty)
-        .map((text) {
-          if (text.toLowerCase().startsWith('http')) return text;
-          final clean = text.replaceAll(RegExp(r'^/+'), '');
-          if (clean.startsWith('uploads/') || clean.startsWith('api/storage/') || clean.startsWith('api/')) {
-            final base = ApiConfig.baseUrl.replaceAll(RegExp(r'/+$'), '');
-            return '$base/${clean}';
-          }
-          return text;
-        })
+        .map(resolveMediaUrl)
+        .whereType<String>()
         .toSet()
         .toList();
   }

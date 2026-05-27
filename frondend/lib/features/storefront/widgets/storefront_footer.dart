@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../services/storefront_helpers.dart';
 
 class StorefrontFooter extends StatelessWidget {
   final Map<String, dynamic> config;
@@ -15,6 +16,7 @@ class StorefrontFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final logoUrl = StorefrontHelpers.resolveMediaUrl(config['logo_url']);
     final whatsapp = config['whatsapp_numero'] ?? '';
     final direccion = config['direccion'];
     final horario = config['horario'];
@@ -50,11 +52,11 @@ class StorefrontFooter extends StatelessWidget {
                     color: Colors.white.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: config['logo_url'] != null
+                  child: logoUrl != null
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(12),
                           child: Image.network(
-                            config['logo_url'],
+                            logoUrl,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => const Icon(
                               Icons.store_rounded,
