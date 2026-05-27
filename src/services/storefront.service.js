@@ -152,7 +152,41 @@ async function getConfigBySlug(slug) {
     `SELECT * FROM storefront_config WHERE slug = $1 AND activo = true LIMIT 1`,
     slug
   );
-  return rows[0] ? serializeRow(rows[0]) : null;
+  if (rows[0]) {
+    return serializeRow(rows[0]);
+  }
+
+  const bot = await prisma.bot.findUnique({
+    where: { slug },
+  });
+
+  if (!bot || bot.estado !== 'activo') {
+    return null;
+  }
+
+  return {
+    id: `fallback-${bot.id}`,
+    bot_id: bot.id,
+    slug: bot.slug,
+    nombre_tienda: bot.nombre || 'FULLTECH SRL',
+    descripcion: bot.descripcion || null,
+    logo_url: null,
+    color_principal: '#0F172A',
+    color_secundario: '#2563EB',
+    whatsapp_numero: bot.telefonoWhatsapp || null,
+    telefono_contacto: bot.telefonoWhatsapp || null,
+    direccion: null,
+    horario: null,
+    mensaje_principal: 'Ofertas en cámaras de seguridad y tecnología',
+    mensaje_secundario: 'Compra fácil y rápida desde tu celular',
+    activo: true,
+    permitir_paypal: false,
+    permitir_whatsapp: true,
+    permitir_retiro_tienda: true,
+    permitir_delivery: false,
+    bot_estado: bot.estado,
+    source: 'bot-slug-fallback',
+  };
 }
 
 async function getConfigByBotId(botId) {
@@ -239,6 +273,19 @@ async function getDefaultPublicStore(preferredSlug = null) {
   diagnostics.candidateCount = candidates.length;
 
   if (candidates.length === 0) {
+    const activeBots = await prisma.bot.findMany({
+      where: { estado: 'activo' },
+      orderBy: { actualizadoEn: 'desc' },
+      take: 5,
+    });
+
+    if (activeBots.isNotEmpty) {
+      diagnostics.strategy = 'active-bot-fallback';
+      diagnostics.candidateCount = activeBots.length;
+      const fallbackStore = await getConfigBySlug(activeBots.first.slug);
+      return { store: fallbackStore, diagnostics };
+    }
+
     diagnostics.strategy = 'no-active-store';
     return { store: null, diagnostics };
   }
