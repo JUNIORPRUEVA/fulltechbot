@@ -2,6 +2,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
 import '../services/upload_api_service.dart';
+import '../../core/constants/api_config.dart';
 
 class ImageUploadField extends StatefulWidget {
   final TextEditingController controller;
@@ -110,7 +111,23 @@ class _ImageUploadFieldState extends State<ImageUploadField> {
 
   @override
   Widget build(BuildContext context) {
-    final hasImage = widget.controller.text.trim().isNotEmpty;
+    final rawText = widget.controller.text.trim();
+    final hasImage = rawText.isNotEmpty;
+    String? previewUrl;
+    if (hasImage) {
+      final lower = rawText.toLowerCase();
+      if (lower.startsWith('http://') || lower.startsWith('https://')) {
+        previewUrl = rawText;
+      } else {
+        final clean = rawText.replaceAll(RegExp(r'^/+'), '');
+        if (clean.isNotEmpty && (clean.startsWith('uploads/') || clean.startsWith('api/storage/') || clean.startsWith('api/'))) {
+          final base = ApiConfig.baseUrl.replaceAll(RegExp(r'/+$'), '');
+          previewUrl = '$base/${clean}';
+        } else {
+          previewUrl = rawText;
+        }
+      }
+    }
     final borderRadius = BorderRadius.circular(18);
 
     return Column(
@@ -137,7 +154,7 @@ class _ImageUploadFieldState extends State<ImageUploadField> {
               children: [
                 if (hasImage)
                   Image.network(
-                    widget.controller.text.trim(),
+                    previewUrl ?? widget.controller.text.trim(),
                     fit: widget.aspectRatio > 1.4
                         ? BoxFit.cover
                         : BoxFit.contain,

@@ -1,7 +1,10 @@
 class ApiConfig {
   // Backend desplegado en EasyPanel
-  static const String baseUrl =
-      'https://fulltech-bot-fulltechbot-app.gcdndd.easypanel.host';
+    // Puedes sobreescribir en tiempo de compilación con `--dart-define=API_BASE_URL=...`
+    static const String baseUrl = String.fromEnvironment(
+        'API_BASE_URL',
+        defaultValue: 'https://fulltech-bot-fulltechbot-app.gcdndd.easypanel.host',
+    );
 
   // =========================
   // ENDPOINTS GENERALES
