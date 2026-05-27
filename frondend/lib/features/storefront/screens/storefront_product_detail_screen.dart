@@ -45,7 +45,7 @@ class _StorefrontProductDetailScreenState
     super.initState();
     _fadeController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 360),
+      duration: const Duration(milliseconds: 280),
     );
     _fadeAnimation = CurvedAnimation(
       parent: _fadeController,
@@ -74,6 +74,7 @@ class _StorefrontProductDetailScreenState
 
       final configResponse = results[0];
       final productResponse = results[1];
+
       if (configResponse['ok'] != true || productResponse['ok'] != true) {
         setState(() {
           _error =
@@ -92,8 +93,8 @@ class _StorefrontProductDetailScreenState
         _relatedProducts = List<dynamic>.from(
           product['relatedProducts'] as List? ?? const [],
         );
-        _loading = false;
         _quantity = 1;
+        _loading = false;
       });
       _fadeController.forward();
     } catch (e) {
@@ -205,15 +206,15 @@ class _StorefrontProductDetailScreenState
     final price = StorefrontHelpers.getEffectivePrice(product);
     final originalPrice = StorefrontHelpers.getOriginalPrice(product);
     final stock = int.tryParse(product['stock']?.toString() ?? '0') ?? 0;
-    final isDesktop = MediaQuery.of(context).size.width >= 1024;
     final canBuy = stock > 0;
+    final isDesktop = MediaQuery.of(context).size.width >= 1000;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7FB),
       appBar: AppBar(
-        title: const Text('Detalle del producto'),
         backgroundColor: const Color(0xFFF4F7FB),
         surfaceTintColor: Colors.transparent,
+        title: const Text('Producto'),
         actions: [
           IconButton(
             tooltip: 'Ver carrito',
@@ -226,142 +227,163 @@ class _StorefrontProductDetailScreenState
       body: FadeTransition(
         opacity: _fadeAnimation,
         child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-            isDesktop ? 28 : 16,
-            12,
-            isDesktop ? 28 : 16,
-            isDesktop ? 40 : 160,
-          ),
+          padding: EdgeInsets.only(bottom: isDesktop ? 40 : 160),
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1380),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (isDesktop)
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          flex: 6,
-                          child: StorefrontProductGallery(
-                            images: gallery,
-                            title: product['titulo']?.toString() ?? '',
-                            isDesktop: true,
-                            accentColor: secondaryColor,
-                          ),
-                        ),
-                        const SizedBox(width: 28),
-                        Expanded(
-                          flex: 5,
-                          child: _ProductSummaryCard(
-                            product: product,
-                            price: price,
-                            originalPrice: originalPrice,
-                            stock: stock,
-                            primaryColor: primaryColor,
-                            secondaryColor: secondaryColor,
-                            quantity: _quantity,
-                            canBuy: canBuy,
-                            whatsapp: whatsapp,
-                            onDecrease: () {
-                              if (_quantity > 1) {
-                                setState(() => _quantity--);
-                              }
-                            },
-                            onIncrease: () => setState(() => _quantity++),
-                            onAddToCart: () => _addToCart(),
-                            onBuyNow: () => _addToCart(goToCart: true),
-                            onWhatsapp: whatsapp.isEmpty
-                                ? null
-                                : () => _openWhatsApp(whatsapp),
-                            isDesktop: true,
-                          ),
-                        ),
-                      ],
-                    )
-                  else ...[
-                    StorefrontProductGallery(
-                      images: gallery,
-                      title: product['titulo']?.toString() ?? '',
-                      isDesktop: false,
-                      accentColor: secondaryColor,
-                    ),
-                    const SizedBox(height: 18),
-                    _ProductSummaryCard(
-                      product: product,
-                      price: price,
-                      originalPrice: originalPrice,
-                      stock: stock,
-                      primaryColor: primaryColor,
-                      secondaryColor: secondaryColor,
-                      quantity: _quantity,
-                      canBuy: canBuy,
-                      whatsapp: whatsapp,
-                      onDecrease: () {
-                        if (_quantity > 1) {
-                          setState(() => _quantity--);
-                        }
-                      },
-                      onIncrease: () => setState(() => _quantity++),
-                      onAddToCart: () => _addToCart(),
-                      onBuyNow: () => _addToCart(goToCart: true),
-                      onWhatsapp: whatsapp.isEmpty
-                          ? null
-                          : () => _openWhatsApp(whatsapp),
-                      isDesktop: false,
-                    ),
-                  ],
-                  const SizedBox(height: 24),
-                  StorefrontTrustBadges(
-                    installationAvailable:
-                        product['instalacion_incluida'] == true ||
-                        product['requiere_instalacion'] == true,
-                  ),
-                  const SizedBox(height: 24),
-                  ..._buildInfoSections(product),
-                  if (_relatedProducts.isNotEmpty) ...[
-                    const SizedBox(height: 30),
-                    const Text(
-                      'Productos relacionados',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      'Opciones similares dentro de la misma categoría.',
-                      style: TextStyle(
-                        color: Color(0xFF64748B),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      height: isDesktop ? 340 : 300,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemBuilder: (context, index) => SizedBox(
-                          width: isDesktop ? 260 : 220,
-                          child: StorefrontProductCard(
-                            product: Map<String, dynamic>.from(
-                              _relatedProducts[index] as Map,
+              constraints: const BoxConstraints(maxWidth: 1280),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: isDesktop
+                      ? BorderRadius.circular(28)
+                      : const BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (isDesktop)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              flex: 6,
+                              child: StorefrontProductGallery(
+                                images: gallery,
+                                title: product['titulo']?.toString() ?? '',
+                                isDesktop: true,
+                                accentColor: secondaryColor,
+                              ),
                             ),
-                            slug: widget.slug,
-                            primaryColor: primaryColor,
-                            secondaryColor: secondaryColor,
-                            whatsapp: whatsapp,
-                          ),
+                            const SizedBox(width: 28),
+                            Expanded(
+                              flex: 5,
+                              child: _ProductSummarySection(
+                                product: product,
+                                price: price,
+                                originalPrice: originalPrice,
+                                stock: stock,
+                                canBuy: canBuy,
+                                primaryColor: primaryColor,
+                                secondaryColor: secondaryColor,
+                                quantity: _quantity,
+                                whatsapp: whatsapp,
+                                isDesktop: true,
+                                onDecrease: () {
+                                  if (_quantity > 1) {
+                                    setState(() => _quantity--);
+                                  }
+                                },
+                                onIncrease: () => setState(() => _quantity++),
+                                onAddToCart: () => _addToCart(),
+                                onBuyNow: () => _addToCart(goToCart: true),
+                                onWhatsapp: whatsapp.isEmpty
+                                    ? null
+                                    : () => _openWhatsApp(whatsapp),
+                              ),
+                            ),
+                          ],
                         ),
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(width: 14),
-                        itemCount: _relatedProducts.length,
+                      )
+                    else ...[
+                      StorefrontProductGallery(
+                        images: gallery,
+                        title: product['titulo']?.toString() ?? '',
+                        isDesktop: false,
+                        accentColor: secondaryColor,
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+                        child: _ProductSummarySection(
+                          product: product,
+                          price: price,
+                          originalPrice: originalPrice,
+                          stock: stock,
+                          canBuy: canBuy,
+                          primaryColor: primaryColor,
+                          secondaryColor: secondaryColor,
+                          quantity: _quantity,
+                          whatsapp: whatsapp,
+                          isDesktop: false,
+                          onDecrease: () {
+                            if (_quantity > 1) {
+                              setState(() => _quantity--);
+                            }
+                          },
+                          onIncrease: () => setState(() => _quantity++),
+                          onAddToCart: () => _addToCart(),
+                          onBuyNow: () => _addToCart(goToCart: true),
+                          onWhatsapp: whatsapp.isEmpty
+                              ? null
+                              : () => _openWhatsApp(whatsapp),
+                        ),
+                      ),
+                    ],
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        isDesktop ? 24 : 20,
+                        24,
+                        isDesktop ? 24 : 20,
+                        0,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          StorefrontTrustBadges(
+                            installationAvailable:
+                                product['instalacion_incluida'] == true ||
+                                product['requiere_instalacion'] == true,
+                          ),
+                          const SizedBox(height: 28),
+                          ..._buildInfoSections(product),
+                          if (_relatedProducts.isNotEmpty) ...[
+                            const SizedBox(height: 30),
+                            const Text(
+                              'Productos relacionados',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF0F172A),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'Opciones similares dentro de la misma categoría.',
+                              style: TextStyle(
+                                color: Color(0xFF64748B),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            SizedBox(
+                              height: isDesktop ? 340 : 300,
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemBuilder: (context, index) => SizedBox(
+                                  width: isDesktop ? 260 : 220,
+                                  child: StorefrontProductCard(
+                                    product: Map<String, dynamic>.from(
+                                      _relatedProducts[index] as Map,
+                                    ),
+                                    slug: widget.slug,
+                                    primaryColor: primaryColor,
+                                    secondaryColor: secondaryColor,
+                                    whatsapp: whatsapp,
+                                  ),
+                                ),
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(width: 14),
+                                itemCount: _relatedProducts.length,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 28),
+                        ],
                       ),
                     ),
                   ],
-                ],
+                ),
               ),
             ),
           ),
@@ -404,18 +426,15 @@ class _StorefrontProductDetailScreenState
     final reglas = product['reglasNegociacion']?.toString().trim() ?? '';
     final video = product['video']?.toString().trim() ?? '';
 
-    final normalizedInfo = informacion.trim();
-    final normalizedDescription = description.trim();
-
-    if (normalizedDescription.isNotEmpty) {
+    if (description.isNotEmpty) {
       sections.add(
         StorefrontProductInfoSection(
           title: 'Descripción del producto',
-          content: normalizedDescription,
+          content: description,
           icon: Icons.description_outlined,
         ),
       );
-      sections.add(const SizedBox(height: 18));
+      sections.add(const SizedBox(height: 20));
     }
 
     if (incluye.isNotEmpty) {
@@ -426,19 +445,19 @@ class _StorefrontProductDetailScreenState
           icon: Icons.checklist_rounded,
         ),
       );
-      sections.add(const SizedBox(height: 18));
+      sections.add(const SizedBox(height: 20));
     }
 
-    if (normalizedInfo.isNotEmpty &&
-        normalizedInfo.toLowerCase() != normalizedDescription.toLowerCase()) {
+    if (informacion.isNotEmpty &&
+        informacion.toLowerCase() != description.toLowerCase()) {
       sections.add(
         StorefrontProductInfoSection(
           title: 'Información adicional',
-          content: normalizedInfo,
+          content: informacion,
           icon: Icons.info_outline_rounded,
         ),
       );
-      sections.add(const SizedBox(height: 18));
+      sections.add(const SizedBox(height: 20));
     }
 
     if (reglas.isNotEmpty) {
@@ -449,7 +468,7 @@ class _StorefrontProductDetailScreenState
           icon: Icons.rule_folder_outlined,
         ),
       );
-      sections.add(const SizedBox(height: 18));
+      sections.add(const SizedBox(height: 20));
     }
 
     if (video.isNotEmpty) {
@@ -474,14 +493,14 @@ class _StorefrontProductDetailScreenState
   }
 }
 
-class _ProductSummaryCard extends StatelessWidget {
+class _ProductSummarySection extends StatelessWidget {
   final Map<String, dynamic> product;
   final num price;
   final num? originalPrice;
   final int stock;
-  final int quantity;
   final bool canBuy;
   final bool isDesktop;
+  final int quantity;
   final String whatsapp;
   final Color primaryColor;
   final Color secondaryColor;
@@ -491,14 +510,14 @@ class _ProductSummaryCard extends StatelessWidget {
   final VoidCallback onBuyNow;
   final VoidCallback? onWhatsapp;
 
-  const _ProductSummaryCard({
+  const _ProductSummarySection({
     required this.product,
     required this.price,
     required this.originalPrice,
     required this.stock,
-    required this.quantity,
     required this.canBuy,
     required this.isDesktop,
+    required this.quantity,
     required this.whatsapp,
     required this.primaryColor,
     required this.secondaryColor,
@@ -517,162 +536,131 @@ class _ProductSummaryCard extends StatelessWidget {
     final installationIncluded = product['instalacion_incluida'] == true;
     final requiresInstallation = product['requiere_instalacion'] == true;
 
-    return Container(
-      padding: EdgeInsets.all(isDesktop ? 28 : 22),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: StorefrontShadows.card,
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              if (category.isNotEmpty)
-                _TagChip(
-                  label: category,
-                  color: secondaryColor,
-                  background: const Color(0xFFEFF6FF),
-                ),
-              if (tipoProducto.isNotEmpty)
-                _TagChip(
-                  label: tipoProducto,
-                  color: const Color(0xFF334155),
-                  background: const Color(0xFFF1F5F9),
-                ),
-              if (etiqueta.isNotEmpty)
-                const _TagChip(
-                  label: 'Oferta',
-                  color: Color(0xFFDC2626),
-                  background: Color(0xFFFEF2F2),
-                ),
-              if (installationIncluded)
-                const _TagChip(
-                  label: 'Instalación incluida',
-                  color: Color(0xFF166534),
-                  background: Color(0xFFF0FDF4),
-                ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text(
-            product['titulo']?.toString() ?? '',
-            style: TextStyle(
-              fontSize: isDesktop ? 34 : 28,
-              fontWeight: FontWeight.w900,
-              height: 1.12,
-              color: const Color(0xFF0F172A),
-              letterSpacing: -0.8,
-            ),
-          ),
-          const SizedBox(height: 18),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(22),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (etiqueta.isNotEmpty)
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      gradient: StorefrontColors.offerGradient,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      etiqueta,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                const Text(
-                  'Precio final',
-                  style: TextStyle(
-                    color: Color(0xFF64748B),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                StorefrontPriceWidget(
-                  precio: price,
-                  precioOriginal: originalPrice,
-                  large: true,
-                  primaryColor: primaryColor,
-                  currencyPrefix: 'RD\$',
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Precio sujeto a disponibilidad y confirmación final.',
-                  style: TextStyle(
-                    color: Color(0xFF64748B),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 18),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _StatusPill(
-                icon: canBuy
-                    ? Icons.check_circle_outline_rounded
-                    : Icons.error_outline_rounded,
-                label: canBuy ? 'Disponible' : 'Agotado',
-                color: canBuy
-                    ? const Color(0xFF166534)
-                    : const Color(0xFFB91C1C),
-                background: canBuy
-                    ? const Color(0xFFF0FDF4)
-                    : const Color(0xFFFEF2F2),
-              ),
-              _StatusPill(
-                icon: Icons.inventory_2_outlined,
-                label: 'Stock: $stock',
-                color: const Color(0xFF1D4ED8),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            if (category.isNotEmpty)
+              _TagChip(
+                label: category,
+                color: secondaryColor,
                 background: const Color(0xFFEFF6FF),
               ),
-              if (requiresInstallation)
-                const _StatusPill(
-                  icon: Icons.handyman_outlined,
-                  label: 'Instalación disponible',
-                  color: Color(0xFF7C2D12),
-                  background: Color(0xFFFFF7ED),
-                ),
-            ],
+            if (tipoProducto.isNotEmpty)
+              _TagChip(
+                label: tipoProducto,
+                color: const Color(0xFF334155),
+                background: const Color(0xFFF1F5F9),
+              ),
+            if (installationIncluded)
+              const _TagChip(
+                label: 'Instalación incluida',
+                color: Color(0xFF166534),
+                background: Color(0xFFF0FDF4),
+              ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Text(
+          product['titulo']?.toString() ?? '',
+          style: TextStyle(
+            fontSize: isDesktop ? 34 : 28,
+            fontWeight: FontWeight.w900,
+            height: 1.12,
+            color: const Color(0xFF0F172A),
+            letterSpacing: -0.8,
           ),
-          const SizedBox(height: 18),
-          if (isDesktop)
-            StorefrontProductActionBar(
-              isDesktop: true,
-              canBuy: canBuy,
-              canWhatsapp: whatsapp.isNotEmpty,
-              quantity: quantity,
-              primaryColor: primaryColor,
-              onDecrease: onDecrease,
-              onIncrease: onIncrease,
-              onAddToCart: onAddToCart,
-              onBuyNow: onBuyNow,
-              onWhatsapp: onWhatsapp,
+        ),
+        if (etiqueta.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              gradient: StorefrontColors.offerGradient,
+              borderRadius: BorderRadius.circular(999),
             ),
+            child: Text(
+              etiqueta,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
         ],
-      ),
+        const SizedBox(height: 14),
+        const Text(
+          'Precio final',
+          style: TextStyle(
+            color: Color(0xFF64748B),
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 6),
+        StorefrontPriceWidget(
+          precio: price,
+          precioOriginal: originalPrice,
+          large: true,
+          primaryColor: primaryColor,
+          currencyPrefix: 'RD\$',
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Precio sujeto a disponibilidad y confirmación final.',
+          style: TextStyle(
+            color: Color(0xFF64748B),
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 18),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            _StatusPill(
+              icon: canBuy
+                  ? Icons.check_circle_outline_rounded
+                  : Icons.error_outline_rounded,
+              label: canBuy ? 'Disponible' : 'Agotado',
+              color: canBuy ? const Color(0xFF166534) : const Color(0xFFB91C1C),
+              background: canBuy
+                  ? const Color(0xFFF0FDF4)
+                  : const Color(0xFFFEF2F2),
+            ),
+            _StatusPill(
+              icon: Icons.inventory_2_outlined,
+              label: 'Stock: $stock',
+              color: const Color(0xFF1D4ED8),
+              background: const Color(0xFFEFF6FF),
+            ),
+            if (requiresInstallation)
+              const _StatusPill(
+                icon: Icons.handyman_outlined,
+                label: 'Instalación disponible',
+                color: Color(0xFF7C2D12),
+                background: Color(0xFFFFF7ED),
+              ),
+          ],
+        ),
+        const SizedBox(height: 22),
+        if (isDesktop)
+          StorefrontProductActionBar(
+            isDesktop: true,
+            canBuy: canBuy,
+            canWhatsapp: whatsapp.isNotEmpty,
+            quantity: quantity,
+            primaryColor: primaryColor,
+            onDecrease: onDecrease,
+            onIncrease: onIncrease,
+            onAddToCart: onAddToCart,
+            onBuyNow: onBuyNow,
+            onWhatsapp: onWhatsapp,
+          ),
+      ],
     );
   }
 }

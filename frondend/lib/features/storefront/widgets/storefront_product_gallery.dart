@@ -23,6 +23,7 @@ class StorefrontProductGallery extends StatefulWidget {
 
 class _StorefrontProductGalleryState extends State<StorefrontProductGallery> {
   int _selectedIndex = 0;
+  final Set<int> _failedIndexes = <int>{};
 
   @override
   void didUpdateWidget(covariant StorefrontProductGallery oldWidget) {
@@ -30,11 +31,16 @@ class _StorefrontProductGalleryState extends State<StorefrontProductGallery> {
     if (_selectedIndex >= widget.images.length) {
       _selectedIndex = 0;
     }
+    if (oldWidget.images != widget.images) {
+      _failedIndexes.clear();
+      _selectedIndex = 0;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final hasImages = widget.images.isNotEmpty;
+    final selectedImage = hasImages ? _getSelectedImage() : null;
     final imageHeight = widget.isDesktop ? 560.0 : 360.0;
 
     return Column(
@@ -46,7 +52,6 @@ class _StorefrontProductGalleryState extends State<StorefrontProductGallery> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(28),
-            boxShadow: StorefrontShadows.card,
             border: Border.all(color: const Color(0xFFE5E7EB)),
           ),
           child: InkWell(
@@ -66,13 +71,19 @@ class _StorefrontProductGalleryState extends State<StorefrontProductGallery> {
                               tag:
                                   'product-image-${widget.title}-$_selectedIndex',
                               child: Image.network(
-                                widget.images[_selectedIndex],
-                                key: ValueKey(widget.images[_selectedIndex]),
+                                selectedImage!,
+                                key: ValueKey(selectedImage),
                                 fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    _GalleryPlaceholder(
-                                      isDesktop: widget.isDesktop,
-                                    ),
+                                errorBuilder: (context, error, stackTrace) {
+                                  WidgetsBinding.instance.addPostFrameCallback((
+                                    _,
+                                  ) {
+                                    _handleImageError(_selectedIndex);
+                                  });
+                                  return _GalleryPlaceholder(
+                                    isDesktop: widget.isDesktop,
+                                  );
+                                },
                               ),
                             )
                           : _GalleryPlaceholder(
@@ -128,9 +139,7 @@ class _StorefrontProductGalleryState extends State<StorefrontProductGallery> {
                               : const Color(0xFFE5E7EB),
                           width: isActive ? 2 : 1,
                         ),
-                        boxShadow: isActive
-                            ? StorefrontShadows.medium
-                            : StorefrontShadows.soft,
+                        boxShadow: isActive ? StorefrontShadows.soft : null,
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(12),
@@ -207,7 +216,7 @@ class _StorefrontProductGalleryState extends State<StorefrontProductGallery> {
                       child: Hero(
                         tag: 'product-image-${widget.title}-$_selectedIndex',
                         child: Image.network(
-                          widget.images[_selectedIndex],
+                          _getSelectedImage(),
                           fit: BoxFit.contain,
                           errorBuilder: (context, error, stackTrace) =>
                               const _GalleryPlaceholder(
@@ -239,6 +248,42 @@ class _StorefrontProductGalleryState extends State<StorefrontProductGallery> {
         return FadeTransition(opacity: animation, child: child);
       },
     );
+  }
+
+  String _getSelectedImage() {
+    if (widget.images.isEmpty) {
+      return '';
+    }
+
+    if (!_failedIndexes.contains(_selectedIndex) &&
+        _selectedIndex < widget.images.length) {
+      return widget.images[_selectedIndex];
+    }
+
+    for (var i = 0; i < widget.images.length; i++) {
+      if (!_failedIndexes.contains(i)) {
+        _selectedIndex = i;
+        return widget.images[i];
+      }
+    }
+
+    return widget.images.first;
+  }
+
+  void _handleImageError(int failedIndex) {
+    if (!mounted || _failedIndexes.contains(failedIndex)) {
+      return;
+    }
+
+    setState(() {
+      _failedIndexes.add(failedIndex);
+      for (var i = 0; i < widget.images.length; i++) {
+        if (!_failedIndexes.contains(i)) {
+          _selectedIndex = i;
+          break;
+        }
+      }
+    });
   }
 }
 

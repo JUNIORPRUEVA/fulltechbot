@@ -31,70 +31,61 @@ class StorefrontProductActionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isDesktop) {
-      return Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: StorefrontShadows.card,
-          border: Border.all(color: const Color(0xFFE5E7EB)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Elige la cantidad',
-              style: TextStyle(
-                fontSize: 13,
-                color: Color(0xFF64748B),
-                fontWeight: FontWeight.w700,
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Cantidad',
+            style: TextStyle(
+              fontSize: 13,
+              color: Color(0xFF64748B),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 10),
+          _QuantitySelector(
+            quantity: quantity,
+            onDecrease: onDecrease,
+            onIncrease: onIncrease,
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: canBuy ? onBuyNow : null,
+              style: FilledButton.styleFrom(
+                backgroundColor: primaryColor,
+                padding: const EdgeInsets.symmetric(vertical: 16),
               ),
+              icon: const Icon(Icons.bolt_rounded),
+              label: const Text('Comprar ahora'),
             ),
-            const SizedBox(height: 10),
-            _QuantitySelector(
-              quantity: quantity,
-              onDecrease: onDecrease,
-              onIncrease: onIncrease,
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: canBuy ? onAddToCart : null,
+              icon: const Icon(Icons.shopping_cart_outlined),
+              label: const Text('Agregar al carrito'),
             ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: canBuy ? onBuyNow : null,
-                style: FilledButton.styleFrom(
-                  backgroundColor: primaryColor,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                icon: const Icon(Icons.bolt_rounded),
-                label: const Text('Comprar ahora'),
-              ),
-            ),
+          ),
+          if (canWhatsapp) ...[
             const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: canBuy ? onAddToCart : null,
-                icon: const Icon(Icons.shopping_cart_outlined),
-                label: const Text('Agregar al carrito'),
+                onPressed: onWhatsapp,
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: StorefrontColors.whatsapp),
+                  foregroundColor: StorefrontColors.whatsapp,
+                ),
+                icon: const Icon(Icons.chat_outlined),
+                label: const Text('Consultar por WhatsApp'),
               ),
             ),
-            if (canWhatsapp) ...[
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: onWhatsapp,
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: StorefrontColors.whatsapp),
-                    foregroundColor: StorefrontColors.whatsapp,
-                  ),
-                  icon: const Icon(Icons.chat_outlined),
-                  label: const Text('Consultar por WhatsApp'),
-                ),
-              ),
-            ],
           ],
-        ),
+        ],
       );
     }
 
