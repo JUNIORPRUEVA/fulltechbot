@@ -20,6 +20,14 @@ class _PublicEntryScreenState extends State<PublicEntryScreen> {
   @override
   void initState() {
     super.initState();
+    final immediateSlug = _pickBestSlug(apiSlug: null, diagnostics: null);
+    if (immediateSlug != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _redirectToStore(slug: immediateSlug, diagnostics: const {});
+      });
+      return;
+    }
     _resolveStore();
   }
 

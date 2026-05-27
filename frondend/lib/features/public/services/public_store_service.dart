@@ -23,6 +23,7 @@ class PublicStoreResolution {
 
 class PublicStoreService {
   static final String _baseUrl = '${ApiConfig.baseUrl}/api/storefront';
+  static const Duration _timeout = Duration(seconds: 6);
 
   static Future<PublicStoreResolution> resolveDefaultStore({
     String? preferredSlug,
@@ -35,7 +36,7 @@ class PublicStoreService {
     final uri = Uri.parse(
       '$_baseUrl/public/default',
     ).replace(queryParameters: queryParameters.isEmpty ? null : queryParameters);
-    final response = await http.get(uri);
+    final response = await http.get(uri).timeout(_timeout);
 
     if (response.body.isEmpty) {
       return const PublicStoreResolution(
