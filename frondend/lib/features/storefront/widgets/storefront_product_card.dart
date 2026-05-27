@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+
 import '../services/storefront_api_service.dart';
+import '../services/storefront_helpers.dart';
 import 'storefront_price_widget.dart';
 
 class StorefrontProductCard extends StatefulWidget {
@@ -32,15 +33,15 @@ class _StorefrontProductCardState extends State<StorefrontProductCard> {
   @override
   Widget build(BuildContext context) {
     final product = widget.product;
-    final precio = product['precio_oferta_web'] ?? product['precio_oferta'] ?? product['precio'] ?? 0;
-    final precioOriginal = (product['precio_oferta_web'] != null || product['precio_oferta'] != null)
-        ? (product['precio'] ?? 0)
-        : null;
-    final imagen = product['imagen_destacada_url'] ?? product['imagen1'] ?? '';
-    final etiqueta = product['etiqueta'] ?? '';
-    final rating = product['rating'] ?? 0;
-    final tieneInstalacion = product['requiere_instalacion'] == true || product['instalacion_incluida'] == true;
-    final tieneEnvio = product['envio_incluido'] == true;
+    final precio = StorefrontHelpers.getEffectivePrice(product);
+    final precioOriginal = StorefrontHelpers.getOriginalPrice(product);
+    final imagen = StorefrontHelpers.getPrimaryImage(product);
+    final categoria = product['categoria']?.toString() ?? '';
+    final etiqueta = product['etiqueta']?.toString() ?? '';
+    final stock = int.tryParse(product['stock']?.toString() ?? '0') ?? 0;
+    final tieneInstalacion =
+        product['requiere_instalacion'] == true ||
+        product['instalacion_incluida'] == true;
     final tieneOferta = precioOriginal != null && precioOriginal > precio;
 
     return MouseRegion(
@@ -52,23 +53,20 @@ class _StorefrontProductCardState extends State<StorefrontProductCard> {
           '/tienda/${widget.slug}/producto/${product['id']}',
         ),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
+          duration: const Duration(milliseconds: 220),
           curve: Curves.easeOutCubic,
-          width: widget.compact ? null : 200,
-          transform: _isHovered ? (Matrix4.identity()..translate(0, -4)) : Matrix4.identity(),
+          width: widget.compact ? null : 212,
+          transform: _isHovered
+              ? (Matrix4.identity()..translate(0, -4))
+              : Matrix4.identity(),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: _isHovered ? 0.08 : 0.04),
-                blurRadius: _isHovered ? 20 : 12,
-                offset: Offset(0, _isHovered ? 6 : 2),
-              ),
-              BoxShadow(
-                color: Colors.black.withValues(alpha: _isHovered ? 0.04 : 0.02),
-                blurRadius: _isHovered ? 8 : 4,
-                offset: Offset(0, _isHovered ? 3 : 1),
+                blurRadius: _isHovered ? 18 : 10,
+                offset: Offset(0, _isHovered ? 8 : 3),
               ),
             ],
           ),
@@ -76,167 +74,132 @@ class _StorefrontProductCardState extends State<StorefrontProductCard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Imagen con overlay hover
               Expanded(
                 child: Stack(
                   children: [
-                    Container(
-                      width: double.infinity,
-                      color: const Color(0xFFF1F5F9),
-                      child: imagen.isNotEmpty
-                          ? Image.network(
-                              imagen,
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              errorBuilder: (_, __, ___) => _placeholderIcon(),
-                            )
-                          : _placeholderIcon(),
-                    ),
-                    // Overlay hover
-                    if (_isHovered)
-                      Positioned.fill(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.05),
-                          ),
-                        ),
+                    Positioned.fill(
+                      child: Container(
+                        color: const Color(0xFFF4F7FB),
+                        padding: const EdgeInsets.all(14),
+                        child: imagen != null
+                            ? Image.network(
+                                imagen,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) =>
+                                    _placeholderIcon(),
+                              )
+                            : _placeholderIcon(),
                       ),
-                    // Etiqueta
+                    ),
                     if (etiqueta.isNotEmpty)
                       Positioned(
-                        top: 8,
-                        left: 8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: widget.secondaryColor,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            etiqueta,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
+                        top: 10,
+                        left: 10,
+                        child: _TopBadge(
+                          label: etiqueta,
+                          background: widget.secondaryColor,
+                          foreground: Colors.white,
                         ),
                       ),
-                    // Badge oferta
                     if (tieneOferta)
                       Positioned(
-                        top: 8,
-                        right: 8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFFEF4444), Color(0xFFF87171)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            '-${((1 - precio / precioOriginal) * 100).round()}%',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
+                        top: 10,
+                        right: 10,
+                        child: _TopBadge(
+                          label: 'Oferta',
+                          background: const Color(0xFFEF4444),
+                          foreground: Colors.white,
                         ),
                       ),
-                    // Rating
-                    if (rating > 0)
+                    if (stock > 0)
                       Positioned(
-                        bottom: 8,
-                        left: 8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.6),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.star_rounded, size: 12, color: Color(0xFFFBBF24)),
-                              const SizedBox(width: 2),
-                              Text(
-                                rating.toString(),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
+                        bottom: 10,
+                        left: 10,
+                        child: _TopBadge(
+                          label: 'Stock $stock',
+                          background: Colors.black.withValues(alpha: 0.72),
+                          foreground: Colors.white,
                         ),
                       ),
                   ],
                 ),
               ),
-              // Info
               Padding(
                 padding: EdgeInsets.all(widget.compact ? 10 : 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (categoria.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          categoria,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF6B7280),
+                          ),
+                        ),
+                      ),
                     Text(
-                      product['titulo'] ?? '',
+                      product['titulo']?.toString() ?? '',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: widget.compact ? 13 : 14,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                         color: const Color(0xFF111827),
-                        height: 1.2,
+                        height: 1.25,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     StorefrontPriceWidget(
                       precio: precio,
                       precioOriginal: precioOriginal,
                       primaryColor: widget.primaryColor,
                     ),
-                    const SizedBox(height: 6),
-                    // Beneficios
-                    Row(
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
                       children: [
-                        if (tieneEnvio) ...[
-                          _benefitChip(Icons.local_shipping_outlined, 'Envío gratis', const Color(0xFF10B981)),
-                          const SizedBox(width: 4),
-                        ],
+                        if (tieneOferta)
+                          _benefitChip(
+                            Icons.local_offer_outlined,
+                            'Oferta',
+                            const Color(0xFFEF4444),
+                          ),
                         if (tieneInstalacion)
-                          _benefitChip(Icons.build_outlined, 'Instalación', const Color(0xFF2563EB)),
+                          _benefitChip(
+                            Icons.build_outlined,
+                            'Instalación',
+                            const Color(0xFF2563EB),
+                          ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    // Botones
+                    const SizedBox(height: 10),
                     Row(
                       children: [
                         Expanded(
                           child: _ActionButton(
                             icon: Icons.shopping_cart_outlined,
-                            label: 'Carrito',
+                            label: widget.compact ? '' : 'Agregar',
                             color: widget.secondaryColor,
                             onTap: () => _addToCart(context),
+                            compact: widget.compact,
                           ),
                         ),
-                        if (widget.whatsapp != null && product['permitir_whatsapp'] != false) ...[
+                        if (widget.whatsapp != null &&
+                            product['permitir_whatsapp'] != false) ...[
                           const SizedBox(width: 6),
                           _ActionButton(
                             icon: Icons.chat_outlined,
                             label: '',
                             color: const Color(0xFF25D366),
-                            isIcon: true,
-                            onTap: () {
-                              final num = widget.whatsapp!.replaceAll(RegExp(r'[^\d]'), '');
-                              final msg = 'Hola, me interesa: ${product['titulo']} (ID: ${product['id']})';
-                              launchUrl(Uri.parse('https://wa.me/$num?text=${Uri.encodeComponent(msg)}'));
-                            },
+                            onTap: _abrirWhatsAppProducto,
+                            compact: true,
                           ),
                         ],
                       ],
@@ -251,23 +214,91 @@ class _StorefrontProductCardState extends State<StorefrontProductCard> {
     );
   }
 
+  Future<void> _addToCart(BuildContext context) async {
+    final product = widget.product;
+    final precio = StorefrontHelpers.getEffectivePrice(product);
+
+    try {
+      final sessionId = await StorefrontHelpers.ensureSessionId(widget.slug);
+      await StorefrontApiService.createCart(widget.slug, sessionId);
+      final response = await StorefrontApiService.addCartItem(
+        widget.slug,
+        sessionId,
+        productoId: product['id'].toString(),
+        nombreProducto: product['titulo']?.toString() ?? '',
+        cantidad: 1,
+        precioUnitario: precio.toDouble(),
+        imagenUrl: StorefrontHelpers.getPrimaryImage(product),
+      );
+
+      if (!context.mounted) return;
+      if (response['ok'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${product['titulo']} agregado al carrito'),
+            action: SnackBarAction(
+              label: 'Ver',
+              onPressed: () => Navigator.pushNamed(
+                context,
+                '/tienda/${widget.slug}/carrito',
+              ),
+            ),
+          ),
+        );
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            response['message']?.toString() ?? 'No se pudo agregar',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  void _abrirWhatsAppProducto() {
+    final number = widget.whatsapp?.replaceAll(RegExp(r'[^\d]'), '') ?? '';
+    if (number.isEmpty) return;
+
+    final product = widget.product;
+    final precio = StorefrontHelpers.getEffectivePrice(product);
+    final productUrl = Uri.base
+        .resolve('/tienda/${widget.slug}/producto/${product['id']}')
+        .toString();
+    final msg =
+        'Hola FULLTECH, estoy interesado en: ${product['titulo']}. '
+        'Precio: \$${precio.toStringAsFixed(0)}. '
+        'Link: $productUrl';
+    launchUrl(
+      Uri.parse('https://wa.me/$number?text=${Uri.encodeComponent(msg)}'),
+    );
+  }
+
   Widget _benefitChip(IconData icon, String label, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(7),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 10, color: color),
-          const SizedBox(width: 2),
+          Icon(icon, size: 11, color: color),
+          const SizedBox(width: 3),
           Text(
             label,
             style: TextStyle(
               fontSize: 9,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
               color: color,
             ),
           ),
@@ -276,49 +307,42 @@ class _StorefrontProductCardState extends State<StorefrontProductCard> {
     );
   }
 
-  Future<void> _addToCart(BuildContext context) async {
-    final product = widget.product;
-    final precio = product['precio_oferta_web'] ?? product['precio_oferta'] ?? product['precio'] ?? 0;
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final sessionId = prefs.getString('storefront_session_${widget.slug}') ?? '';
-      if (sessionId.isEmpty) return;
-
-      await StorefrontApiService.createCart(widget.slug, sessionId);
-      final res = await StorefrontApiService.addCartItem(
-        widget.slug, sessionId,
-        productoId: product['id'].toString(),
-        nombreProducto: product['titulo'] ?? '',
-        cantidad: 1,
-        precioUnitario: double.tryParse(precio.toString()) ?? 0,
-        imagenUrl: product['imagen_destacada_url'] ?? product['imagen1'],
-      );
-
-      if (res['ok'] == true && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${product['titulo']} agregado al carrito'),
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 2),
-            action: SnackBarAction(
-              label: 'Ver',
-              onPressed: () => Navigator.pushNamed(context, '/tienda/${widget.slug}/carrito'),
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-        );
-      }
-    }
+  Widget _placeholderIcon() {
+    return const Center(
+      child: Icon(Icons.image_outlined, size: 40, color: Color(0xFFCBD5E1)),
+    );
   }
+}
 
-  Widget _placeholderIcon() => Center(
-        child: Icon(Icons.image_outlined, size: 40, color: const Color(0xFFCBD5E1)),
-      );
+class _TopBadge extends StatelessWidget {
+  final String label;
+  final Color background;
+  final Color foreground;
+
+  const _TopBadge({
+    required this.label,
+    required this.background,
+    required this.foreground,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: foreground,
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
 }
 
 class _ActionButton extends StatelessWidget {
@@ -326,14 +350,14 @@ class _ActionButton extends StatelessWidget {
   final String label;
   final Color color;
   final VoidCallback onTap;
-  final bool isIcon;
+  final bool compact;
 
   const _ActionButton({
     required this.icon,
     required this.label,
     required this.color,
     required this.onTap,
-    this.isIcon = false,
+    this.compact = false,
   });
 
   @override
@@ -346,20 +370,21 @@ class _ActionButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         child: Container(
           padding: EdgeInsets.symmetric(
-            horizontal: isIcon ? 10 : 8,
-            vertical: 8,
+            horizontal: compact ? 10 : 8,
+            vertical: 9,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(icon, size: 16, color: color),
-              if (!isIcon) ...[
+              if (!compact && label.isNotEmpty) ...[
                 const SizedBox(width: 4),
                 Text(
                   label,
                   style: TextStyle(
                     fontSize: 11,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                     color: color,
                   ),
                 ),

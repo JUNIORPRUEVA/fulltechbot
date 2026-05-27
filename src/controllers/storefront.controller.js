@@ -67,11 +67,13 @@ async function getProducts(req, res) {
       return res.status(404).json({ ok: false, message: 'Tienda no encontrada' });
     }
 
-    const { categoria, destacado, busqueda, page, limit } = req.query;
+    const { categoria, destacado, search, busqueda, page, limit, sort } = req.query;
     const result = await storefrontService.getStorefrontProducts(config.bot_id, {
       categoria,
       destacado: destacado === 'true',
+      search,
       busqueda,
+      sort,
       page: parseInt(page) || 1,
       limit: parseInt(limit) || 20,
     });
@@ -204,7 +206,7 @@ async function addCartItem(req, res) {
 
 async function updateCartItem(req, res) {
   try {
-    const { slug, sessionId, itemId } = req.params;
+    const { slug, itemId } = req.params;
     const config = await storefrontService.getConfigBySlug(slug);
 
     if (!config) {
@@ -216,7 +218,7 @@ async function updateCartItem(req, res) {
       return res.status(400).json({ ok: false, message: 'cantidad es requerida' });
     }
 
-    const cart = await storefrontService.updateCartItem(parseInt(itemId), { cantidad });
+    const cart = await storefrontService.updateCartItem(itemId, { cantidad });
 
     if (!cart) {
       return res.status(404).json({ ok: false, message: 'Item no encontrado' });
@@ -230,14 +232,14 @@ async function updateCartItem(req, res) {
 
 async function deleteCartItem(req, res) {
   try {
-    const { slug, sessionId, itemId } = req.params;
+    const { slug, itemId } = req.params;
     const config = await storefrontService.getConfigBySlug(slug);
 
     if (!config) {
       return res.status(404).json({ ok: false, message: 'Tienda no encontrada' });
     }
 
-    const cart = await storefrontService.deleteCartItem(parseInt(itemId));
+    const cart = await storefrontService.deleteCartItem(itemId);
 
     if (!cart) {
       return res.status(404).json({ ok: false, message: 'Item no encontrado' });
@@ -255,11 +257,16 @@ async function deleteCartItem(req, res) {
 
 async function checkout(req, res) {
   try {
-    const { slug, sessionId } = req.params;
+    const { slug } = req.params;
     const config = await storefrontService.getConfigBySlug(slug);
 
     if (!config) {
       return res.status(404).json({ ok: false, message: 'Tienda no encontrada' });
+    }
+
+    const sessionId = req.body?.session_id || req.query?.session_id;
+    if (!sessionId) {
+      return res.status(400).json({ ok: false, message: 'session_id es requerido' });
     }
 
     const result = await storefrontService.checkout(config.bot_id, sessionId, req.body);
@@ -280,11 +287,16 @@ async function checkout(req, res) {
 
 async function whatsappOrder(req, res) {
   try {
-    const { slug, sessionId } = req.params;
+    const { slug } = req.params;
     const config = await storefrontService.getConfigBySlug(slug);
 
     if (!config) {
       return res.status(404).json({ ok: false, message: 'Tienda no encontrada' });
+    }
+
+    const sessionId = req.body?.session_id || req.query?.session_id;
+    if (!sessionId) {
+      return res.status(400).json({ ok: false, message: 'session_id es requerido' });
     }
 
     const result = await storefrontService.generateWhatsAppLink(
@@ -305,11 +317,16 @@ async function whatsappOrder(req, res) {
 
 async function createPaypalOrder(req, res) {
   try {
-    const { slug, sessionId } = req.params;
+    const { slug } = req.params;
     const config = await storefrontService.getConfigBySlug(slug);
 
     if (!config) {
       return res.status(404).json({ ok: false, message: 'Tienda no encontrada' });
+    }
+
+    const sessionId = req.body?.session_id || req.query?.session_id;
+    if (!sessionId) {
+      return res.status(400).json({ ok: false, message: 'session_id es requerido' });
     }
 
     const result = await storefrontService.createPaypalOrder(config.bot_id, sessionId);

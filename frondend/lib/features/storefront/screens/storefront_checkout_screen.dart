@@ -1,23 +1,28 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import '../services/storefront_api_service.dart';
+import '../services/storefront_helpers.dart';
+import '../widgets/storefront_empty_state.dart';
 
 class StorefrontCheckoutScreen extends StatefulWidget {
   final String slug;
+
   const StorefrontCheckoutScreen({super.key, required this.slug});
 
   @override
-  State<StorefrontCheckoutScreen> createState() => _StorefrontCheckoutScreenState();
+  State<StorefrontCheckoutScreen> createState() =>
+      _StorefrontCheckoutScreenState();
 }
 
 class _StorefrontCheckoutScreenState extends State<StorefrontCheckoutScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _nombreCtrl = TextEditingController();
-  final _telefonoCtrl = TextEditingController();
-  final _direccionCtrl = TextEditingController();
-  final _ciudadCtrl = TextEditingController();
-  final _sectorCtrl = TextEditingController();
-  final _notasCtrl = TextEditingController();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final TextEditingController _nombreCtrl = TextEditingController();
+  final TextEditingController _telefonoCtrl = TextEditingController();
+  final TextEditingController _direccionCtrl = TextEditingController();
+  final TextEditingController _ciudadCtrl = TextEditingController();
+  final TextEditingController _sectorCtrl = TextEditingController();
+  final TextEditingController _notasCtrl = TextEditingController();
 
   Map<String, dynamic>? _config;
   Map<String, dynamic>? _cart;
@@ -34,41 +39,51 @@ class _StorefrontCheckoutScreenState extends State<StorefrontCheckoutScreen> {
   }
 
   Future<void> _init() async {
-    final prefs = await SharedPreferences.getInstance();
-    _sessionId = prefs.getString('storefront_session_${widget.slug}') ?? '';
+    _sessionId = await StorefrontHelpers.ensureSessionId(widget.slug);
     await _loadData();
   }
 
   Future<void> _loadData() async {
-    setState(() { _loading = true; });
+    setState(() => _loading = true);
     try {
-      final configRes = await StorefrontApiService.getConfig(widget.slug);
-      final cartRes = await StorefrontApiService.getCart(widget.slug, _sessionId);
+      final results = await Future.wait([
+        StorefrontApiService.getConfig(widget.slug),
+        StorefrontApiService.getCart(widget.slug, _sessionId),
+      ]);
 
       setState(() {
-        _config = configRes['data'];
-        _cart = cartRes['ok'] == true ? cartRes['data'] : null;
+        _config = Map<String, dynamic>.from(results[0]['data'] as Map);
+        _cart = results[1]['ok'] == true
+            ? Map<String, dynamic>.from(results[1]['data'] as Map)
+            : null;
         _loading = false;
       });
-    } catch (e) {
-      setState(() { _loading = false; });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
     }
-  }
-
-  Color _getColor(String hex) {
-    hex = hex.replaceAll('#', '');
-    if (hex.length == 6) hex = 'FF$hex';
-    return Color(int.parse(hex, radix: 16));
   }
 
   Future<void> _submitOrder() async {
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _processing = true);
 
     try {
-      final res = await StorefrontApiService.checkout(
-        widget.slug, _sessionId,
+      if (_metodoPago == 'paypal' && (_config?['permitir_paypal'] != true)) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'PayPal no está configurado. Usa WhatsApp o pedido pendiente.',
+            ),
+          ),
+        );
+        setState(() => _metodoPago = 'whatsapp');
+      }
+
+      final response = await StorefrontApiService.checkout(
+        widget.slug,
+        _sessionId,
         telefonoCliente: _telefonoCtrl.text.trim(),
         nombreCliente: _nombreCtrl.text.trim(),
         direccion: _direccionCtrl.text.trim(),
@@ -79,336 +94,311 @@ class _StorefrontCheckoutScreenState extends State<StorefrontCheckoutScreen> {
         notas: _notasCtrl.text.trim(),
       );
 
-      if (res['ok'] == true) {
-        if (mounted) {
-          Navigator.pushReplacementNamed(
-            context,
-            '/tienda/${widget.slug}/exito',
-            arguments: res['data'],
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(res['message'] ?? 'Error al procesar pedido'), backgroundColor: Colors.red),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      if (!mounted) return;
+      if (response['ok'] == true) {
+        Navigator.pushReplacementNamed(
+          context,
+          '/tienda/${widget.slug}/exito',
+          arguments: response['data'],
         );
+        return;
       }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            response['message']?.toString() ?? 'No se pudo procesar',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
     } finally {
       if (mounted) setState(() => _processing = false);
     }
+  }
+
+  Future<void> _checkoutByWhatsApp() async {
+    final response = await StorefrontApiService.whatsappOrder(
+      widget.slug,
+      _sessionId,
+      nombreCliente: _nombreCtrl.text.trim().isEmpty
+          ? null
+          : _nombreCtrl.text.trim(),
+      telefonoCliente: _telefonoCtrl.text.trim().isEmpty
+          ? null
+          : _telefonoCtrl.text.trim(),
+      direccion: _direccionCtrl.text.trim().isEmpty
+          ? null
+          : _direccionCtrl.text.trim(),
+      ciudad: _ciudadCtrl.text.trim().isEmpty ? null : _ciudadCtrl.text.trim(),
+      sector: _sectorCtrl.text.trim().isEmpty ? null : _sectorCtrl.text.trim(),
+      metodoEntrega: _metodoEntrega,
+      notas: _notasCtrl.text.trim().isEmpty ? null : _notasCtrl.text.trim(),
+    );
+
+    if (!mounted) return;
+    if (response['ok'] == true && response['data']?['url'] != null) {
+      launchUrl(Uri.parse(response['data']['url'].toString()));
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          response['message']?.toString() ?? 'No se pudo abrir WhatsApp',
+        ),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  Color _getColor(String hex) {
+    var normalized = hex.replaceAll('#', '');
+    if (normalized.length == 6) normalized = 'FF$normalized';
+    return Color(int.parse(normalized, radix: 16));
   }
 
   @override
   Widget build(BuildContext context) {
     if (_loading) {
       return Scaffold(
-        backgroundColor: const Color(0xFFF8FAFC),
         appBar: AppBar(title: const Text('Checkout')),
-        body: const Center(child: CircularProgressIndicator(strokeWidth: 3)),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
-    final config = _config ?? {};
-    final primaryColor = _getColor(config['color_principal'] ?? '#0F172A');
-    final items = _cart != null ? (_cart!['items'] as List<dynamic>?) ?? [] : [];
+    final items = List<dynamic>.from(_cart?['items'] as List? ?? const []);
+    if (items.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Checkout')),
+        body: StorefrontEmptyState(
+          icon: Icons.shopping_cart_outlined,
+          title: 'No hay productos en el carrito',
+          subtitle: 'Agrega productos antes de finalizar la compra.',
+          actionLabel: 'Volver a la tienda',
+          onAction: () => Navigator.pop(context),
+        ),
+      );
+    }
+
+    final primaryColor = _getColor(
+      _config?['color_principal']?.toString() ?? '#0F172A',
+    );
+    final allowWhatsapp = _config?['permitir_whatsapp'] == true;
+    final allowPaypal = _config?['permitir_paypal'] == true;
+    final allowRetiro = _config?['permitir_retiro_tienda'] == true;
+    final allowDelivery = _config?['permitir_delivery'] == true;
     final total = _cart?['total'] ?? 0;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        title: const Text('Checkout'),
-        centerTitle: false,
-      ),
+      appBar: AppBar(title: const Text('Checkout')),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // Resumen del pedido
-            _buildSectionCard(
+            _CardSection(
               title: 'Resumen del pedido',
-              icon: Icons.receipt_long_outlined,
-              primaryColor: primaryColor,
               child: Column(
                 children: [
-                  ...items.map((item) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            '${item['nombre_producto']} x${item['cantidad']}',
-                            style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+                  ...items.map((item) {
+                    final row = Map<String, dynamic>.from(item as Map);
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${row['nombre_producto']} x${row['cantidad']}',
+                              style: const TextStyle(color: Color(0xFF475569)),
+                            ),
                           ),
-                        ),
-                        Text(
-                          '\$${item['subtotal']}',
-                          style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF111827)),
-                        ),
-                      ],
-                    ),
-                  )),
+                          Text(
+                            '\$${row['subtotal']}',
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
                   const Divider(height: 20),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         'Total',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: primaryColor),
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w900,
+                          color: primaryColor,
+                        ),
                       ),
                       Text(
                         '\$$total',
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: primaryColor),
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: primaryColor,
+                        ),
                       ),
                     ],
                   ),
                 ],
               ),
             ),
-
             const SizedBox(height: 16),
-
-            // Datos del cliente
-            _buildSectionCard(
-              title: 'Datos del cliente',
-              icon: Icons.person_outline,
-              primaryColor: primaryColor,
+            _CardSection(
+              title: 'Tus datos',
               child: Column(
                 children: [
                   TextFormField(
                     controller: _nombreCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Nombre completo *',
-                      prefixIcon: Icon(Icons.person_outline),
-                    ),
-                    validator: (v) => v == null || v.trim().isEmpty ? 'Requerido' : null,
+                    decoration: const InputDecoration(labelText: 'Nombre *'),
+                    validator: (value) => value == null || value.trim().isEmpty
+                        ? 'Requerido'
+                        : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _telefonoCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Teléfono *',
-                      prefixIcon: Icon(Icons.phone_outlined),
-                    ),
+                    decoration: const InputDecoration(labelText: 'Teléfono *'),
                     keyboardType: TextInputType.phone,
-                    validator: (v) => v == null || v.trim().isEmpty ? 'Requerido' : null,
+                    validator: (value) => value == null || value.trim().isEmpty
+                        ? 'Requerido'
+                        : null,
                   ),
                 ],
               ),
             ),
-
             const SizedBox(height: 16),
-
-            // Método de entrega
-            _buildSectionCard(
-              title: 'Método de entrega',
-              icon: Icons.local_shipping_outlined,
-              primaryColor: primaryColor,
+            _CardSection(
+              title: 'Entrega',
               child: Column(
                 children: [
-                  if (config['permitir_retiro_tienda'] == true)
-                    _buildRadioTile(
-                      title: 'Retiro en tienda',
-                      subtitle: 'Sin costo adicional',
+                  if (allowRetiro)
+                    RadioListTile<String>(
                       value: 'retiro_tienda',
                       groupValue: _metodoEntrega,
-                      icon: Icons.store_outlined,
-                      primaryColor: primaryColor,
-                      onChanged: (v) => setState(() => _metodoEntrega = v!),
+                      onChanged: (value) => setState(
+                        () => _metodoEntrega = value ?? 'retiro_tienda',
+                      ),
+                      title: const Text('Retiro en tienda'),
                     ),
-                  if (config['permitir_delivery'] == true)
-                    _buildRadioTile(
-                      title: 'Delivery',
-                      subtitle: 'Con costo adicional',
+                  if (allowDelivery)
+                    RadioListTile<String>(
                       value: 'delivery',
                       groupValue: _metodoEntrega,
-                      icon: Icons.delivery_dining_outlined,
-                      primaryColor: primaryColor,
-                      onChanged: (v) => setState(() => _metodoEntrega = v!),
+                      onChanged: (value) =>
+                          setState(() => _metodoEntrega = value ?? 'delivery'),
+                      title: const Text('Delivery'),
                     ),
                   if (_metodoEntrega == 'delivery') ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     TextFormField(
                       controller: _direccionCtrl,
                       decoration: const InputDecoration(
                         labelText: 'Dirección *',
-                        prefixIcon: Icon(Icons.location_on_outlined),
                       ),
-                      validator: (v) => _metodoEntrega == 'delivery' && (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+                      validator: (value) =>
+                          _metodoEntrega == 'delivery' &&
+                              (value == null || value.trim().isEmpty)
+                          ? 'Requerido'
+                          : null,
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _ciudadCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Ciudad',
-                        prefixIcon: Icon(Icons.location_city_outlined),
-                      ),
+                      decoration: const InputDecoration(labelText: 'Ciudad'),
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _sectorCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Sector',
-                        prefixIcon: Icon(Icons.map_outlined),
-                      ),
+                      decoration: const InputDecoration(labelText: 'Sector'),
                     ),
                   ],
                 ],
               ),
             ),
-
             const SizedBox(height: 16),
-
-            // Método de pago
-            _buildSectionCard(
-              title: 'Método de pago',
-              icon: Icons.payment_outlined,
-              primaryColor: primaryColor,
+            _CardSection(
+              title: 'Pago',
               child: Column(
                 children: [
-                  _buildRadioTile(
-                    title: 'WhatsApp - Pagar al recibir',
-                    subtitle: 'Te contactaremos para coordinar el pago',
-                    value: 'whatsapp',
+                  if (allowWhatsapp)
+                    RadioListTile<String>(
+                      value: 'whatsapp',
+                      groupValue: _metodoPago,
+                      onChanged: (value) =>
+                          setState(() => _metodoPago = value ?? 'whatsapp'),
+                      title: const Text('WhatsApp / pago coordinado'),
+                    ),
+                  RadioListTile<String>(
+                    value: 'pendiente',
                     groupValue: _metodoPago,
-                    icon: Icons.chat_rounded,
-                    primaryColor: primaryColor,
-                    onChanged: (v) => setState(() => _metodoPago = v!),
+                    onChanged: (value) =>
+                        setState(() => _metodoPago = value ?? 'pendiente'),
+                    title: const Text('Pedido pendiente'),
                   ),
-                  if (config['permitir_paypal'] == true)
-                    _buildRadioTile(
-                      title: 'PayPal',
-                      subtitle: 'Pago seguro online',
+                  if (allowPaypal)
+                    RadioListTile<String>(
                       value: 'paypal',
                       groupValue: _metodoPago,
-                      icon: Icons.account_balance_wallet_outlined,
-                      primaryColor: primaryColor,
-                      onChanged: (v) => setState(() => _metodoPago = v!),
+                      onChanged: (value) =>
+                          setState(() => _metodoPago = value ?? 'paypal'),
+                      title: const Text('PayPal'),
                     ),
                 ],
               ),
             ),
-
             const SizedBox(height: 16),
-
-            // Notas
-            _buildSectionCard(
-              title: 'Notas adicionales',
-              icon: Icons.notes_rounded,
-              primaryColor: primaryColor,
+            _CardSection(
+              title: 'Notas',
               child: TextFormField(
                 controller: _notasCtrl,
-                decoration: const InputDecoration(
-                  hintText: 'Ej: Prefiero que llamen antes de enviar...',
-                ),
                 maxLines: 3,
+                decoration: const InputDecoration(
+                  hintText: 'Instrucciones de entrega, referencia, etc.',
+                ),
               ),
             ),
-
-            const SizedBox(height: 24),
-
-            // Botón confirmar
+            const SizedBox(height: 18),
             FilledButton.icon(
               onPressed: _processing ? null : _submitOrder,
-              icon: _processing
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.check_circle_outline),
-              label: Text(_processing ? 'Procesando...' : 'Confirmar pedido'),
               style: FilledButton.styleFrom(
                 backgroundColor: primaryColor,
                 minimumSize: const Size(double.infinity, 56),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
+              icon: _processing
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.check_circle_outline),
+              label: Text(_processing ? 'Procesando...' : 'Confirmar pedido'),
             ),
-
-            const SizedBox(height: 32),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionCard({
-    required String title,
-    required IconData icon,
-    required Color primaryColor,
-    required Widget child,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 18, color: primaryColor),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: primaryColor),
+            if (allowWhatsapp) ...[
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: _checkoutByWhatsApp,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 54),
+                ),
+                icon: const Icon(Icons.chat_rounded),
+                label: const Text('Enviar por WhatsApp'),
               ),
             ],
-          ),
-          const SizedBox(height: 16),
-          child,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRadioTile({
-    required String title,
-    required String subtitle,
-    required String value,
-    required String groupValue,
-    required IconData icon,
-    required Color primaryColor,
-    required ValueChanged<String?> onChanged,
-  }) {
-    final isSelected = value == groupValue;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: isSelected ? primaryColor.withValues(alpha: 0.04) : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isSelected ? primaryColor.withValues(alpha: 0.2) : const Color(0xFFE5E7EB),
-        ),
-      ),
-      child: RadioListTile<String>(
-        title: Row(
-          children: [
-            Icon(icon, size: 18, color: isSelected ? primaryColor : const Color(0xFF6B7280)),
-            const SizedBox(width: 8),
-            Text(title, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
           ],
         ),
-        subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
-        value: value,
-        groupValue: groupValue,
-        onChanged: onChanged,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-        activeColor: primaryColor,
-        dense: true,
       ),
     );
   }
@@ -422,5 +412,34 @@ class _StorefrontCheckoutScreenState extends State<StorefrontCheckoutScreen> {
     _sectorCtrl.dispose();
     _notasCtrl.dispose();
     super.dispose();
+  }
+}
+
+class _CardSection extends StatelessWidget {
+  final String title;
+  final Widget child;
+
+  const _CardSection({required this.title, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 14),
+          child,
+        ],
+      ),
+    );
   }
 }

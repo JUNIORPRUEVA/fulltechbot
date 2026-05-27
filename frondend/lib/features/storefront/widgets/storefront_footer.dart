@@ -18,7 +18,7 @@ class StorefrontFooter extends StatelessWidget {
     final whatsapp = config['whatsapp_numero'] ?? '';
     final direccion = config['direccion'];
     final horario = config['horario'];
-    final telefono = config['telefono'];
+    final telefono = config['telefono_contacto'] ?? config['telefono'];
     final email = config['email'];
     final facebook = config['facebook_url'];
     final instagram = config['instagram_url'];
@@ -63,7 +63,11 @@ class StorefrontFooter extends StatelessWidget {
                             ),
                           ),
                         )
-                      : const Icon(Icons.store_rounded, color: Colors.white, size: 22),
+                      : const Icon(
+                          Icons.store_rounded,
+                          color: Colors.white,
+                          size: 22,
+                        ),
                 ),
                 const SizedBox(width: 12),
                 Text(
@@ -82,15 +86,9 @@ class StorefrontFooter extends StatelessWidget {
 
             // Información de contacto
             if (direccion != null)
-              _FooterInfoRow(
-                icon: Icons.location_on_outlined,
-                text: direccion,
-              ),
+              _FooterInfoRow(icon: Icons.location_on_outlined, text: direccion),
             if (horario != null)
-              _FooterInfoRow(
-                icon: Icons.access_time_rounded,
-                text: horario,
-              ),
+              _FooterInfoRow(icon: Icons.access_time_rounded, text: horario),
             if (telefono != null)
               _FooterInfoRow(
                 icon: Icons.phone_outlined,
@@ -114,7 +112,10 @@ class StorefrontFooter extends StatelessWidget {
                     icon: Icons.chat_rounded,
                     color: const Color(0xFF25D366),
                     onTap: () {
-                      final num = whatsapp.toString().replaceAll(RegExp(r'[^\d]'), '');
+                      final num = whatsapp.toString().replaceAll(
+                        RegExp(r'[^\d]'),
+                        '',
+                      );
                       launchUrl(Uri.parse('https://wa.me/$num'));
                     },
                   ),
@@ -151,9 +152,15 @@ class StorefrontFooter extends StatelessWidget {
             const SizedBox(height: 12),
             Row(
               children: [
-                _PaymentMethodChip(icon: Icons.account_balance_rounded, label: 'Transferencia'),
+                _PaymentMethodChip(
+                  icon: Icons.account_balance_rounded,
+                  label: 'Transferencia',
+                ),
                 const SizedBox(width: 8),
-                _PaymentMethodChip(icon: Icons.credit_card_rounded, label: 'Tarjeta'),
+                _PaymentMethodChip(
+                  icon: Icons.credit_card_rounded,
+                  label: 'Tarjeta',
+                ),
                 const SizedBox(width: 8),
                 _PaymentMethodChip(icon: Icons.chat_rounded, label: 'WhatsApp'),
               ],
@@ -184,11 +191,7 @@ class _FooterInfoRow extends StatelessWidget {
   final String text;
   final VoidCallback? onTap;
 
-  const _FooterInfoRow({
-    required this.icon,
-    required this.text,
-    this.onTap,
-  });
+  const _FooterInfoRow({required this.icon, required this.text, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -252,10 +255,7 @@ class _PaymentMethodChip extends StatelessWidget {
   final IconData icon;
   final String label;
 
-  const _PaymentMethodChip({
-    required this.icon,
-    required this.label,
-  });
+  const _PaymentMethodChip({required this.icon, required this.label});
 
   @override
   Widget build(BuildContext context) {

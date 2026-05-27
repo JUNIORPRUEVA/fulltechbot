@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../bots/providers/bot_provider.dart';
 import '../../storefront/services/storefront_api_service.dart';
+import '../../../core/constants/api_config.dart';
 
 class StorefrontAdminScreen extends StatefulWidget {
   const StorefrontAdminScreen({super.key});
@@ -125,6 +128,56 @@ class _StorefrontAdminScreenState extends State<StorefrontAdminScreen> {
     setState(() => _saving = false);
   }
 
+  /// Construye la URL pública de la tienda
+  String _getStoreUrl() {
+    final slug = _slugCtrl.text.trim().isNotEmpty ? _slugCtrl.text.trim() : 'fulltech';
+    // Detectar si es web
+    final isWeb = identical(0, 0.0); // En web esto es true
+    if (isWeb) {
+      // En web, navegar dentro de la misma app
+      return '/tienda/$slug';
+    }
+    // En desktop/mobile, abrir en navegador
+    return '${ApiConfig.baseUrl}/tienda/$slug';
+  }
+
+  /// Abre la tienda online
+  Future<void> _openStore() async {
+    final url = _getStoreUrl();
+    final isWeb = identical(0, 0.0);
+    if (isWeb) {
+      // En web, navegar dentro de la app
+      if (mounted) {
+        Navigator.pushNamed(context, url);
+      }
+    } else {
+      // En desktop/mobile, abrir en navegador
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    }
+  }
+
+  /// Copia el enlace al portapapeles
+  Future<void> _copyStoreLink() async {
+    final url = _getStoreUrl();
+    await Clipboard.setData(ClipboardData(text: url));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white, size: 18),
+              SizedBox(width: 8),
+              Text('Enlace copiado al portapapeles'),
+            ],
+          ),
+          backgroundColor: Color(0xFF10B981),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -133,6 +186,26 @@ class _StorefrontAdminScreenState extends State<StorefrontAdminScreen> {
         appBar: AppBar(
           title: const Text('Administrar Tienda'),
           centerTitle: false,
+          actions: [
+            // Botón Copiar enlace
+            IconButton(
+              onPressed: _copyStoreLink,
+              icon: const Icon(Icons.link, size: 20),
+              tooltip: 'Copiar enlace',
+            ),
+            // Botón Ver tienda online
+            FilledButton.icon(
+              onPressed: _openStore,
+              icon: const Icon(Icons.open_in_new, size: 16),
+              label: const Text('Ver tienda online', style: TextStyle(fontSize: 13)),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
           bottom: const TabBar(
             isScrollable: true,
             tabs: [

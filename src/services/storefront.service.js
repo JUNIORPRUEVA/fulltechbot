@@ -82,6 +82,67 @@ function serializeRows(rows) {
   return rows.map(serializeRow);
 }
 
+function toIsoString(value) {
+  if (!value) return null;
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value?.toISOString === 'function') return value.toISOString();
+  return value;
+}
+
+function toSafeBool(value, fallback = false) {
+  if (value === null || value === undefined) return fallback;
+  return value === true || value === 'true' || value === 1 || value === '1';
+}
+
+function mapStorefrontProduct(row) {
+  if (!row) return null;
+
+  const precio = toNumber(row.precio) ?? 0;
+  const precioMinimo = toNumber(row.precioMinimo);
+  const precioOferta = toNumber(row.precioOferta);
+  const precioOfertaWeb = toNumber(row.precio_oferta_web);
+  const stock = Number(row.stock ?? 0);
+  const imagenDestacada = row.imagen_destacada_url || row.imagen1 || null;
+
+  return {
+    id: row.id != null ? row.id.toString() : '',
+    titulo: row.titulo ?? '',
+    categoria: row.categoria ?? '',
+    descripcion: row.descripcion ?? null,
+    informacion: row.informacion ?? null,
+    precio,
+    precioMinimo,
+    precioOferta,
+    stock: Number.isFinite(stock) ? stock : 0,
+    imagen1: row.imagen1 ?? null,
+    imagen2: row.imagen2 ?? null,
+    imagen3: row.imagen3 ?? null,
+    video: row.video ?? null,
+    palabrasClave: row.palabrasClave ?? null,
+    incluye: row.incluye ?? null,
+    instalacion_incluida: toSafeBool(row.instalacion_incluida, false),
+    visible_en_tienda: toSafeBool(row.visible_en_tienda, false),
+    destacado: toSafeBool(row.destacado, false),
+    etiqueta: row.etiqueta ?? null,
+    precio_oferta_web: precioOfertaWeb,
+    descripcion_web: row.descripcion_web ?? null,
+    imagen_destacada_url: imagenDestacada,
+    permitir_compra_online: toSafeBool(row.permitir_compra_online, true),
+    permitir_whatsapp: toSafeBool(row.permitir_whatsapp, true),
+    requiere_instalacion: toSafeBool(row.requiere_instalacion, false),
+    reglasNegociacion: row.reglasNegociacion ?? null,
+    permite_adicionales: toSafeBool(row.permite_adicionales, false),
+    es_cotizable: toSafeBool(row.es_cotizable, false),
+    cantidad_base: Number(row.cantidad_base ?? 1),
+    orden: Number(row.orden ?? 0),
+    estado: row.estado ?? null,
+    creadoEn: toIsoString(row.creadoEn),
+    actualizadoEn: toIsoString(row.actualizadoEn),
+    gallery: [row.imagen1, row.imagen2, row.imagen3]
+      .filter((item) => item != null && item.toString().trim().isNotEmpty),
+  };
+}
+
 // ============================================
 // STOREFRONT CONFIG
 // ============================================
@@ -356,17 +417,22 @@ async function getStorefrontProducts(botId, options = {}) {
   const {
     categoria,
     destacado,
+    search,
     busqueda,
     page = 1,
     limit = 20,
+    sort = 'featured',
   } = options;
 
-  const offset = (page - 1) * limit;
+  const searchTerm = search || busqueda;
+  const safePage = Math.max(Number(page) || 1, 1);
+  const safeLimit = Math.min(Math.max(Number(limit) || 20, 1), 48);
+  const offset = (safePage - 1) * safeLimit;
   const conditions = [
-    `c.estado = 'activo'`,
     `ps.visible_en_tienda = true`,
     `ps.activo = true`,
-    `c.bot_id = $1`,
+    `(c.estado = 'activo' OR c.estado IS NULL)`,
+    `(c.bot_id = $1 OR c.bot_id IS NULL)`,
   ];
   const params = [botId];
   let paramIndex = 2;
@@ -380,15 +446,40 @@ async function getStorefrontProducts(botId, options = {}) {
     conditions.push(`ps.destacado = true`);
   }
 
-  if (busqueda) {
-    params.push(`%${busqueda}%`);
-    conditions.push(`(c.titulo ILIKE $${paramIndex} OR c.descripcion ILIKE $${paramIndex} OR c.palabras_clave ILIKE $${paramIndex})`);
+  if (searchTerm) {
+    params.push(`%${searchTerm}%`);
+    conditions.push(`(
+      c.titulo ILIKE $${paramIndex}
+      OR c.categoria ILIKE $${paramIndex}
+      OR COALESCE(c.descripcion, '') ILIKE $${paramIndex}
+      OR COALESCE(c."palabrasClave", '') ILIKE $${paramIndex}
+      OR COALESCE(ps.descripcion_web, '') ILIKE $${paramIndex}
+    )`);
     paramIndex++;
   }
 
   const whereClause = conditions.join(' AND ');
+  const sortClause = (() => {
+    switch (sort) {
+      case 'price_asc':
+        return `COALESCE(ps.precio_oferta_web, c."precioOferta", c.precio) ASC NULLS LAST`;
+      case 'price_desc':
+        return `COALESCE(ps.precio_oferta_web, c."precioOferta", c.precio) DESC NULLS LAST`;
+      case 'name_asc':
+        return `c.titulo ASC`;
+      case 'name_desc':
+        return `c.titulo DESC`;
+      case 'newest':
+        return `c."creadoEn" DESC NULLS LAST`;
+      case 'oldest':
+        return `c."creadoEn" ASC NULLS LAST`;
+      case 'offers':
+        return `CASE WHEN COALESCE(ps.precio_oferta_web, c."precioOferta") IS NOT NULL THEN 0 ELSE 1 END, COALESCE(ps.precio_oferta_web, c."precioOferta", c.precio) ASC NULLS LAST`;
+      default:
+        return `ps.destacado DESC, ps.orden ASC NULLS LAST, c.orden ASC NULLS LAST, c."creadoEn" DESC NULLS LAST`;
+    }
+  })();
 
-  // Count
   const countRows = await prisma.$queryRawUnsafe(
     `SELECT COUNT(*) as total FROM catalogo c
      INNER JOIN storefront_product_settings ps ON c.id::text = ps.producto_id AND ps.bot_id = $1
@@ -397,74 +488,124 @@ async function getStorefrontProducts(botId, options = {}) {
   );
   const total = Number(countRows[0]?.total || 0);
 
-  // Data
-  params.push(limit, offset);
+  params.push(safeLimit, offset);
   const rows = await prisma.$queryRawUnsafe(
     `SELECT
-       c.id, c.titulo, c.categoria, c.descripcion, c.informacion,
-       c.precio, c.precio_minimo, c.precio_oferta, c.stock,
+       c.id::text as id,
+       c.titulo, c.categoria, c.descripcion, c.informacion,
+       c.precio, c."precioMinimo" as "precioMinimo", c."precioOferta" as "precioOferta", COALESCE(c.stock, 0) as stock,
        c.imagen1, c.imagen2, c.imagen3, c.video,
-       c.palabras_clave, c.estado, c.tipo_producto, c.incluye,
+       c."palabrasClave" as "palabrasClave", c.estado, c.tipo_producto, c.incluye,
        c.permite_adicionales, c.es_cotizable, c.orden,
-       c.cantidad_base, c.unidad_adicional_nombre, c.precio_adicional,
-       c.instalacion_incluida, c.reglas_calculo,
-       ps.id as setting_id, ps.visible_en_tienda, ps.destacado,
+       c.cantidad_base, c.instalacion_incluida, c."reglasNegociacion" as "reglasNegociacion",
+       c."creadoEn" as "creadoEn", c."actualizadoEn" as "actualizadoEn",
+       ps.visible_en_tienda, ps.destacado,
        ps.etiqueta, ps.precio_oferta_web, ps.descripcion_web,
        ps.imagen_destacada_url, ps.permitir_compra_online,
        ps.permitir_whatsapp, ps.requiere_instalacion
      FROM catalogo c
      INNER JOIN storefront_product_settings ps ON c.id::text = ps.producto_id AND ps.bot_id = $1
      WHERE ${whereClause}
-     ORDER BY ps.orden ASC, c.creado_en DESC
+     ORDER BY ${sortClause}
      LIMIT $${paramIndex++} OFFSET $${paramIndex}`,
     ...params
   );
 
   return {
-    products: serializeRows(rows),
+    items: rows.map(mapStorefrontProduct),
+    page: safePage,
+    limit: safeLimit,
     total,
-    page,
-    limit,
-    totalPages: Math.ceil(total / limit),
+    totalPages: Math.ceil(total / safeLimit),
   };
 }
 
 async function getStorefrontProductById(botId, productId) {
   const rows = await prisma.$queryRawUnsafe(
     `SELECT
-       c.id, c.titulo, c.categoria, c.descripcion, c.informacion,
-       c.precio, c.precio_minimo, c.precio_oferta, c.stock,
+       c.id::text as id, c.titulo, c.categoria, c.descripcion, c.informacion,
+       c.precio, c."precioMinimo" as "precioMinimo", c."precioOferta" as "precioOferta", COALESCE(c.stock, 0) as stock,
        c.imagen1, c.imagen2, c.imagen3, c.video,
-       c.palabras_clave, c.estado, c.tipo_producto, c.incluye,
+       c."palabrasClave" as "palabrasClave", c.estado, c.tipo_producto, c.incluye,
        c.permite_adicionales, c.es_cotizable, c.orden,
-       c.cantidad_base, c.unidad_adicional_nombre, c.precio_adicional,
-       c.precio_minimo_adicional, c.permite_calculo_adicional,
-       c.ciudad_base, c.cargo_fuera_ciudad, c.aplica_cargo_fuera_ciudad,
-       c.instalacion_incluida, c.reglas_calculo,
-       ps.id as setting_id, ps.visible_en_tienda, ps.destacado,
+       c.cantidad_base, c.instalacion_incluida, c."reglasNegociacion" as "reglasNegociacion",
+       c."creadoEn" as "creadoEn", c."actualizadoEn" as "actualizadoEn",
+       ps.visible_en_tienda, ps.destacado,
        ps.etiqueta, ps.precio_oferta_web, ps.descripcion_web,
        ps.imagen_destacada_url, ps.permitir_compra_online,
        ps.permitir_whatsapp, ps.requiere_instalacion
      FROM catalogo c
      INNER JOIN storefront_product_settings ps ON c.id::text = ps.producto_id AND ps.bot_id = $1
-     WHERE c.id = $2 AND c.estado = 'activo' AND ps.visible_en_tienda = true AND ps.activo = true
+     WHERE c.id::text = $2
+       AND (c.estado = 'activo' OR c.estado IS NULL)
+       AND (c.bot_id = $1 OR c.bot_id IS NULL)
+       AND ps.visible_en_tienda = true
+       AND ps.activo = true
      LIMIT 1`,
     botId, productId
   );
-  return rows[0] ? serializeRow(rows[0]) : null;
+  if (!rows[0]) return null;
+
+  const product = mapStorefrontProduct(rows[0]);
+  const relatedRows = await prisma.$queryRawUnsafe(
+    `SELECT
+       c.id::text as id,
+       c.titulo, c.categoria, c.descripcion, c.informacion,
+       c.precio, c."precioMinimo" as "precioMinimo", c."precioOferta" as "precioOferta", COALESCE(c.stock, 0) as stock,
+       c.imagen1, c.imagen2, c.imagen3, c.video,
+       c."palabrasClave" as "palabrasClave", c.estado, c.tipo_producto, c.incluye,
+       c.permite_adicionales, c.es_cotizable, c.orden,
+       c.cantidad_base, c.instalacion_incluida, c."reglasNegociacion" as "reglasNegociacion",
+       c."creadoEn" as "creadoEn", c."actualizadoEn" as "actualizadoEn",
+       ps.visible_en_tienda, ps.destacado,
+       ps.etiqueta, ps.precio_oferta_web, ps.descripcion_web,
+       ps.imagen_destacada_url, ps.permitir_compra_online,
+       ps.permitir_whatsapp, ps.requiere_instalacion
+     FROM catalogo c
+     INNER JOIN storefront_product_settings ps ON c.id::text = ps.producto_id AND ps.bot_id = $1
+     WHERE c.id::text <> $2
+       AND c.categoria = $3
+       AND (c.estado = 'activo' OR c.estado IS NULL)
+       AND (c.bot_id = $1 OR c.bot_id IS NULL)
+       AND ps.visible_en_tienda = true
+       AND ps.activo = true
+     ORDER BY ps.destacado DESC, ps.orden ASC NULLS LAST, c.orden ASC NULLS LAST, c."creadoEn" DESC NULLS LAST
+     LIMIT 8`,
+    botId, productId, rows[0].categoria
+  );
+
+  return {
+    ...product,
+    relatedProducts: relatedRows.map(mapStorefrontProduct),
+  };
 }
 
 async function getStorefrontCategories(botId) {
   const rows = await prisma.$queryRawUnsafe(
-    `SELECT DISTINCT c.categoria, COUNT(*) as total
+    `SELECT
+       c.categoria as nombre,
+       COUNT(*)::int as cantidad,
+       COALESCE(
+         MAX(NULLIF(ps.imagen_destacada_url, '')),
+         MAX(NULLIF(c.imagen1, '')),
+         MAX(NULLIF(c.imagen2, '')),
+         MAX(NULLIF(c.imagen3, ''))
+       ) as imagen
      FROM catalogo c
      INNER JOIN storefront_product_settings ps ON c.id::text = ps.producto_id AND ps.bot_id = $1
-     WHERE c.estado = 'activo' AND ps.visible_en_tienda = true AND ps.activo = true
+     WHERE (c.estado = 'activo' OR c.estado IS NULL)
+       AND (c.bot_id = $1 OR c.bot_id IS NULL)
+       AND ps.visible_en_tienda = true
+       AND ps.activo = true
      GROUP BY c.categoria
      ORDER BY c.categoria ASC`,
     botId
   );
-  return serializeRows(rows);
+  return rows.map((row) => ({
+    nombre: row.nombre ?? '',
+    cantidad: Number(row.cantidad ?? 0),
+    imagen: row.imagen ?? null,
+  }));
 }
 
 // ============================================
@@ -491,14 +632,14 @@ async function getOrCreateCart(botId, sessionId) {
 
 async function getCartWithItems(cartId) {
   const cartRows = await prisma.$queryRawUnsafe(
-    `SELECT * FROM storefront_carts WHERE id = $1 LIMIT 1`,
+    `SELECT * FROM storefront_carts WHERE id::text = $1 LIMIT 1`,
     cartId
   );
   if (cartRows.length === 0) return null;
 
   const cart = serializeRow(cartRows[0]);
   const items = await prisma.$queryRawUnsafe(
-    `SELECT * FROM storefront_cart_items WHERE cart_id = $1 ORDER BY creado_en ASC`,
+    `SELECT * FROM storefront_cart_items WHERE cart_id::text = $1 ORDER BY creado_en ASC`,
     cartId
   );
   cart.items = serializeRows(items);
@@ -514,7 +655,7 @@ async function getCartBySession(botId, sessionId) {
 
   const cart = serializeRow(cartRows[0]);
   const items = await prisma.$queryRawUnsafe(
-    `SELECT * FROM storefront_cart_items WHERE cart_id = $1 ORDER BY creado_en ASC`,
+    `SELECT * FROM storefront_cart_items WHERE cart_id::text = $1 ORDER BY creado_en ASC`,
     cart.id
   );
   cart.items = serializeRows(items);
@@ -527,7 +668,7 @@ async function addItemToCart(cartId, data) {
 
   // Verificar si ya existe el producto en el carrito
   const existing = await prisma.$queryRawUnsafe(
-    `SELECT * FROM storefront_cart_items WHERE cart_id = $1 AND producto_id = $2 LIMIT 1`,
+    `SELECT * FROM storefront_cart_items WHERE cart_id::text = $1 AND producto_id = $2 LIMIT 1`,
     cartId, producto_id
   );
 
@@ -538,7 +679,7 @@ async function addItemToCart(cartId, data) {
     const newSubtotal = newCantidad * Number(precio_unitario);
 
     await prisma.$executeRawUnsafe(
-      `UPDATE storefront_cart_items SET cantidad = $1, subtotal = $2, actualizado_en = NOW() WHERE id = $3`,
+      `UPDATE storefront_cart_items SET cantidad = $1, subtotal = $2, actualizado_en = NOW() WHERE id::text = $3`,
       newCantidad, newSubtotal, item.id
     );
   } else {
@@ -557,7 +698,7 @@ async function updateCartItem(itemId, data) {
   const { cantidad } = data;
 
   const itemRows = await prisma.$queryRawUnsafe(
-    `SELECT * FROM storefront_cart_items WHERE id = $1 LIMIT 1`,
+    `SELECT * FROM storefront_cart_items WHERE id::text = $1 LIMIT 1`,
     itemId
   );
   if (itemRows.length === 0) return null;
@@ -567,36 +708,36 @@ async function updateCartItem(itemId, data) {
   const newSubtotal = newCantidad * Number(item.precio_unitario);
 
   await prisma.$executeRawUnsafe(
-    `UPDATE storefront_cart_items SET cantidad = $1, subtotal = $2, actualizado_en = NOW() WHERE id = $3`,
+    `UPDATE storefront_cart_items SET cantidad = $1, subtotal = $2, actualizado_en = NOW() WHERE id::text = $3`,
     newCantidad, newSubtotal, itemId
   );
 
-  await recalculateCart(Number(item.cart_id));
-  return getCartWithItems(Number(item.cart_id));
+  await recalculateCart(item.cart_id.toString());
+  return getCartWithItems(item.cart_id.toString());
 }
 
 async function deleteCartItem(itemId) {
   const itemRows = await prisma.$queryRawUnsafe(
-    `SELECT * FROM storefront_cart_items WHERE id = $1 LIMIT 1`,
+    `SELECT * FROM storefront_cart_items WHERE id::text = $1 LIMIT 1`,
     itemId
   );
   if (itemRows.length === 0) return null;
 
-  const cartId = Number(itemRows[0].cart_id);
-  await prisma.$executeRawUnsafe(`DELETE FROM storefront_cart_items WHERE id = $1`, itemId);
+  const cartId = itemRows[0].cart_id.toString();
+  await prisma.$executeRawUnsafe(`DELETE FROM storefront_cart_items WHERE id::text = $1`, itemId);
   await recalculateCart(cartId);
   return getCartWithItems(cartId);
 }
 
 async function recalculateCart(cartId) {
   const rows = await prisma.$queryRawUnsafe(
-    `SELECT COALESCE(SUM(subtotal), 0) as subtotal FROM storefront_cart_items WHERE cart_id = $1`,
+    `SELECT COALESCE(SUM(subtotal), 0) as subtotal FROM storefront_cart_items WHERE cart_id::text = $1`,
     cartId
   );
   const subtotal = Number(rows[0]?.subtotal || 0);
 
   await prisma.$executeRawUnsafe(
-    `UPDATE storefront_carts SET subtotal = $1, total = $1, actualizado_en = NOW() WHERE id = $2`,
+    `UPDATE storefront_carts SET subtotal = $1, total = $1, actualizado_en = NOW() WHERE id::text = $2`,
     subtotal, cartId
   );
 }
@@ -734,25 +875,23 @@ async function generateWhatsAppLink(botId, sessionId, data) {
   } = data;
 
   const productosTexto = cart.items.map(item =>
-    `• ${item.nombre_producto} x${item.cantidad} = $${item.subtotal}`
+    `- ${item.nombre_producto} x${item.cantidad} = $${item.subtotal}`
   ).join('\n');
 
   const mensaje = [
-    `🛒 *Nuevo Pedido - Tienda Online*`,
+    `Hola FULLTECH, quiero hacer este pedido:`,
     ``,
-    `👤 *Cliente:* ${nombre_cliente}`,
-    `📱 *Teléfono:* ${telefono_cliente}`,
-    ``,
-    `*Productos:*`,
     productosTexto,
     ``,
-    `💰 *Total: $${cart.total}*`,
+    `Total: $${cart.total}`,
     ``,
-    `📦 *Entrega:* ${metodo_entrega}`,
-    direccion ? `📍 *Dirección:* ${direccion}` : '',
-    ciudad ? `🏙️ *Ciudad:* ${ciudad}` : '',
-    sector ? `📍 *Sector:* ${sector}` : '',
-    notas ? `📝 *Notas:* ${notas}` : '',
+    nombre_cliente ? `Nombre: ${nombre_cliente}` : '',
+    telefono_cliente ? `Telefono: ${telefono_cliente}` : '',
+    `Entrega: ${metodo_entrega}`,
+    direccion ? `Direccion: ${direccion}` : '',
+    ciudad ? `Ciudad: ${ciudad}` : '',
+    sector ? `Sector: ${sector}` : '',
+    notas ? `Notas: ${notas}` : '',
   ].filter(Boolean).join('\n');
 
   const numeroLimpio = whatsappNumber.replace(/[^\d]/g, '');
@@ -914,7 +1053,7 @@ async function getCarts(botId, estado = null) {
   // Cargar items para cada carrito
   for (const cart of carts) {
     const items = await prisma.$queryRawUnsafe(
-      `SELECT * FROM storefront_cart_items WHERE cart_id = $1 ORDER BY creado_en ASC`,
+      `SELECT * FROM storefront_cart_items WHERE cart_id::text = $1 ORDER BY creado_en ASC`,
       cart.id
     );
     cart.items = serializeRows(items);

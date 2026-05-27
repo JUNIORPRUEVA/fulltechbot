@@ -26,9 +26,11 @@ class StorefrontApiService {
     String slug, {
     String? categoria,
     bool? destacado,
+    String? search,
     String? busqueda,
     int page = 1,
     int limit = 20,
+    String? sort,
   }) async {
     final params = <String, String>{
       'page': page.toString(),
@@ -36,9 +38,13 @@ class StorefrontApiService {
     };
     if (categoria != null) params['categoria'] = categoria;
     if (destacado == true) params['destacado'] = 'true';
+    if (search != null) params['search'] = search;
     if (busqueda != null) params['busqueda'] = busqueda;
+    if (sort != null) params['sort'] = sort;
 
-    final uri = Uri.parse('$_baseUrl/$slug/products').replace(queryParameters: params);
+    final uri = Uri.parse(
+      '$_baseUrl/$slug/products',
+    ).replace(queryParameters: params);
     final res = await http.get(uri);
     return jsonDecode(res.body);
   }
@@ -60,7 +66,10 @@ class StorefrontApiService {
   // ============================================
 
   /// Crear u obtener carrito
-  static Future<Map<String, dynamic>> createCart(String slug, String sessionId) async {
+  static Future<Map<String, dynamic>> createCart(
+    String slug,
+    String sessionId,
+  ) async {
     final res = await http.post(
       Uri.parse('$_baseUrl/$slug/cart'),
       headers: {'Content-Type': 'application/json'},
@@ -70,7 +79,10 @@ class StorefrontApiService {
   }
 
   /// Obtener carrito por sessionId
-  static Future<Map<String, dynamic>> getCart(String slug, String sessionId) async {
+  static Future<Map<String, dynamic>> getCart(
+    String slug,
+    String sessionId,
+  ) async {
     final res = await http.get(Uri.parse('$_baseUrl/$slug/cart/$sessionId'));
     return jsonDecode(res.body);
   }
@@ -105,7 +117,7 @@ class StorefrontApiService {
   static Future<Map<String, dynamic>> updateCartItem(
     String slug,
     String sessionId,
-    int itemId, {
+    String itemId, {
     required int cantidad,
   }) async {
     final res = await http.put(
@@ -120,7 +132,7 @@ class StorefrontApiService {
   static Future<Map<String, dynamic>> deleteCartItem(
     String slug,
     String sessionId,
-    int itemId,
+    String itemId,
   ) async {
     final res = await http.delete(
       Uri.parse('$_baseUrl/$slug/cart/$sessionId/items/$itemId'),
@@ -149,6 +161,7 @@ class StorefrontApiService {
       Uri.parse('$_baseUrl/$slug/checkout'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
+        'session_id': sessionId,
         'telefono_cliente': telefonoCliente,
         'nombre_cliente': nombreCliente,
         'direccion': direccion,
@@ -178,6 +191,7 @@ class StorefrontApiService {
       Uri.parse('$_baseUrl/$slug/whatsapp-order'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
+        'session_id': sessionId,
         'nombre_cliente': nombreCliente,
         'telefono_cliente': telefonoCliente,
         'direccion': direccion,
@@ -258,7 +272,9 @@ class StorefrontApiService {
   }
 
   /// Obtener configuraciones de productos
-  static Future<Map<String, dynamic>> getAdminProductSettings(String botId) async {
+  static Future<Map<String, dynamic>> getAdminProductSettings(
+    String botId,
+  ) async {
     final res = await http.get(
       Uri.parse('$_baseUrl/admin/$botId/product-settings'),
     );
@@ -286,7 +302,9 @@ class StorefrontApiService {
   }) async {
     final params = <String, String>{};
     if (estado != null) params['estado'] = estado;
-    final uri = Uri.parse('$_baseUrl/admin/$botId/carts').replace(queryParameters: params);
+    final uri = Uri.parse(
+      '$_baseUrl/admin/$botId/carts',
+    ).replace(queryParameters: params);
     final res = await http.get(uri);
     return jsonDecode(res.body);
   }
@@ -298,7 +316,9 @@ class StorefrontApiService {
   }
 
   /// Obtener zonas de delivery
-  static Future<Map<String, dynamic>> getAdminDeliveryZones(String botId) async {
+  static Future<Map<String, dynamic>> getAdminDeliveryZones(
+    String botId,
+  ) async {
     final res = await http.get(
       Uri.parse('$_baseUrl/admin/$botId/delivery-zones'),
     );
