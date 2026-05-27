@@ -13,6 +13,7 @@ const controller = require('../controllers/storefront.controller');
 // ============================================
 
 // Configuración de la tienda
+router.get('/public/default', controller.getDefaultStore);
 router.get('/:slug/config', controller.getConfig);
 
 // Banners activos

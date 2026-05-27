@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'core/constants/app_config.dart';
-import 'features/auth/screens/admin_access_gate.dart';
+import 'features/auth/screens/admin_login_screen.dart';
+import 'features/auth/widgets/admin_route_guard.dart';
 import 'features/bots/pages/bot_dashboard_page.dart';
 import 'features/bots/pages/bot_selector_page.dart';
 import 'features/bots/providers/bot_provider.dart';
 import 'features/public/screens/public_entry_screen.dart';
+import 'features/public/screens/public_store_redirect_screen.dart';
 import 'features/storefront/screens/storefront_cart_screen.dart';
 import 'features/storefront/screens/storefront_category_screen.dart';
 import 'features/storefront/screens/storefront_checkout_screen.dart';
 import 'features/storefront/screens/storefront_home_screen.dart';
 import 'features/storefront/screens/storefront_product_detail_screen.dart';
 import 'features/storefront/screens/storefront_success_screen.dart';
+import 'features/storefront_admin/screens/storefront_admin_screen.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -23,106 +25,189 @@ class MyApp extends StatelessWidget {
       title: 'FullTech Bot',
       debugShowCheckedModeBanner: false,
       theme: _buildTheme(),
-      onGenerateRoute: (settings) {
-        final uri = Uri.parse(settings.name ?? '/');
-
-        if (uri.path == '/') {
-          return MaterialPageRoute(
-            builder: (_) => const PublicEntryScreen(),
-            settings: settings,
-          );
-        }
-
-        if (uri.path == '/admin') {
-          return MaterialPageRoute(
-            builder: (_) => const AdminAccessGate(child: MainNavigation()),
-            settings: settings,
-          );
-        }
-
-        if (uri.pathSegments.length == 2 && uri.pathSegments[0] == 'tienda') {
-          return MaterialPageRoute(
-            builder: (_) => StorefrontHomeScreen(slug: uri.pathSegments[1]),
-            settings: settings,
-          );
-        }
-
-        if (uri.pathSegments.length == 4 &&
-            uri.pathSegments[0] == 'tienda' &&
-            uri.pathSegments[2] == 'producto') {
-          return MaterialPageRoute(
-            builder: (_) => StorefrontProductDetailScreen(
-              slug: uri.pathSegments[1],
-              productId: uri.pathSegments[3],
-            ),
-            settings: settings,
-          );
-        }
-
-        if (uri.pathSegments.length == 4 &&
-            uri.pathSegments[0] == 'tienda' &&
-            uri.pathSegments[2] == 'categoria') {
-          return MaterialPageRoute(
-            builder: (_) => StorefrontCategoryScreen(
-              slug: uri.pathSegments[1],
-              categoria: Uri.decodeComponent(uri.pathSegments[3]),
-            ),
-            settings: settings,
-          );
-        }
-
-        if (uri.pathSegments.length == 3 &&
-            uri.pathSegments[0] == 'tienda' &&
-            uri.pathSegments[2] == 'busqueda') {
-          final args = settings.arguments as Map<String, dynamic>?;
-          return MaterialPageRoute(
-            builder: (_) => StorefrontCategoryScreen(
-              slug: uri.pathSegments[1],
-              busqueda: args?['busqueda'] as String?,
-            ),
-            settings: settings,
-          );
-        }
-
-        if (uri.pathSegments.length == 3 &&
-            uri.pathSegments[0] == 'tienda' &&
-            uri.pathSegments[2] == 'carrito') {
-          return MaterialPageRoute(
-            builder: (_) => StorefrontCartScreen(slug: uri.pathSegments[1]),
-            settings: settings,
-          );
-        }
-
-        if (uri.pathSegments.length == 3 &&
-            uri.pathSegments[0] == 'tienda' &&
-            uri.pathSegments[2] == 'checkout') {
-          return MaterialPageRoute(
-            builder: (_) => StorefrontCheckoutScreen(slug: uri.pathSegments[1]),
-            settings: settings,
-          );
-        }
-
-        if (uri.pathSegments.length == 3 &&
-            uri.pathSegments[0] == 'tienda' &&
-            uri.pathSegments[2] == 'exito') {
-          final args = settings.arguments as Map<String, dynamic>?;
-          return MaterialPageRoute(
-            builder: (_) => StorefrontSuccessScreen(
-              slug: uri.pathSegments[1],
-              data: args,
-            ),
-            settings: settings,
-          );
-        }
-
-        return MaterialPageRoute(
-          builder: (_) => AppConfig.hasDefaultStore
-              ? StorefrontHomeScreen(slug: AppConfig.defaultStoreSlug)
-              : const PublicEntryScreen(),
-          settings: settings,
-        );
-      },
+      onGenerateRoute: _onGenerateRoute,
       home: const PublicEntryScreen(),
+    );
+  }
+
+  Route<dynamic> _onGenerateRoute(RouteSettings settings) {
+    final uri = Uri.parse(settings.name ?? '/');
+
+    if (uri.path == '/' || uri.path == '/tienda') {
+      return _route(
+        settings,
+        PublicEntryScreen(
+          preferredSlug: uri.queryParameters['slug'],
+        ),
+      );
+    }
+
+    if (uri.path == '/login' || uri.path == '/admin/login') {
+      final redirectTo = uri.queryParameters['redirect'] ?? '/admin';
+      return _route(
+        settings,
+        AdminLoginScreen(redirectTo: redirectTo),
+      );
+    }
+
+    if (uri.pathSegments.isNotEmpty && uri.pathSegments.first == 'admin') {
+      return _buildAdminRoute(uri, settings);
+    }
+
+    if (uri.pathSegments.length == 2 && uri.pathSegments[0] == 'tienda') {
+      return _route(
+        settings,
+        StorefrontHomeScreen(slug: uri.pathSegments[1]),
+      );
+    }
+
+    if (uri.pathSegments.length == 4 &&
+        uri.pathSegments[0] == 'tienda' &&
+        uri.pathSegments[2] == 'producto') {
+      return _route(
+        settings,
+        StorefrontProductDetailScreen(
+          slug: uri.pathSegments[1],
+          productId: uri.pathSegments[3],
+        ),
+      );
+    }
+
+    if (uri.pathSegments.length == 2 && uri.pathSegments[0] == 'producto') {
+      return _route(
+        settings,
+        PublicStoreRedirectScreen(
+          target: PublicStoreRedirectTarget.product,
+          productId: uri.pathSegments[1],
+        ),
+      );
+    }
+
+    if (uri.pathSegments.length == 4 &&
+        uri.pathSegments[0] == 'tienda' &&
+        uri.pathSegments[2] == 'categoria') {
+      return _route(
+        settings,
+        StorefrontCategoryScreen(
+          slug: uri.pathSegments[1],
+          categoria: Uri.decodeComponent(uri.pathSegments[3]),
+        ),
+      );
+    }
+
+    if (uri.pathSegments.length == 3 &&
+        uri.pathSegments[0] == 'tienda' &&
+        uri.pathSegments[2] == 'busqueda') {
+      final args = settings.arguments as Map<String, dynamic>?;
+      return _route(
+        settings,
+        StorefrontCategoryScreen(
+          slug: uri.pathSegments[1],
+          busqueda: args?['busqueda'] as String?,
+        ),
+      );
+    }
+
+    if ((uri.path == '/carrito') ||
+        (uri.pathSegments.length == 3 &&
+            uri.pathSegments[0] == 'tienda' &&
+            uri.pathSegments[2] == 'carrito')) {
+      if (uri.path == '/carrito') {
+        return _route(
+          settings,
+          const PublicStoreRedirectScreen(
+            target: PublicStoreRedirectTarget.cart,
+          ),
+        );
+      }
+
+      return _route(
+        settings,
+        StorefrontCartScreen(slug: uri.pathSegments[1]),
+      );
+    }
+
+    if ((uri.path == '/checkout') ||
+        (uri.pathSegments.length == 3 &&
+            uri.pathSegments[0] == 'tienda' &&
+            uri.pathSegments[2] == 'checkout')) {
+      if (uri.path == '/checkout') {
+        return _route(
+          settings,
+          const PublicStoreRedirectScreen(
+            target: PublicStoreRedirectTarget.checkout,
+          ),
+        );
+      }
+
+      return _route(
+        settings,
+        StorefrontCheckoutScreen(slug: uri.pathSegments[1]),
+      );
+    }
+
+    if (uri.pathSegments.length == 3 &&
+        uri.pathSegments[0] == 'tienda' &&
+        uri.pathSegments[2] == 'exito') {
+      final args = settings.arguments as Map<String, dynamic>?;
+      return _route(
+        settings,
+        StorefrontSuccessScreen(
+          slug: uri.pathSegments[1],
+          data: args,
+        ),
+      );
+    }
+
+    return _route(settings, const PublicEntryScreen());
+  }
+
+  Route<dynamic> _buildAdminRoute(Uri uri, RouteSettings settings) {
+    final path = uri.path;
+    Widget child;
+
+    switch (path) {
+      case '/admin':
+      case '/admin/catalogo':
+      case '/admin/productos':
+        child = const MainNavigation(initialIndex: 0);
+        break;
+      case '/admin/pedidos':
+        child = const MainNavigation(initialIndex: 1);
+        break;
+      case '/admin/clientes':
+        child = const MainNavigation(initialIndex: 2);
+        break;
+      case '/admin/bots':
+        child = const MainNavigation(openBotSelectorOnStart: true);
+        break;
+      case '/admin/tienda':
+        child = const StorefrontAdminScreen();
+        break;
+      case '/admin/banners':
+        child = const StorefrontAdminScreen(initialTabIndex: 1);
+        break;
+      case '/admin/pagos':
+        child = const StorefrontAdminScreen(initialTabIndex: 4);
+        break;
+      default:
+        child = const MainNavigation();
+        break;
+    }
+
+    return _route(
+      settings,
+      AdminRouteGuard(
+        redirectPath: settings.name ?? uri.toString(),
+        child: child,
+      ),
+    );
+  }
+
+  MaterialPageRoute<dynamic> _route(RouteSettings settings, Widget child) {
+    return MaterialPageRoute(
+      builder: (_) => child,
+      settings: settings,
     );
   }
 
@@ -221,7 +306,14 @@ class MyApp extends StatelessWidget {
 }
 
 class MainNavigation extends StatefulWidget {
-  const MainNavigation({super.key});
+  final int initialIndex;
+  final bool openBotSelectorOnStart;
+
+  const MainNavigation({
+    super.key,
+    this.initialIndex = 0,
+    this.openBotSelectorOnStart = false,
+  });
 
   @override
   State<MainNavigation> createState() => _MainNavigationState();
@@ -230,10 +322,12 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> {
   bool _checkingBot = true;
   bool _navigating = false;
+  late int _currentIndex;
 
   @override
   void initState() {
     super.initState();
+    _currentIndex = widget.initialIndex;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _verificarBotInicial();
     });
@@ -250,6 +344,13 @@ class _MainNavigationState extends State<MainNavigation> {
       if (!mounted) return;
 
       if (!botProvider.hayBotSeleccionado) {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const BotSelectorPage(),
+          ),
+        );
+      } else if (widget.openBotSelectorOnStart) {
         await Navigator.push(
           context,
           MaterialPageRoute(
@@ -367,6 +468,6 @@ class _MainNavigationState extends State<MainNavigation> {
       );
     }
 
-    return const BotDashboardPage();
+    return BotDashboardPage(initialIndex: _currentIndex);
   }
 }

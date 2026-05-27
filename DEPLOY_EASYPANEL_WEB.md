@@ -32,14 +32,14 @@ Crear un servicio nuevo desde el mismo repositorio.
 Build args recomendados:
 
 - `API_BASE_URL=https://api.midominio.com`
+- `STORAGE_PUBLIC_URL=https://storage-publico.midominio.com`
 - `DEFAULT_STOREFRONT_SLUG=fulltech`
-- `ADMIN_USERNAME=tu_usuario_admin`
-- `ADMIN_PASSWORD=tu_password_admin`
 
 Notas:
 
 - EasyPanel ya soporta Root Directory en este proyecto; tu captura muestra `Ruta de compilacion`.
 - No necesitas `DATABASE_URL` para la PWA.
+- No coloques passwords ni secretos en la PWA; el frontend solo debe conocer URLs publicas.
 - Si el servidor es pequeno y se reinicia durante `flutter build web`, usa la opcion de despliegue estatico descrita mas abajo.
 
 Comportamiento de rutas:
@@ -80,7 +80,10 @@ http://localhost:8080
 Si quieres compilar contra una API publica concreta:
 
 ```bash
-docker build -t fulltech-tienda-web --build-arg API_BASE_URL=https://api.midominio.com .
+docker build \
+  --build-arg API_BASE_URL=https://api.midominio.com \
+  --build-arg STORAGE_PUBLIC_URL=https://storage-publico.midominio.com \
+  -t fulltech-tienda-web .
 ```
 
 ## E2. Opcion para servidores con poca RAM
@@ -95,7 +98,9 @@ En ese caso usa despliegue estatico:
 cd frondend
 flutter clean
 flutter pub get
-flutter build web --release --dart-define=API_BASE_URL=https://api.midominio.com
+flutter build web --release \
+  --dart-define=API_BASE_URL=https://api.midominio.com \
+  --dart-define=STORAGE_PUBLIC_URL=https://storage-publico.midominio.com
 ```
 
 2. Copia el contenido de `build/web/` a `frondend/deploy_web/`.
@@ -124,6 +129,7 @@ Hallazgo real en este repo:
 - No hay carpeta `frondend/assets/` en uso para la tienda.
 - No encontre `Image.asset(...)` en la storefront.
 - El problema principal de imagenes era el uso de rutas relativas del backend como `uploads/...` o `api/...` en algunos widgets, especialmente banners y carrito, que ahora se normalizan contra `ApiConfig.baseUrl`.
+- Si el backend devuelve keys o paths de Cloudflare R2, el frontend ahora las resuelve con `STORAGE_PUBLIC_URL` y, si no existe, usa el proxy `/api/storage/file/...`.
 
 ## G. Como conectar la PWA con el backend
 
@@ -133,10 +139,16 @@ La PWA lee la API desde:
 const String.fromEnvironment('API_BASE_URL')
 ```
 
+```dart
+const String.fromEnvironment('STORAGE_PUBLIC_URL')
+```
+
 Compilacion recomendada:
 
 ```bash
-flutter build web --release --dart-define=API_BASE_URL=https://api.midominio.com
+flutter build web --release \
+  --dart-define=API_BASE_URL=https://api.midominio.com \
+  --dart-define=STORAGE_PUBLIC_URL=https://storage-publico.midominio.com
 ```
 
 Para produccion:

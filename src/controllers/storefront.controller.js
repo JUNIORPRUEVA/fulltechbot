@@ -7,6 +7,29 @@
 
 const storefrontService = require('../services/storefront.service');
 
+async function getDefaultStore(req, res) {
+  try {
+    const preferredSlug = req.query?.slug?.toString().trim() || null;
+    const result = await storefrontService.getDefaultPublicStore(preferredSlug);
+
+    if (!result.store) {
+      return res.status(404).json({
+        ok: false,
+        message: 'No hay una tienda publica activa disponible',
+        diagnostics: result.diagnostics,
+      });
+    }
+
+    res.json({
+      ok: true,
+      data: result.store,
+      diagnostics: result.diagnostics,
+    });
+  } catch (error) {
+    handleError(res, error, 'Error al resolver tienda publica por defecto');
+  }
+}
+
 // ============================================
 // HELPERS
 // ============================================
@@ -538,6 +561,7 @@ async function deleteAdminDeliveryZone(req, res) {
 
 module.exports = {
   // Públicas
+  getDefaultStore,
   getConfig,
   getBanners,
   getProducts,

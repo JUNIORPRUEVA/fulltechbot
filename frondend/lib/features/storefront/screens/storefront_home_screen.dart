@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../public/widgets/public_store_layout.dart';
 import '../services/storefront_api_service.dart';
 import '../services/storefront_helpers.dart';
 import '../theme/storefront_theme.dart';
@@ -183,6 +184,39 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     );
   }
 
+  void _openCategories() {
+    if (_categories.isEmpty) {
+      _openSearch();
+      return;
+    }
+
+    final firstCategory = _categories.first['nombre']?.toString();
+    if (firstCategory == null || firstCategory.isEmpty) {
+      _openSearch();
+      return;
+    }
+
+    Navigator.pushNamed(
+      context,
+      '/tienda/${widget.slug}/categoria/${Uri.encodeComponent(firstCategory)}',
+    );
+  }
+
+  void _openOffers() {
+    if (_offerProducts.isNotEmpty) {
+      final category = _offerProducts.first['categoria']?.toString();
+      if (category != null && category.isNotEmpty) {
+        Navigator.pushNamed(
+          context,
+          '/tienda/${widget.slug}/categoria/${Uri.encodeComponent(category)}',
+        );
+        return;
+      }
+    }
+
+    _openSearch();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -214,22 +248,18 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
         : 'Compra cámaras, motores, automatización y accesorios con asesoría profesional de FULLTECH SRL.';
     final isSmallDevice = MediaQuery.of(context).size.width < 370;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF4F7FB),
-      body: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: _PremiumHero(
-              slug: widget.slug,
-              storeName: config['nombre_tienda']?.toString() ?? 'FULLTECH SRL',
-              logoUrl: logoUrl,
-              primaryColor: primaryColor,
-              secondaryColor: secondaryColor,
-              heroTitle: heroTitle,
-              heroSubtitle: heroSubtitle,
-              onSearchTap: _openSearch,
-            ),
-          ),
+    return PublicStoreLayout(
+      slug: widget.slug,
+      storeName: config['nombre_tienda']?.toString() ?? 'FULLTECH SRL',
+      logoUrl: logoUrl,
+      primaryColor: primaryColor,
+      secondaryColor: secondaryColor,
+      heroTitle: heroTitle,
+      heroSubtitle: heroSubtitle,
+      onSearchTap: _openSearch,
+      onCategoriesTap: _openCategories,
+      onOffersTap: _openOffers,
+      slivers: [
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
@@ -452,9 +482,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
               secondaryColor: secondaryColor,
             ),
           ),
-        ],
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      ],
       floatingActionButton: whatsapp.isEmpty
           ? null
           : Padding(

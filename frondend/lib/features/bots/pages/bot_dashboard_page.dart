@@ -19,13 +19,14 @@ import '../../orders/pages/orders_page.dart';
 import '../../orders/providers/order_provider.dart';
 import '../../quotations/pages/quotations_page.dart';
 import '../../quotations/providers/quotation_provider.dart';
-import '../../storefront_admin/screens/storefront_admin_screen.dart';
 import '../../auth/services/admin_session_service.dart';
 import 'bot_form_page.dart';
 import 'bot_selector_page.dart';
 
 class BotDashboardPage extends StatefulWidget {
-  const BotDashboardPage({super.key});
+  final int initialIndex;
+
+  const BotDashboardPage({super.key, this.initialIndex = 0});
 
   @override
   State<BotDashboardPage> createState() => _BotDashboardPageState();
@@ -102,6 +103,7 @@ class _BotDashboardPageState extends State<BotDashboardPage>
   @override
   void initState() {
     super.initState();
+    _currentIndex = widget.initialIndex;
     WidgetsBinding.instance.addObserver(this);
     _startAutoRefresh();
   }
@@ -624,10 +626,7 @@ class _BotDashboardPageState extends State<BotDashboardPage>
   }
 
   void _abrirTiendaAdmin(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const StorefrontAdminScreen()),
-    );
+    Navigator.pushNamed(context, '/admin/tienda');
   }
 
   void _abrirSeguimientos(BuildContext context) {
@@ -677,7 +676,7 @@ class _BotDashboardPageState extends State<BotDashboardPage>
   Future<void> _cerrarSesionAdmin(BuildContext context) async {
     await AdminSessionService.logout();
     if (!context.mounted) return;
-    Navigator.of(context).pushNamedAndRemoveUntil('/admin', (_) => false);
+    Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
   }
 
   void _startAutoRefresh() {

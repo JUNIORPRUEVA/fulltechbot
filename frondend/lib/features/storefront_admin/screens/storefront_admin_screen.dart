@@ -3,19 +3,21 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../bots/providers/bot_provider.dart';
+import '../../public/services/public_store_service.dart';
 import '../../storefront/services/storefront_api_service.dart';
 import '../../../core/constants/api_config.dart';
 import '../../../shared/widgets/image_upload_field.dart';
 
 class StorefrontAdminScreen extends StatefulWidget {
-  const StorefrontAdminScreen({super.key});
+  final int initialTabIndex;
+
+  const StorefrontAdminScreen({super.key, this.initialTabIndex = 0});
 
   @override
   State<StorefrontAdminScreen> createState() => _StorefrontAdminScreenState();
 }
 
 class _StorefrontAdminScreenState extends State<StorefrontAdminScreen> {
-  Map<String, dynamic>? _config;
   bool _loading = true;
   bool _saving = false;
   String? _error;
@@ -56,6 +58,13 @@ class _StorefrontAdminScreenState extends State<StorefrontAdminScreen> {
       _loading = true;
       _error = null;
     });
+    if (_botId.isEmpty) {
+      setState(() {
+        _loading = false;
+        _error = 'Selecciona un bot antes de administrar la tienda.';
+      });
+      return;
+    }
     try {
       final res = await StorefrontApiService.getAdminConfig(_botId);
       if (res['ok'] == true && res['data'] != null) {
@@ -77,7 +86,6 @@ class _StorefrontAdminScreenState extends State<StorefrontAdminScreen> {
         _permitirWhatsapp = c['permitir_whatsapp'] ?? true;
         _permitirRetiroTienda = c['permitir_retiro_tienda'] ?? true;
         _permitirDelivery = c['permitir_delivery'] ?? false;
-        _config = c;
       }
     } catch (e) {
       _error = 'Error: $e';
@@ -139,38 +147,39 @@ class _StorefrontAdminScreenState extends State<StorefrontAdminScreen> {
   }
 
   /// Construye la URL pública de la tienda
-  String _getStoreUrl() {
-    final slug = _slugCtrl.text.trim().isNotEmpty
-        ? _slugCtrl.text.trim()
-        : 'fulltech';
-    // Detectar si es web
-    final isWeb = identical(0, 0.0); // En web esto es true
-    if (isWeb) {
-      // En web, navegar dentro de la misma app
-      return '/tienda/$slug';
+  Future<String> _getStoreUrl() async {
+    final slug = _slugCtrl.text.trim();
+    final resolution = await PublicStoreService.resolveDefaultStore();
+    final defaultSlug = resolution.slug?.trim();
+
+    if (slug.isEmpty) {
+      return '/';
     }
-    // En desktop/mobile, abrir en navegador
-    return '${ApiConfig.baseUrl}/tienda/$slug';
+
+    if (defaultSlug != null && defaultSlug.isNotEmpty && defaultSlug == slug) {
+      return '/';
+    }
+
+    return '/tienda/$slug';
   }
 
   /// Abre la tienda online
   Future<void> _openStore() async {
-    final url = _getStoreUrl();
+    final url = await _getStoreUrl();
     final isWeb = identical(0, 0.0);
     if (isWeb) {
-      // En web, navegar dentro de la app
       if (mounted) {
         Navigator.pushNamed(context, url);
       }
     } else {
-      // En desktop/mobile, abrir en navegador
-      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      final target = url.startsWith('/') ? '${ApiConfig.baseUrl}$url' : url;
+      await launchUrl(Uri.parse(target), mode: LaunchMode.externalApplication);
     }
   }
 
   /// Copia el enlace al portapapeles
   Future<void> _copyStoreLink() async {
-    final url = _getStoreUrl();
+    final url = await _getStoreUrl();
     await Clipboard.setData(ClipboardData(text: url));
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -194,6 +203,7 @@ class _StorefrontAdminScreenState extends State<StorefrontAdminScreen> {
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 5,
+      initialIndex: widget.initialTabIndex,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Administrar Tienda'),
@@ -239,6 +249,32 @@ class _StorefrontAdminScreenState extends State<StorefrontAdminScreen> {
         ),
         body: _loading
             ? const Center(child: CircularProgressIndicator(strokeWidth: 3))
+            : _error != null
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.store_mall_directory_outlined, size: 54),
+                      const SizedBox(height: 16),
+                      Text(
+                        _error!,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey.shade700),
+                      ),
+                      const SizedBox(height: 16),
+                      FilledButton(
+                        onPressed: () => Navigator.pushNamed(
+                          context,
+                          '/admin/bots',
+                        ),
+                        child: const Text('Seleccionar bot'),
+                      ),
+                    ],
+                  ),
+                ),
+              )
             : TabBarView(
                 children: [
                   _buildConfigTab(),

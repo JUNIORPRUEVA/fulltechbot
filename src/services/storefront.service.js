@@ -163,6 +163,90 @@ async function getConfigByBotId(botId) {
   return rows[0] ? serializeRow(rows[0]) : null;
 }
 
+async function getDefaultPublicStore(preferredSlug = null) {
+  const diagnostics = {
+    preferredSlug: preferredSlug || null,
+    envDefaultSlug: process.env.DEFAULT_STOREFRONT_SLUG || null,
+    strategy: null,
+    candidateCount: 0,
+  };
+
+  if (preferredSlug) {
+    const preferredStore = await getConfigBySlug(preferredSlug);
+    if (preferredStore) {
+      diagnostics.strategy = 'preferred-slug';
+      return { store: preferredStore, diagnostics };
+    }
+  }
+
+  const envSlug = process.env.DEFAULT_STOREFRONT_SLUG?.trim();
+  if (envSlug && envSlug !== preferredSlug) {
+    const envStore = await getConfigBySlug(envSlug);
+    if (envStore) {
+      diagnostics.strategy = 'env-default-slug';
+      return { store: envStore, diagnostics };
+    }
+  }
+
+  const rows = await prisma.$queryRawUnsafe(
+    `SELECT
+       sc.*,
+       COALESCE(b.estado, 'activo') as bot_estado,
+       COALESCE(visible.visible_products, 0)::int as visible_products
+     FROM storefront_config sc
+     LEFT JOIN bots b ON b.id = sc.bot_id
+     LEFT JOIN (
+       SELECT
+         ps.bot_id,
+         COUNT(*)::int as visible_products
+       FROM storefront_product_settings ps
+       INNER JOIN catalogo c ON c.id::text = ps.producto_id
+       WHERE ps.visible_en_tienda = true
+         AND ps.activo = true
+         AND (c.estado = 'activo' OR c.estado IS NULL)
+       GROUP BY ps.bot_id
+     ) visible ON visible.bot_id = sc.bot_id
+     WHERE sc.activo = true
+     ORDER BY
+       CASE WHEN COALESCE(visible.visible_products, 0) > 0 THEN 0 ELSE 1 END,
+       CASE WHEN COALESCE(b.estado, 'activo') = 'activo' THEN 0 ELSE 1 END,
+       sc.actualizado_en DESC NULLS LAST,
+       sc.creado_en DESC NULLS LAST`
+  );
+
+  const candidates = serializeRows(rows);
+  diagnostics.candidateCount = candidates.length;
+
+  if (candidates.length === 0) {
+    diagnostics.strategy = 'no-active-store';
+    return { store: null, diagnostics };
+  }
+
+  if (candidates.length === 1) {
+    diagnostics.strategy = 'single-active-store';
+    return { store: candidates[0], diagnostics };
+  }
+
+  const withVisibleProducts = candidates.find(
+    (item) =>
+      item.bot_estado === 'activo' &&
+      Number(item.visible_products ?? 0) > 0
+  );
+  if (withVisibleProducts) {
+    diagnostics.strategy = 'active-store-with-visible-products';
+    return { store: withVisibleProducts, diagnostics };
+  }
+
+  const activeBotStore = candidates.find((item) => item.bot_estado === 'activo');
+  if (activeBotStore) {
+    diagnostics.strategy = 'active-bot-store';
+    return { store: activeBotStore, diagnostics };
+  }
+
+  diagnostics.strategy = 'first-active-store';
+  return { store: candidates[0], diagnostics };
+}
+
 async function upsertConfig(botId, data) {
   const existente = await getConfigByBotId(botId);
 
@@ -1070,6 +1154,7 @@ module.exports = {
   // Config
   getConfigBySlug,
   getConfigByBotId,
+  getDefaultPublicStore,
   upsertConfig,
 
   // Banners
