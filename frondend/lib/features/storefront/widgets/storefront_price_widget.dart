@@ -5,6 +5,7 @@ class StorefrontPriceWidget extends StatelessWidget {
   final dynamic precioOriginal;
   final bool large;
   final Color? primaryColor;
+  final String currencyPrefix;
 
   const StorefrontPriceWidget({
     super.key,
@@ -12,12 +13,15 @@ class StorefrontPriceWidget extends StatelessWidget {
     this.precioOriginal,
     this.large = false,
     this.primaryColor,
+    this.currencyPrefix = '\$',
   });
 
   bool get tieneOferta =>
       precioOriginal != null &&
       (precioOriginal is num ? precioOriginal > 0 : true) &&
-      (precio is num ? precioOriginal is num && precioOriginal > precio : false);
+      (precio is num
+          ? precioOriginal is num && precioOriginal > precio
+          : false);
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +35,7 @@ class StorefrontPriceWidget extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: 2),
             child: Text(
-              '\$${_format(precioOriginal)}',
+              '$currencyPrefix${_format(precioOriginal)}',
               style: TextStyle(
                 color: const Color(0xFF9CA3AF),
                 fontSize: large ? 16 : 12,
@@ -46,7 +50,7 @@ class StorefrontPriceWidget extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '\$${_format(precio)}',
+              '$currencyPrefix${_format(precio)}',
               style: TextStyle(
                 fontSize: large ? 28 : 18,
                 fontWeight: FontWeight.w900,
@@ -85,16 +89,24 @@ class StorefrontPriceWidget extends StatelessWidget {
   String _format(dynamic value) {
     if (value == null) return '0';
     final num v = value is num ? value : double.tryParse(value.toString()) ?? 0;
-    return v.toStringAsFixed(0).replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (m) => '${m[1]},',
-    );
+    return v
+        .toStringAsFixed(0)
+        .replaceAllMapped(
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (m) => '${m[1]},',
+        );
   }
 
   int _calcularDescuento() {
     if (!tieneOferta) return 0;
-    final original = (precioOriginal is num ? precioOriginal : double.tryParse(precioOriginal.toString()) ?? 0).toDouble();
-    final actual = (precio is num ? precio : double.tryParse(precio.toString()) ?? 0).toDouble();
+    final original =
+        (precioOriginal is num
+                ? precioOriginal
+                : double.tryParse(precioOriginal.toString()) ?? 0)
+            .toDouble();
+    final actual =
+        (precio is num ? precio : double.tryParse(precio.toString()) ?? 0)
+            .toDouble();
     if (original <= 0) return 0;
     return ((1 - actual / original) * 100).round();
   }
