@@ -35,6 +35,8 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
   int _page = 1;
   int _totalPages = 1;
 
+  static final RegExp _combiningMarks = RegExp(r'[\u0300-\u036f]');
+
   @override
   void initState() {
     super.initState();
@@ -79,26 +81,34 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
       }
 
       final productsResponse = results[5];
+      final featuredProducts = List<dynamic>.from(
+        results[3]['items'] as List? ?? const [],
+      );
+      final offerProducts = List<dynamic>.from(
+        results[4]['items'] as List? ?? const [],
+      ).where((item) {
+        final map = Map<String, dynamic>.from(item as Map);
+        return map['precio_oferta_web'] != null || map['precioOferta'] != null;
+      }).toList();
+      final catalogProducts = List<dynamic>.from(
+        productsResponse['items'] as List? ?? const [],
+      );
+      final categories = _buildDisplayCategories(
+        List<dynamic>.from(results[2]['data'] as List? ?? const []),
+        [
+          ...featuredProducts,
+          ...offerProducts,
+          ...catalogProducts,
+        ],
+      );
+
       setState(() {
         _config = Map<String, dynamic>.from(configResponse['data'] as Map);
         _banners = List<dynamic>.from(results[1]['data'] as List? ?? const []);
-        _categories = List<dynamic>.from(
-          results[2]['data'] as List? ?? const [],
-        );
-        _featuredProducts = List<dynamic>.from(
-          results[3]['items'] as List? ?? const [],
-        );
-        _offerProducts =
-            List<dynamic>.from(results[4]['items'] as List? ?? const []).where((
-              item,
-            ) {
-              final map = Map<String, dynamic>.from(item as Map);
-              return map['precio_oferta_web'] != null ||
-                  map['precioOferta'] != null;
-            }).toList();
-        _products = List<dynamic>.from(
-          productsResponse['items'] as List? ?? const [],
-        );
+        _categories = categories;
+        _featuredProducts = featuredProducts;
+        _offerProducts = offerProducts;
+        _products = catalogProducts;
         _page = productsResponse['page'] as int? ?? 1;
         _totalPages = productsResponse['totalPages'] as int? ?? 1;
         _loading = false;
@@ -472,6 +482,139 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
               ),
             ),
     );
+  }
+
+  List<Map<String, dynamic>> _buildDisplayCategories(
+    List<dynamic> rawCategories,
+    List<dynamic> sourceProducts,
+  ) {
+    final products = sourceProducts
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+    final merged = <String, Map<String, dynamic>>{};
+
+    for (final rawCategory in rawCategories.whereType<Map>()) {
+      final category = Map<String, dynamic>.from(rawCategory);
+      final rawName = category['nombre']?.toString().trim() ?? '';
+      if (rawName.isEmpty) {
+        continue;
+      }
+
+      final key = _normalizeCategoryKey(rawName);
+      final displayName = _displayCategoryName(rawName);
+      final count = int.tryParse(category['cantidad']?.toString() ?? '0') ?? 0;
+      final image = _resolveCategoryImage(category['imagen'], displayName, products);
+
+      final existing = merged[key];
+      if (existing == null) {
+        merged[key] = {
+          ...category,
+          'nombre': displayName,
+          'cantidad': count,
+          'imagen': image,
+        };
+      } else {
+        existing['cantidad'] = (existing['cantidad'] as int? ?? 0) + count;
+        existing['imagen'] ??= image;
+      }
+    }
+
+    if (merged.isEmpty && products.isNotEmpty) {
+      for (final product in products) {
+        final rawName = product['categoria']?.toString().trim() ?? '';
+        if (rawName.isEmpty) {
+          continue;
+        }
+
+        final key = _normalizeCategoryKey(rawName);
+        final displayName = _displayCategoryName(rawName);
+        final image = _resolveCategoryImage(null, displayName, products);
+
+        merged.update(
+          key,
+          (existing) => {
+            ...existing,
+            'cantidad': (existing['cantidad'] as int? ?? 0) + 1,
+            'imagen': existing['imagen'] ?? image,
+          },
+          ifAbsent: () => {
+            'nombre': displayName,
+            'slug': Uri.encodeComponent(displayName.toLowerCase()),
+            'cantidad': 1,
+            'imagen': image,
+          },
+        );
+      }
+    }
+
+    final categories = merged.values.toList()
+      ..sort((a, b) {
+        final countCompare =
+            (b['cantidad'] as int? ?? 0).compareTo(a['cantidad'] as int? ?? 0);
+        if (countCompare != 0) {
+          return countCompare;
+        }
+        return (a['nombre']?.toString() ?? '').compareTo(
+          b['nombre']?.toString() ?? '',
+        );
+      });
+
+    return categories;
+  }
+
+  String _resolveCategoryImage(
+    dynamic currentImage,
+    String categoryName,
+    List<Map<String, dynamic>> products,
+  ) {
+    final directImage = currentImage?.toString().trim() ?? '';
+    if (directImage.isNotEmpty) {
+      return directImage;
+    }
+
+    final key = _normalizeCategoryKey(categoryName);
+    for (final product in products) {
+      final productCategory = product['categoria']?.toString().trim() ?? '';
+      if (_normalizeCategoryKey(productCategory) != key) {
+        continue;
+      }
+
+      final image =
+          product['imagen_destacada_url'] ??
+          product['imagen1'] ??
+          product['imagen2'] ??
+          product['imagen3'];
+      final resolved = image?.toString().trim() ?? '';
+      if (resolved.isNotEmpty) {
+        return resolved;
+      }
+    }
+
+    return '';
+  }
+
+  String _displayCategoryName(String value) {
+    final normalized = value.trim().toLowerCase();
+    return switch (normalized) {
+      'camaras' => 'Cámaras',
+      'camaras ip' => 'Cámaras IP',
+      'dvr' => 'DVR',
+      _ => value.trim(),
+    };
+  }
+
+  String _normalizeCategoryKey(String value) {
+    final lower = value.trim().toLowerCase();
+    final decomposed = lower
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ü', 'u')
+        .replaceAll('ñ', 'n');
+    return decomposed.replaceAll(_combiningMarks, '');
   }
 }
 
