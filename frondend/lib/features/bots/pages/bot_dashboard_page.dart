@@ -20,6 +20,7 @@ import '../../orders/providers/order_provider.dart';
 import '../../quotations/pages/quotations_page.dart';
 import '../../quotations/providers/quotation_provider.dart';
 import '../../storefront_admin/screens/storefront_admin_screen.dart';
+import '../../auth/services/admin_session_service.dart';
 import 'bot_form_page.dart';
 import 'bot_selector_page.dart';
 
@@ -159,6 +160,11 @@ class _BotDashboardPageState extends State<BotDashboardPage>
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'Cerrar sesion admin',
+            onPressed: () => _cerrarSesionAdmin(context),
+            icon: const Icon(Icons.logout_rounded),
+          ),
           Container(
             margin: const EdgeInsets.only(right: 4),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -375,6 +381,14 @@ class _BotDashboardPageState extends State<BotDashboardPage>
                   ),
                   const Divider(height: 1),
                   ListTile(
+                    leading: const Icon(Icons.logout_rounded),
+                    title: const Text('Cerrar sesion admin'),
+                    onTap: () async {
+                      Navigator.pop(context);
+                      await _cerrarSesionAdmin(context);
+                    },
+                  ),
+                  ListTile(
                     leading: const Icon(Icons.edit_outlined),
                     title: const Text('Editar bot'),
                     onTap: () {
@@ -566,25 +580,45 @@ class _BotDashboardPageState extends State<BotDashboardPage>
             decoration: BoxDecoration(
               border: Border(top: BorderSide(color: Colors.grey.shade200)),
             ),
-            child: SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => _cambiarBot(context),
-                icon: const Icon(Icons.swap_horiz_rounded, size: 18),
-                label: const Text(
-                  'Cambiar bot',
-                  style: TextStyle(fontSize: 12),
-                ),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+          child: SizedBox(
+            width: double.infinity,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => _cambiarBot(context),
+                  icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+                  label: const Text(
+                    'Cambiar bot',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: () => _cerrarSesionAdmin(context),
+                  icon: const Icon(Icons.logout_rounded, size: 18),
+                  label: const Text(
+                    'Cerrar sesion',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
+      ],
       ),
     );
   }
@@ -638,6 +672,12 @@ class _BotDashboardPageState extends State<BotDashboardPage>
       context,
       MaterialPageRoute(builder: (_) => const BotSelectorPage()),
     );
+  }
+
+  Future<void> _cerrarSesionAdmin(BuildContext context) async {
+    await AdminSessionService.logout();
+    if (!context.mounted) return;
+    Navigator.of(context).pushNamedAndRemoveUntil('/admin', (_) => false);
   }
 
   void _startAutoRefresh() {

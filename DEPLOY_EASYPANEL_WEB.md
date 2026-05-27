@@ -32,12 +32,21 @@ Crear un servicio nuevo desde el mismo repositorio.
 Build args recomendados:
 
 - `API_BASE_URL=https://api.midominio.com`
+- `DEFAULT_STOREFRONT_SLUG=fulltech`
+- `ADMIN_USERNAME=tu_usuario_admin`
+- `ADMIN_PASSWORD=tu_password_admin`
 
 Notas:
 
 - EasyPanel ya soporta Root Directory en este proyecto; tu captura muestra `Ruta de compilacion`.
 - No necesitas `DATABASE_URL` para la PWA.
 - Si el servidor es pequeno y se reinicia durante `flutter build web`, usa la opcion de despliegue estatico descrita mas abajo.
+
+Comportamiento de rutas:
+
+- `/` abre la tienda publica usando `DEFAULT_STOREFRONT_SLUG`
+- `/tienda/:slug` abre una tienda publica especifica
+- `/admin` abre el panel administrativo
 
 ## D. Configuracion del servicio backend
 
@@ -134,6 +143,25 @@ Para produccion:
 
 - usar el dominio publico real del backend
 - no usar `localhost`
+
+## H. Separacion cliente vs admin
+
+La app ahora soporta separacion de entrada:
+
+- Cliente final: entra por `/` o por `/tienda/:slug`
+- Administracion: entra por `/admin`
+
+Variables para esta separacion:
+
+- `DEFAULT_STOREFRONT_SLUG`
+- `ADMIN_USERNAME`
+- `ADMIN_PASSWORD`
+
+Importante:
+
+- El acceso de `/admin` ahora tiene una compuerta de credenciales en frontend.
+- Eso mejora la separacion visual y funcional, pero no reemplaza autenticacion real de backend.
+- Para seguridad fuerte, el siguiente paso recomendado es proteger las rutas administrativas del API con login/token real o con autenticacion en proxy.
 
 ## Root Directory vs fallback
 

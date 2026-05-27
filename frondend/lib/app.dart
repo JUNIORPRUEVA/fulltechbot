@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'features/bots/pages/bot_selector_page.dart';
+import 'core/constants/app_config.dart';
+import 'features/auth/screens/admin_access_gate.dart';
 import 'features/bots/pages/bot_dashboard_page.dart';
+import 'features/bots/pages/bot_selector_page.dart';
 import 'features/bots/providers/bot_provider.dart';
+import 'features/public/screens/public_entry_screen.dart';
+import 'features/storefront/screens/storefront_cart_screen.dart';
+import 'features/storefront/screens/storefront_category_screen.dart';
+import 'features/storefront/screens/storefront_checkout_screen.dart';
 import 'features/storefront/screens/storefront_home_screen.dart';
 import 'features/storefront/screens/storefront_product_detail_screen.dart';
-import 'features/storefront/screens/storefront_cart_screen.dart';
-import 'features/storefront/screens/storefront_checkout_screen.dart';
 import 'features/storefront/screens/storefront_success_screen.dart';
-import 'features/storefront/screens/storefront_category_screen.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -20,11 +23,23 @@ class MyApp extends StatelessWidget {
       title: 'FullTech Bot',
       debugShowCheckedModeBanner: false,
       theme: _buildTheme(),
-      // Rutas públicas del storefront
       onGenerateRoute: (settings) {
         final uri = Uri.parse(settings.name ?? '/');
 
-        // /tienda/:slug
+        if (uri.path == '/') {
+          return MaterialPageRoute(
+            builder: (_) => const PublicEntryScreen(),
+            settings: settings,
+          );
+        }
+
+        if (uri.path == '/admin') {
+          return MaterialPageRoute(
+            builder: (_) => const AdminAccessGate(child: MainNavigation()),
+            settings: settings,
+          );
+        }
+
         if (uri.pathSegments.length == 2 && uri.pathSegments[0] == 'tienda') {
           return MaterialPageRoute(
             builder: (_) => StorefrontHomeScreen(slug: uri.pathSegments[1]),
@@ -32,7 +47,6 @@ class MyApp extends StatelessWidget {
           );
         }
 
-        // /tienda/:slug/producto/:id
         if (uri.pathSegments.length == 4 &&
             uri.pathSegments[0] == 'tienda' &&
             uri.pathSegments[2] == 'producto') {
@@ -45,7 +59,6 @@ class MyApp extends StatelessWidget {
           );
         }
 
-        // /tienda/:slug/categoria/:categoria
         if (uri.pathSegments.length == 4 &&
             uri.pathSegments[0] == 'tienda' &&
             uri.pathSegments[2] == 'categoria') {
@@ -58,7 +71,6 @@ class MyApp extends StatelessWidget {
           );
         }
 
-        // /tienda/:slug/busqueda
         if (uri.pathSegments.length == 3 &&
             uri.pathSegments[0] == 'tienda' &&
             uri.pathSegments[2] == 'busqueda') {
@@ -72,7 +84,6 @@ class MyApp extends StatelessWidget {
           );
         }
 
-        // /tienda/:slug/carrito
         if (uri.pathSegments.length == 3 &&
             uri.pathSegments[0] == 'tienda' &&
             uri.pathSegments[2] == 'carrito') {
@@ -82,7 +93,6 @@ class MyApp extends StatelessWidget {
           );
         }
 
-        // /tienda/:slug/checkout
         if (uri.pathSegments.length == 3 &&
             uri.pathSegments[0] == 'tienda' &&
             uri.pathSegments[2] == 'checkout') {
@@ -92,7 +102,6 @@ class MyApp extends StatelessWidget {
           );
         }
 
-        // /tienda/:slug/exito
         if (uri.pathSegments.length == 3 &&
             uri.pathSegments[0] == 'tienda' &&
             uri.pathSegments[2] == 'exito') {
@@ -106,13 +115,14 @@ class MyApp extends StatelessWidget {
           );
         }
 
-        // Ruta por defecto: navegación principal
         return MaterialPageRoute(
-          builder: (_) => const MainNavigation(),
+          builder: (_) => AppConfig.hasDefaultStore
+              ? StorefrontHomeScreen(slug: AppConfig.defaultStoreSlug)
+              : const PublicEntryScreen(),
           settings: settings,
         );
       },
-      home: const MainNavigation(),
+      home: const PublicEntryScreen(),
     );
   }
 
@@ -248,7 +258,7 @@ class _MainNavigationState extends State<MainNavigation> {
         );
       }
     } catch (e) {
-      debugPrint('[MainNavigation] Error en verificación inicial: $e');
+      debugPrint('[MainNavigation] Error en verificacion inicial: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -316,7 +326,7 @@ class _MainNavigationState extends State<MainNavigation> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Para empezar, selecciona o crea un bot.\nCada bot tiene su propio catálogo, clientes y conversaciones.',
+                  'Para empezar, selecciona o crea un bot.\nCada bot tiene su propio catalogo, clientes y conversaciones.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
