@@ -1,10 +1,12 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 
 const catalogoRoutes = require('./routes/catalogo.routes');
 const catalogoKitComponenteRoutes = require('./routes/catalogoKitComponente.routes');
 const storageRoutes = require('./routes/storage.routes');
+const uploadRoutes = require('./routes/upload.routes');
 
 const botClientRoutes = require('./routes/botClient.routes');
 const botConversationRoutes = require('./routes/botConversation.routes');
@@ -33,6 +35,7 @@ console.log(`FULLTECH BOT backend version: ${BACKEND_VERSION}`);
 app.use(cors());
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true }));
+app.use('/uploads', express.static(path.resolve(__dirname, '../uploads')));
 app.use((req, res, next) => {
   console.log('[HTTP]', req.method, req.originalUrl);
   next();
@@ -73,6 +76,7 @@ app.get('/api/debug/routes', (req, res) => {
 app.use('/api/catalogo', catalogoRoutes);
 app.use('/api/catalogo', catalogoKitComponenteRoutes);
 app.use('/api/storage', storageRoutes);
+app.use('/api/uploads', uploadRoutes);
 
 app.use('/catalogo', (req, res, next) => {
   req.url = `/file/catalogo${req.url}`;

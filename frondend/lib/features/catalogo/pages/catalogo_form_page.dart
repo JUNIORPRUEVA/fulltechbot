@@ -9,15 +9,12 @@ import '../providers/catalogo_provider.dart';
 import '../services/catalogo_kit_componentes_api_service.dart';
 import '../services/storage_api_service.dart';
 import '../widgets/kit_componentes_section.dart';
-
+import '../../../shared/widgets/image_upload_field.dart';
 
 class CatalogoFormPage extends StatefulWidget {
   final CatalogoModel? producto;
 
-  const CatalogoFormPage({
-    super.key,
-    this.producto,
-  });
+  const CatalogoFormPage({super.key, this.producto});
 
   @override
   State<CatalogoFormPage> createState() => _CatalogoFormPageState();
@@ -28,9 +25,6 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
 
   final StorageApiService _storageApiService = StorageApiService();
 
-  bool _subiendoImagen1 = false;
-  bool _subiendoImagen2 = false;
-  bool _subiendoImagen3 = false;
   bool _subiendoVideo = false;
 
   late final TextEditingController _tituloController;
@@ -76,7 +70,6 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
 
   String _estado = 'activo';
 
-
   bool get _isEditing => widget.producto != null;
 
   String? get _botId {
@@ -110,11 +103,15 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
     final producto = widget.producto;
 
     _tituloController = TextEditingController(text: producto?.titulo ?? '');
-    _categoriaController = TextEditingController(text: producto?.categoria ?? '');
-    _descripcionController =
-        TextEditingController(text: producto?.descripcion ?? '');
-    _informacionController =
-        TextEditingController(text: producto?.informacion ?? '');
+    _categoriaController = TextEditingController(
+      text: producto?.categoria ?? '',
+    );
+    _descripcionController = TextEditingController(
+      text: producto?.descripcion ?? '',
+    );
+    _informacionController = TextEditingController(
+      text: producto?.informacion ?? '',
+    );
     _precioController = TextEditingController(
       text: producto != null ? producto.precio.toStringAsFixed(0) : '',
     );
@@ -135,10 +132,12 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
     _imagen2Controller = TextEditingController(text: producto?.imagen2 ?? '');
     _imagen3Controller = TextEditingController(text: producto?.imagen3 ?? '');
     _videoController = TextEditingController(text: producto?.video ?? '');
-    _palabrasClaveController =
-        TextEditingController(text: producto?.palabrasClave ?? '');
-    _reglasNegociacionController =
-        TextEditingController(text: producto?.reglasNegociacion ?? '');
+    _palabrasClaveController = TextEditingController(
+      text: producto?.palabrasClave ?? '',
+    );
+    _reglasNegociacionController = TextEditingController(
+      text: producto?.reglasNegociacion ?? '',
+    );
 
     // Campos nuevos
     _tipoProducto = producto?.tipoProducto ?? 'producto';
@@ -153,8 +152,9 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
     _cantidadBaseController = TextEditingController(
       text: producto != null ? producto.cantidadBase.toString() : '1',
     );
-    _unidadAdicionalController =
-        TextEditingController(text: producto?.unidadAdicionalNombre ?? '');
+    _unidadAdicionalController = TextEditingController(
+      text: producto?.unidadAdicionalNombre ?? '',
+    );
     _precioAdicionalController = TextEditingController(
       text: producto != null && producto.precioAdicional > 0
           ? producto.precioAdicional.toStringAsFixed(0)
@@ -165,8 +165,9 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
           ? producto.precioMinimoAdicional.toStringAsFixed(0)
           : '',
     );
-    _ciudadBaseController =
-        TextEditingController(text: producto?.ciudadBase ?? 'Higüey');
+    _ciudadBaseController = TextEditingController(
+      text: producto?.ciudadBase ?? 'Higüey',
+    );
     _aplicaCargoFueraCiudad = producto?.aplicaCargoFueraCiudad ?? false;
     _cargoFueraCiudadController = TextEditingController(
       text: producto != null && producto.cargoFueraCiudad > 0
@@ -188,7 +189,6 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
 
   @override
   void dispose() {
-
     _tituloController.dispose();
     _categoriaController.dispose();
     _descripcionController.dispose();
@@ -325,13 +325,31 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
                             labelText: 'Tipo de producto *',
                           ),
                           items: const [
-                            DropdownMenuItem(value: 'producto', child: Text('Producto')),
+                            DropdownMenuItem(
+                              value: 'producto',
+                              child: Text('Producto'),
+                            ),
                             DropdownMenuItem(value: 'kit', child: Text('Kit')),
-                            DropdownMenuItem(value: 'componente', child: Text('Componente')),
-                            DropdownMenuItem(value: 'accesorio', child: Text('Accesorio')),
-                            DropdownMenuItem(value: 'repuesto', child: Text('Repuesto')),
-                            DropdownMenuItem(value: 'servicio', child: Text('Servicio')),
-                            DropdownMenuItem(value: 'extra', child: Text('Extra')),
+                            DropdownMenuItem(
+                              value: 'componente',
+                              child: Text('Componente'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'accesorio',
+                              child: Text('Accesorio'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'repuesto',
+                              child: Text('Repuesto'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'servicio',
+                              child: Text('Servicio'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'extra',
+                              child: Text('Extra'),
+                            ),
                           ],
                           onChanged: (value) {
                             if (value != null) {
@@ -349,14 +367,18 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
                           title: const Text('Es cotizable'),
                           subtitle: const Text('Permite generar cotización'),
                           value: _esCotizable,
-                          onChanged: (value) => setState(() => _esCotizable = value),
+                          onChanged: (value) =>
+                              setState(() => _esCotizable = value),
                           contentPadding: EdgeInsets.zero,
                         ),
                         SwitchListTile(
                           title: const Text('Permite adicionales'),
-                          subtitle: const Text('Se pueden agregar unidades extra'),
+                          subtitle: const Text(
+                            'Se pueden agregar unidades extra',
+                          ),
                           value: _permiteAdicionales,
-                          onChanged: (value) => setState(() => _permiteAdicionales = value),
+                          onChanged: (value) =>
+                              setState(() => _permiteAdicionales = value),
                           contentPadding: EdgeInsets.zero,
                         ),
                         _TextFieldApp(
@@ -405,7 +427,8 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
                         SwitchListTile(
                           title: const Text('Permitir cálculo adicional'),
                           subtitle: const Text(
-                              'Habilitar cálculo de unidades extras sobre cantidad base'),
+                            'Habilitar cálculo de unidades extras sobre cantidad base',
+                          ),
                           value: _permiteCalculoAdicional,
                           onChanged: (value) =>
                               setState(() => _permiteCalculoAdicional = value),
@@ -446,7 +469,8 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
                         SwitchListTile(
                           title: const Text('Aplicar cargo fuera de ciudad'),
                           subtitle: const Text(
-                              'Agregar cargo adicional si el cliente está fuera de la ciudad base'),
+                            'Agregar cargo adicional si el cliente está fuera de la ciudad base',
+                          ),
                           value: _aplicaCargoFueraCiudad,
                           onChanged: (value) =>
                               setState(() => _aplicaCargoFueraCiudad = value),
@@ -467,44 +491,32 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
                     _SectionCard(
                       title: 'Multimedia',
                       children: [
-                        _UploadFieldApp(
+                        ImageUploadField(
                           controller: _imagen1Controller,
-                          label: 'Imagen 1 URL',
-                          isLoading: _subiendoImagen1,
-                          icon: Icons.image_outlined,
-                          onUpload: () {
-                            _seleccionarYSubirArchivo(
-                              controller: _imagen1Controller,
-                              tipo: 'imagen',
-                              setLoading: (value) => _subiendoImagen1 = value,
-                            );
-                          },
+                          label: 'Imagen 1',
+                          folder: 'catalogo/productos',
+                          context: 'catalogo-imagen-1',
+                          botId: _botId,
+                          aspectRatio: 1,
+                          hintText: 'https://...',
                         ),
-                        _UploadFieldApp(
+                        ImageUploadField(
                           controller: _imagen2Controller,
-                          label: 'Imagen 2 URL',
-                          isLoading: _subiendoImagen2,
-                          icon: Icons.image_outlined,
-                          onUpload: () {
-                            _seleccionarYSubirArchivo(
-                              controller: _imagen2Controller,
-                              tipo: 'imagen',
-                              setLoading: (value) => _subiendoImagen2 = value,
-                            );
-                          },
+                          label: 'Imagen 2',
+                          folder: 'catalogo/productos',
+                          context: 'catalogo-imagen-2',
+                          botId: _botId,
+                          aspectRatio: 1,
+                          hintText: 'https://...',
                         ),
-                        _UploadFieldApp(
+                        ImageUploadField(
                           controller: _imagen3Controller,
-                          label: 'Imagen 3 URL',
-                          isLoading: _subiendoImagen3,
-                          icon: Icons.image_outlined,
-                          onUpload: () {
-                            _seleccionarYSubirArchivo(
-                              controller: _imagen3Controller,
-                              tipo: 'imagen',
-                              setLoading: (value) => _subiendoImagen3 = value,
-                            );
-                          },
+                          label: 'Imagen 3',
+                          folder: 'catalogo/productos',
+                          context: 'catalogo-imagen-3',
+                          botId: _botId,
+                          aspectRatio: 1,
+                          hintText: 'https://...',
                         ),
                         _UploadFieldApp(
                           controller: _videoController,
@@ -576,7 +588,6 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
                     _buildSimuladorPrecio(),
                     const SizedBox(height: 24),
 
-
                     // Botones
                     Row(
                       children: [
@@ -603,9 +614,7 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
                                     ),
                                   )
                                 : const Icon(Icons.save_outlined),
-                            label: Text(
-                              _isEditing ? 'Actualizar' : 'Guardar',
-                            ),
+                            label: Text(_isEditing ? 'Actualizar' : 'Guardar'),
                           ),
                         ),
                       ],
@@ -637,7 +646,9 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
   // ============================================================
   Future<void> _cargarComponentesKit(String kitId) async {
     setState(() => _cargandoComponentes = true);
-    final componentes = await _kitComponentesService.obtenerComponentesKit(kitId);
+    final componentes = await _kitComponentesService.obtenerComponentesKit(
+      kitId,
+    );
     if (mounted) {
       setState(() {
         _componentesKit = componentes;
@@ -718,7 +729,10 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: kitId.isNotEmpty
-                        ? () => _abrirModalAgregarComponente(kitId, incluido: true)
+                        ? () => _abrirModalAgregarComponente(
+                            kitId,
+                            incluido: true,
+                          )
                         : null,
                     icon: const Icon(Icons.add_circle_outline, size: 18),
                     label: const Text('Agregar componente'),
@@ -736,7 +750,11 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: kitId.isNotEmpty
-                        ? () => _abrirModalAgregarComponente(kitId, incluido: false, esOpcional: true)
+                        ? () => _abrirModalAgregarComponente(
+                            kitId,
+                            incluido: false,
+                            esOpcional: true,
+                          )
                         : null,
                     icon: const Icon(Icons.add_circle_outline, size: 18),
                     label: const Text('Agregar extra opcional'),
@@ -794,14 +812,18 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => Container(
                           color: Colors.grey.shade100,
-                          child: Icon(Icons.inventory_2_outlined,
-                              color: Colors.grey.shade400),
+                          child: Icon(
+                            Icons.inventory_2_outlined,
+                            color: Colors.grey.shade400,
+                          ),
                         ),
                       )
                     : Container(
                         color: Colors.grey.shade100,
-                        child: Icon(Icons.inventory_2_outlined,
-                            color: Colors.grey.shade400),
+                        child: Icon(
+                          Icons.inventory_2_outlined,
+                          color: Colors.grey.shade400,
+                        ),
                       ),
               ),
             ),
@@ -824,7 +846,9 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
                       if (comp.tipoProducto != null)
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.grey.shade100,
                             borderRadius: BorderRadius.circular(4),
@@ -891,16 +915,19 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
             IconButton(
               icon: const Icon(Icons.edit_outlined, size: 18),
               onPressed: comp.id.isNotEmpty
-                  ? () => _abrirModalEditarComponente(
-                      widget.producto!.id, comp)
+                  ? () => _abrirModalEditarComponente(widget.producto!.id, comp)
                   : null,
               visualDensity: VisualDensity.compact,
             ),
             IconButton(
-              icon: Icon(Icons.delete_outline, size: 18, color: Colors.red.shade400),
+              icon: Icon(
+                Icons.delete_outline,
+                size: 18,
+                color: Colors.red.shade400,
+              ),
               onPressed: comp.id.isNotEmpty
-                  ? () => _confirmarEliminarComponente(
-                      widget.producto!.id, comp)
+                  ? () =>
+                        _confirmarEliminarComponente(widget.producto!.id, comp)
                   : null,
               visualDensity: VisualDensity.compact,
             ),
@@ -940,9 +967,7 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
   ) async {
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (_) => _EditarComponenteDialog(
-        componente: comp,
-      ),
+      builder: (_) => _EditarComponenteDialog(componente: comp),
     );
 
     if (result != null && mounted) {
@@ -964,9 +989,7 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Eliminar componente'),
-        content: Text(
-          '¿Quitar "${comp.titulo ?? 'este componente'}" del kit?',
-        ),
+        content: Text('¿Quitar "${comp.titulo ?? 'este componente'}" del kit?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -988,7 +1011,6 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
   }
 
   Widget _buildSimuladorPrecio() {
-
     final precioBase = double.tryParse(_precioController.text.trim()) ?? 0;
     final cantidadBase = int.tryParse(_cantidadBaseController.text.trim()) ?? 1;
     final precioAdicional =
@@ -998,10 +1020,9 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
     final cantidadSolicitada =
         int.tryParse(_simCantidadController.text.trim()) ?? 0;
 
-    final unidadesAdicionales =
-        cantidadSolicitada > cantidadBase
-            ? cantidadSolicitada - cantidadBase
-            : 0;
+    final unidadesAdicionales = cantidadSolicitada > cantidadBase
+        ? cantidadSolicitada - cantidadBase
+        : 0;
     final subtotalAdicionales = unidadesAdicionales * precioAdicional;
     final cargoAplica = _simFueraCiudad && _aplicaCargoFueraCiudad
         ? cargoFuera
@@ -1009,8 +1030,12 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
     final total = precioBase + subtotalAdicionales + cargoAplica;
 
     // Resumen de componentes del kit
-    final componentesIncluidos = _componentesKit.where((c) => !c.esOpcional).toList();
-    final componentesOpcionales = _componentesKit.where((c) => c.esOpcional).toList();
+    final componentesIncluidos = _componentesKit
+        .where((c) => !c.esOpcional)
+        .toList();
+    final componentesOpcionales = _componentesKit
+        .where((c) => c.esOpcional)
+        .toList();
     final esKit = _tipoProducto == 'kit';
 
     return Card(
@@ -1061,7 +1086,11 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.widgets_outlined, size: 16, color: Colors.teal.shade600),
+                        Icon(
+                          Icons.widgets_outlined,
+                          size: 16,
+                          color: Colors.teal.shade600,
+                        ),
                         const SizedBox(width: 6),
                         Text(
                           'Componentes configurados',
@@ -1076,18 +1105,32 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Icon(Icons.check_circle, size: 14, color: Colors.teal.shade400),
+                        Icon(
+                          Icons.check_circle,
+                          size: 14,
+                          color: Colors.teal.shade400,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           'Incluidos: ${componentesIncluidos.length}',
-                          style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade700,
+                          ),
                         ),
                         const SizedBox(width: 16),
-                        Icon(Icons.add_circle_outline, size: 14, color: Colors.orange.shade400),
+                        Icon(
+                          Icons.add_circle_outline,
+                          size: 14,
+                          color: Colors.orange.shade400,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           'Opcionales: ${componentesOpcionales.length}',
-                          style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade700,
+                          ),
                         ),
                       ],
                     ),
@@ -1095,20 +1138,25 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
                       const SizedBox(height: 6),
                       const Divider(height: 1),
                       const SizedBox(height: 6),
-                      ...componentesIncluidos.map((c) => Padding(
-                        padding: const EdgeInsets.only(bottom: 2),
-                        child: Row(
-                          children: [
-                            const SizedBox(width: 8),
-                            Text(
-                              '${c.cantidad.toStringAsFixed(0)}x ${c.titulo ?? ''}',
-                              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
+                      ...componentesIncluidos.map(
+                        (c) => Padding(
+                          padding: const EdgeInsets.only(bottom: 2),
+                          child: Row(
+                            children: [
+                              const SizedBox(width: 8),
+                              Text(
+                                '${c.cantidad.toStringAsFixed(0)}x ${c.titulo ?? ''}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey.shade600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
                         ),
-                      )),
+                      ),
                     ],
                   ],
                 ),
@@ -1129,7 +1177,10 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
                 if (_aplicaCargoFueraCiudad)
                   Expanded(
                     child: SwitchListTile(
-                      title: const Text('Fuera de ciudad', style: TextStyle(fontSize: 13)),
+                      title: const Text(
+                        'Fuera de ciudad',
+                        style: TextStyle(fontSize: 13),
+                      ),
                       value: _simFueraCiudad,
                       onChanged: (value) =>
                           setState(() => _simFueraCiudad = value),
@@ -1150,33 +1201,40 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
                 child: Column(
                   children: [
                     _SimRow(
-                        label: 'Precio base',
-                        value: 'RD\$${precioBase.toStringAsFixed(0)}'),
+                      label: 'Precio base',
+                      value: 'RD\$${precioBase.toStringAsFixed(0)}',
+                    ),
                     if (_permiteCalculoAdicional) ...[
                       _SimRow(
-                          label: 'Cantidad base incluida',
-                          value: '$cantidadBase'),
+                        label: 'Cantidad base incluida',
+                        value: '$cantidadBase',
+                      ),
                       _SimRow(
-                          label: 'Cantidad solicitada',
-                          value: '$cantidadSolicitada'),
+                        label: 'Cantidad solicitada',
+                        value: '$cantidadSolicitada',
+                      ),
                       if (unidadesAdicionales > 0) ...[
                         _SimRow(
-                            label: 'Unidades adicionales',
-                            value: '$unidadesAdicionales'),
+                          label: 'Unidades adicionales',
+                          value: '$unidadesAdicionales',
+                        ),
                         _SimRow(
-                            label: 'Precio adicional',
-                            value:
-                                'RD\$${precioAdicional.toStringAsFixed(0)} c/u'),
+                          label: 'Precio adicional',
+                          value:
+                              'RD\$${precioAdicional.toStringAsFixed(0)} c/u',
+                        ),
                         _SimRow(
-                            label: 'Subtotal adicionales',
-                            value:
-                                'RD\$${subtotalAdicionales.toStringAsFixed(0)}'),
+                          label: 'Subtotal adicionales',
+                          value:
+                              'RD\$${subtotalAdicionales.toStringAsFixed(0)}',
+                        ),
                       ],
                     ],
                     if (cargoAplica > 0)
                       _SimRow(
-                          label: 'Cargo fuera de ciudad',
-                          value: 'RD\$${cargoAplica.toStringAsFixed(0)}'),
+                        label: 'Cargo fuera de ciudad',
+                        value: 'RD\$${cargoAplica.toStringAsFixed(0)}',
+                      ),
                     const Divider(),
                     _SimRow(
                       label: 'Total estimado',
@@ -1191,8 +1249,7 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
                 padding: const EdgeInsets.all(12),
                 child: Text(
                   'Ingresa una cantidad solicitada para ver el cálculo.',
-                  style: TextStyle(
-                      fontSize: 13, color: Colors.grey.shade600),
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
                 ),
               ),
           ],
@@ -1217,9 +1274,7 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
               extensions: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
             );
 
-      final XFile? file = await openFile(
-        acceptedTypeGroups: [typeGroup],
-      );
+      final XFile? file = await openFile(acceptedTypeGroups: [typeGroup]);
 
       if (file == null) {
         return;
@@ -1320,13 +1375,15 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
 
     try {
       if (_isEditing) {
-        await context
-            .read<CatalogoProvider>()
-            .actualizarProducto(producto, botId: botId);
+        await context.read<CatalogoProvider>().actualizarProducto(
+          producto,
+          botId: botId,
+        );
       } else {
-        await context
-            .read<CatalogoProvider>()
-            .crearProducto(producto, botId: botId);
+        await context.read<CatalogoProvider>().crearProducto(
+          producto,
+          botId: botId,
+        );
       }
 
       if (!mounted) return;
@@ -1346,9 +1403,7 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No se pudo guardar el producto'),
-        ),
+        const SnackBar(content: Text('No se pudo guardar el producto')),
       );
     }
   }
@@ -1369,10 +1424,7 @@ class _SectionCard extends StatelessWidget {
   final String title;
   final List<Widget> children;
 
-  const _SectionCard({
-    required this.title,
-    required this.children,
-  });
+  const _SectionCard({required this.title, required this.children});
 
   @override
   Widget build(BuildContext context) {
@@ -1516,10 +1568,7 @@ class _UploadFieldApp extends StatelessWidget {
           const SizedBox(height: 8),
           SelectableText(
             controller.text,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade700,
-            ),
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
           ),
         ],
       ],
@@ -1593,9 +1642,9 @@ class _AgregarComponenteDialogState extends State<_AgregarComponenteDialog> {
 
   Future<void> _guardar() async {
     if (_selectedComponenteId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecciona un producto')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Selecciona un producto')));
       return;
     }
 
@@ -1612,8 +1661,10 @@ class _AgregarComponenteDialogState extends State<_AgregarComponenteDialog> {
       'orden': _orden,
     };
 
-    final result = await widget.kitComponentesService
-        .agregarComponenteKit(widget.kitId, data);
+    final result = await widget.kitComponentesService.agregarComponenteKit(
+      widget.kitId,
+      data,
+    );
 
     if (mounted) {
       setState(() => _guardando = false);
@@ -1644,12 +1695,16 @@ class _AgregarComponenteDialogState extends State<_AgregarComponenteDialog> {
               Row(
                 children: [
                   Icon(
-                    _esOpcional ? Icons.add_circle_outline : Icons.inventory_2_outlined,
+                    _esOpcional
+                        ? Icons.add_circle_outline
+                        : Icons.inventory_2_outlined,
                     color: _esOpcional ? Colors.orange : Colors.teal,
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    _esOpcional ? 'Agregar extra opcional' : 'Agregar componente',
+                    _esOpcional
+                        ? 'Agregar extra opcional'
+                        : 'Agregar componente',
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
@@ -1716,21 +1771,32 @@ class _AgregarComponenteDialogState extends State<_AgregarComponenteDialog> {
                             width: 40,
                             height: 40,
                             child: imagen != null && imagen.isNotEmpty
-                                ? Image.network(imagen, fit: BoxFit.cover,
+                                ? Image.network(
+                                    imagen,
+                                    fit: BoxFit.cover,
                                     errorBuilder: (_, __, ___) => Container(
                                       color: Colors.grey.shade100,
-                                      child: Icon(Icons.inventory_2_outlined,
-                                          size: 20, color: Colors.grey.shade400),
+                                      child: Icon(
+                                        Icons.inventory_2_outlined,
+                                        size: 20,
+                                        color: Colors.grey.shade400,
+                                      ),
                                     ),
                                   )
                                 : Container(
                                     color: Colors.grey.shade100,
-                                    child: Icon(Icons.inventory_2_outlined,
-                                        size: 20, color: Colors.grey.shade400),
+                                    child: Icon(
+                                      Icons.inventory_2_outlined,
+                                      size: 20,
+                                      color: Colors.grey.shade400,
+                                    ),
                                   ),
                           ),
                         ),
-                        title: Text(titulo, style: const TextStyle(fontSize: 14)),
+                        title: Text(
+                          titulo,
+                          style: const TextStyle(fontSize: 14),
+                        ),
                         subtitle: precio != null
                             ? Text(
                                 'RD\$${(precio is double ? precio : double.tryParse(precio.toString()) ?? 0).toStringAsFixed(0)}',
@@ -1781,9 +1847,7 @@ class _AgregarComponenteDialogState extends State<_AgregarComponenteDialog> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: TextField(
-                        decoration: const InputDecoration(
-                          labelText: 'Orden',
-                        ),
+                        decoration: const InputDecoration(labelText: 'Orden'),
                         keyboardType: TextInputType.number,
                         controller: TextEditingController(
                           text: _orden.toString(),
@@ -1808,7 +1872,10 @@ class _AgregarComponenteDialogState extends State<_AgregarComponenteDialog> {
                   children: [
                     Expanded(
                       child: SwitchListTile(
-                        title: const Text('Incluido', style: TextStyle(fontSize: 13)),
+                        title: const Text(
+                          'Incluido',
+                          style: TextStyle(fontSize: 13),
+                        ),
                         value: _incluido,
                         onChanged: (value) => setState(() {
                           _incluido = value;
@@ -1819,7 +1886,10 @@ class _AgregarComponenteDialogState extends State<_AgregarComponenteDialog> {
                     ),
                     Expanded(
                       child: SwitchListTile(
-                        title: const Text('Opcional', style: TextStyle(fontSize: 13)),
+                        title: const Text(
+                          'Opcional',
+                          style: TextStyle(fontSize: 13),
+                        ),
                         value: _esOpcional,
                         onChanged: (value) => setState(() {
                           _esOpcional = value;
@@ -1933,10 +2003,7 @@ class _EditarComponenteDialogState extends State<_EditarComponenteDialog> {
             const SizedBox(height: 8),
             Text(
               widget.componente.titulo ?? 'Sin título',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade600,
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
             ),
             const SizedBox(height: 16),
             Row(
@@ -1969,7 +2036,10 @@ class _EditarComponenteDialogState extends State<_EditarComponenteDialog> {
               children: [
                 Expanded(
                   child: SwitchListTile(
-                    title: const Text('Incluido', style: TextStyle(fontSize: 13)),
+                    title: const Text(
+                      'Incluido',
+                      style: TextStyle(fontSize: 13),
+                    ),
                     value: _incluido,
                     onChanged: (value) => setState(() {
                       _incluido = value;
@@ -1980,7 +2050,10 @@ class _EditarComponenteDialogState extends State<_EditarComponenteDialog> {
                 ),
                 Expanded(
                   child: SwitchListTile(
-                    title: const Text('Opcional', style: TextStyle(fontSize: 13)),
+                    title: const Text(
+                      'Opcional',
+                      style: TextStyle(fontSize: 13),
+                    ),
                     value: _esOpcional,
                     onChanged: (value) => setState(() {
                       _esOpcional = value;
@@ -2005,13 +2078,16 @@ class _EditarComponenteDialogState extends State<_EditarComponenteDialog> {
                   child: FilledButton.icon(
                     onPressed: () {
                       Navigator.pop(context, {
-                        'cantidad': double.tryParse(_cantidadController.text.trim()) ?? 1,
+                        'cantidad':
+                            double.tryParse(_cantidadController.text.trim()) ??
+                            1,
                         'incluido': _incluido,
                         'es_opcional': _esOpcional,
                         'nota': _notaController.text.trim().isEmpty
                             ? null
                             : _notaController.text.trim(),
-                        'orden': int.tryParse(_ordenController.text.trim()) ?? 0,
+                        'orden':
+                            int.tryParse(_ordenController.text.trim()) ?? 0,
                       });
                     },
                     icon: const Icon(Icons.save_outlined, size: 18),
@@ -2028,7 +2104,6 @@ class _EditarComponenteDialogState extends State<_EditarComponenteDialog> {
 }
 
 class _SimRow extends StatelessWidget {
-
   final String label;
   final String value;
   final bool isTotal;
@@ -2067,5 +2142,3 @@ class _SimRow extends StatelessWidget {
     );
   }
 }
-
-           

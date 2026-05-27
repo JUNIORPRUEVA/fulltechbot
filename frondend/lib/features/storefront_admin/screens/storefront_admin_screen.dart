@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../bots/providers/bot_provider.dart';
 import '../../storefront/services/storefront_api_service.dart';
 import '../../../core/constants/api_config.dart';
+import '../../../shared/widgets/image_upload_field.dart';
 
 class StorefrontAdminScreen extends StatefulWidget {
   const StorefrontAdminScreen({super.key});
@@ -51,7 +52,10 @@ class _StorefrontAdminScreenState extends State<StorefrontAdminScreen> {
   }
 
   Future<void> _loadConfig() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final res = await StorefrontApiService.getAdminConfig(_botId);
       if (res['ok'] == true && res['data'] != null) {
@@ -108,13 +112,19 @@ class _StorefrontAdminScreenState extends State<StorefrontAdminScreen> {
       if (res['ok'] == true) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Configuración guardada'), backgroundColor: Colors.green),
+            const SnackBar(
+              content: Text('Configuración guardada'),
+              backgroundColor: Colors.green,
+            ),
           );
         }
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(res['message'] ?? 'Error al guardar'), backgroundColor: Colors.red),
+            SnackBar(
+              content: Text(res['message'] ?? 'Error al guardar'),
+              backgroundColor: Colors.red,
+            ),
           );
         }
       }
@@ -130,7 +140,9 @@ class _StorefrontAdminScreenState extends State<StorefrontAdminScreen> {
 
   /// Construye la URL pública de la tienda
   String _getStoreUrl() {
-    final slug = _slugCtrl.text.trim().isNotEmpty ? _slugCtrl.text.trim() : 'fulltech';
+    final slug = _slugCtrl.text.trim().isNotEmpty
+        ? _slugCtrl.text.trim()
+        : 'fulltech';
     // Detectar si es web
     final isWeb = identical(0, 0.0); // En web esto es true
     if (isWeb) {
@@ -197,11 +209,19 @@ class _StorefrontAdminScreenState extends State<StorefrontAdminScreen> {
             FilledButton.icon(
               onPressed: _openStore,
               icon: const Icon(Icons.open_in_new, size: 16),
-              label: const Text('Ver tienda online', style: TextStyle(fontSize: 13)),
+              label: const Text(
+                'Ver tienda online',
+                style: TextStyle(fontSize: 13),
+              ),
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFF2563EB),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -241,13 +261,41 @@ class _StorefrontAdminScreenState extends State<StorefrontAdminScreen> {
           // Información general
           _sectionTitle('Información de la tienda'),
           const SizedBox(height: 12),
-          TextField(controller: _nombreCtrl, decoration: const InputDecoration(labelText: 'Nombre de la tienda *', prefixIcon: Icon(Icons.store))),
+          TextField(
+            controller: _nombreCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Nombre de la tienda *',
+              prefixIcon: Icon(Icons.store),
+            ),
+          ),
           const SizedBox(height: 12),
-          TextField(controller: _slugCtrl, decoration: const InputDecoration(labelText: 'Slug (URL única) *', prefixIcon: Icon(Icons.link), helperText: 'Ej: mi-tienda')),
+          TextField(
+            controller: _slugCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Slug (URL única) *',
+              prefixIcon: Icon(Icons.link),
+              helperText: 'Ej: mi-tienda',
+            ),
+          ),
           const SizedBox(height: 12),
-          TextField(controller: _descripcionCtrl, decoration: const InputDecoration(labelText: 'Descripción', prefixIcon: Icon(Icons.description)), maxLines: 3),
+          TextField(
+            controller: _descripcionCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Descripción',
+              prefixIcon: Icon(Icons.description),
+            ),
+            maxLines: 3,
+          ),
           const SizedBox(height: 12),
-          TextField(controller: _logoUrlCtrl, decoration: const InputDecoration(labelText: 'URL del logo', prefixIcon: Icon(Icons.image))),
+          ImageUploadField(
+            controller: _logoUrlCtrl,
+            label: 'Logo de la tienda',
+            folder: 'storefront/logo',
+            context: 'logo',
+            botId: _botId,
+            aspectRatio: 1,
+            hintText: 'https://...',
+          ),
 
           const SizedBox(height: 24),
           _sectionTitle('Colores'),
@@ -257,15 +305,23 @@ class _StorefrontAdminScreenState extends State<StorefrontAdminScreen> {
               Expanded(
                 child: TextField(
                   controller: _colorPrincipalCtrl,
-                  decoration: const InputDecoration(labelText: 'Color principal', prefixIcon: Icon(Icons.color_lens), helperText: 'Ej: #0F172A'),
+                  decoration: const InputDecoration(
+                    labelText: 'Color principal',
+                    prefixIcon: Icon(Icons.color_lens),
+                    helperText: 'Ej: #0F172A',
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
-              Container(width: 40, height: 40, decoration: BoxDecoration(
-                color: _parseColor(_colorPrincipalCtrl.text),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.shade300),
-              )),
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: _parseColor(_colorPrincipalCtrl.text),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -274,35 +330,80 @@ class _StorefrontAdminScreenState extends State<StorefrontAdminScreen> {
               Expanded(
                 child: TextField(
                   controller: _colorSecundarioCtrl,
-                  decoration: const InputDecoration(labelText: 'Color secundario', prefixIcon: Icon(Icons.color_lens), helperText: 'Ej: #2563EB'),
+                  decoration: const InputDecoration(
+                    labelText: 'Color secundario',
+                    prefixIcon: Icon(Icons.color_lens),
+                    helperText: 'Ej: #2563EB',
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
-              Container(width: 40, height: 40, decoration: BoxDecoration(
-                color: _parseColor(_colorSecundarioCtrl.text),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.shade300),
-              )),
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: _parseColor(_colorSecundarioCtrl.text),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+              ),
             ],
           ),
 
           const SizedBox(height: 24),
           _sectionTitle('Contacto'),
           const SizedBox(height: 12),
-          TextField(controller: _whatsappCtrl, decoration: const InputDecoration(labelText: 'Número WhatsApp', prefixIcon: Icon(Icons.chat), helperText: 'Ej: 18091234567')),
+          TextField(
+            controller: _whatsappCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Número WhatsApp',
+              prefixIcon: Icon(Icons.chat),
+              helperText: 'Ej: 18091234567',
+            ),
+          ),
           const SizedBox(height: 12),
-          TextField(controller: _telefonoCtrl, decoration: const InputDecoration(labelText: 'Teléfono de contacto', prefixIcon: Icon(Icons.phone))),
+          TextField(
+            controller: _telefonoCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Teléfono de contacto',
+              prefixIcon: Icon(Icons.phone),
+            ),
+          ),
           const SizedBox(height: 12),
-          TextField(controller: _direccionCtrl, decoration: const InputDecoration(labelText: 'Dirección', prefixIcon: Icon(Icons.location_on))),
+          TextField(
+            controller: _direccionCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Dirección',
+              prefixIcon: Icon(Icons.location_on),
+            ),
+          ),
           const SizedBox(height: 12),
-          TextField(controller: _horarioCtrl, decoration: const InputDecoration(labelText: 'Horario', prefixIcon: Icon(Icons.access_time))),
+          TextField(
+            controller: _horarioCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Horario',
+              prefixIcon: Icon(Icons.access_time),
+            ),
+          ),
 
           const SizedBox(height: 24),
           _sectionTitle('Mensajes'),
           const SizedBox(height: 12),
-          TextField(controller: _mensajePrincipalCtrl, decoration: const InputDecoration(labelText: 'Mensaje principal', prefixIcon: Icon(Icons.format_quote))),
+          TextField(
+            controller: _mensajePrincipalCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Mensaje principal',
+              prefixIcon: Icon(Icons.format_quote),
+            ),
+          ),
           const SizedBox(height: 12),
-          TextField(controller: _mensajeSecundarioCtrl, decoration: const InputDecoration(labelText: 'Mensaje secundario', prefixIcon: Icon(Icons.format_quote))),
+          TextField(
+            controller: _mensajeSecundarioCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Mensaje secundario',
+              prefixIcon: Icon(Icons.format_quote),
+            ),
+          ),
 
           const SizedBox(height: 24),
           _sectionTitle('Opciones'),
@@ -344,10 +445,19 @@ class _StorefrontAdminScreenState extends State<StorefrontAdminScreen> {
             child: FilledButton.icon(
               onPressed: _saving ? null : _saveConfig,
               icon: _saving
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
                   : const Icon(Icons.save),
               label: Text(_saving ? 'Guardando...' : 'Guardar configuración'),
-              style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
             ),
           ),
           const SizedBox(height: 32),
@@ -357,7 +467,10 @@ class _StorefrontAdminScreenState extends State<StorefrontAdminScreen> {
   }
 
   Widget _sectionTitle(String title) {
-    return Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700));
+    return Text(
+      title,
+      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+    );
   }
 
   Color _parseColor(String hex) {
@@ -431,7 +544,11 @@ class _BannersTabState extends State<_BannersTab> {
       if (banner == null) {
         await StorefrontApiService.createAdminBanner(_botId, result);
       } else {
-        await StorefrontApiService.updateAdminBanner(_botId, banner['id'], result);
+        await StorefrontApiService.updateAdminBanner(
+          _botId,
+          banner['id'],
+          result,
+        );
       }
       _load();
     }
@@ -444,8 +561,14 @@ class _BannersTabState extends State<_BannersTab> {
         title: const Text('Eliminar banner'),
         content: const Text('¿Estás seguro?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Eliminar')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Eliminar'),
+          ),
         ],
       ),
     );
@@ -457,7 +580,8 @@ class _BannersTabState extends State<_BannersTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator(strokeWidth: 3));
+    if (_loading)
+      return const Center(child: CircularProgressIndicator(strokeWidth: 3));
 
     return Scaffold(
       body: _banners.isEmpty
@@ -465,9 +589,16 @@ class _BannersTabState extends State<_BannersTab> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.view_carousel_outlined, size: 48, color: Colors.grey.shade300),
+                  Icon(
+                    Icons.view_carousel_outlined,
+                    size: 48,
+                    color: Colors.grey.shade300,
+                  ),
                   const SizedBox(height: 12),
-                  Text('Sin banners', style: TextStyle(color: Colors.grey.shade500)),
+                  Text(
+                    'Sin banners',
+                    style: TextStyle(color: Colors.grey.shade500),
+                  ),
                 ],
               ),
             )
@@ -479,15 +610,35 @@ class _BannersTabState extends State<_BannersTab> {
                 return Card(
                   child: ListTile(
                     leading: b['imagen_url'] != null
-                        ? ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(b['imagen_url'], width: 48, height: 48, fit: BoxFit.cover))
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              b['imagen_url'],
+                              width: 48,
+                              height: 48,
+                              fit: BoxFit.cover,
+                            ),
+                          )
                         : const Icon(Icons.image_outlined),
                     title: Text(b['titulo'] ?? ''),
-                    subtitle: Text('Orden: ${b['orden'] ?? 0} | ${b['activo'] == true ? "Activo" : "Inactivo"}'),
+                    subtitle: Text(
+                      'Orden: ${b['orden'] ?? 0} | ${b['activo'] == true ? "Activo" : "Inactivo"}',
+                    ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        IconButton(icon: const Icon(Icons.edit, size: 20), onPressed: () => _createOrEdit(b)),
-                        IconButton(icon: Icon(Icons.delete, size: 20, color: Colors.red.shade300), onPressed: () => _delete(b['id'])),
+                        IconButton(
+                          icon: const Icon(Icons.edit, size: 20),
+                          onPressed: () => _createOrEdit(b),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.delete,
+                            size: 20,
+                            color: Colors.red.shade300,
+                          ),
+                          onPressed: () => _delete(b['id']),
+                        ),
                       ],
                     ),
                   ),
@@ -541,24 +692,56 @@ class _BannerFormDialogState extends State<_BannerFormDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: _tituloCtrl, decoration: const InputDecoration(labelText: 'Título *')),
+            TextField(
+              controller: _tituloCtrl,
+              decoration: const InputDecoration(labelText: 'Título *'),
+            ),
             const SizedBox(height: 8),
-            TextField(controller: _subtituloCtrl, decoration: const InputDecoration(labelText: 'Subtítulo')),
+            TextField(
+              controller: _subtituloCtrl,
+              decoration: const InputDecoration(labelText: 'Subtítulo'),
+            ),
             const SizedBox(height: 8),
-            TextField(controller: _imagenUrlCtrl, decoration: const InputDecoration(labelText: 'URL de imagen')),
+            ImageUploadField(
+              controller: _imagenUrlCtrl,
+              label: 'Imagen del banner',
+              folder: 'storefront/banners',
+              context: 'banner',
+              botId: context.read<BotProvider>().botSeleccionado?.id,
+              aspectRatio: 16 / 9,
+              hintText: 'https://...',
+            ),
             const SizedBox(height: 8),
-            TextField(controller: _linkUrlCtrl, decoration: const InputDecoration(labelText: 'URL de enlace')),
+            TextField(
+              controller: _linkUrlCtrl,
+              decoration: const InputDecoration(labelText: 'URL de enlace'),
+            ),
             const SizedBox(height: 8),
-            TextField(controller: _botonTextoCtr, decoration: const InputDecoration(labelText: 'Texto del botón')),
+            TextField(
+              controller: _botonTextoCtr,
+              decoration: const InputDecoration(labelText: 'Texto del botón'),
+            ),
             const SizedBox(height: 8),
-            TextField(controller: _ordenCtrl, decoration: const InputDecoration(labelText: 'Orden'), keyboardType: TextInputType.number),
+            TextField(
+              controller: _ordenCtrl,
+              decoration: const InputDecoration(labelText: 'Orden'),
+              keyboardType: TextInputType.number,
+            ),
             const SizedBox(height: 8),
-            SwitchListTile(title: const Text('Activo'), value: _activo, onChanged: (v) => setState(() => _activo = v), contentPadding: EdgeInsets.zero),
+            SwitchListTile(
+              title: const Text('Activo'),
+              value: _activo,
+              onChanged: (v) => setState(() => _activo = v),
+              contentPadding: EdgeInsets.zero,
+            ),
           ],
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
         FilledButton(
           onPressed: () {
             Navigator.pop(context, {
@@ -629,23 +812,35 @@ class _ProductSettingsTabState extends State<_ProductSettingsTab> {
       builder: (ctx) => _ProductSettingDialog(product: product),
     );
     if (result != null) {
-      await StorefrontApiService.updateAdminProductSetting(_botId, product['id'].toString(), result);
+      await StorefrontApiService.updateAdminProductSetting(
+        _botId,
+        product['id'].toString(),
+        result,
+      );
       _load();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator(strokeWidth: 3));
+    if (_loading)
+      return const Center(child: CircularProgressIndicator(strokeWidth: 3));
 
     return _products.isEmpty
         ? Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.inventory_2_outlined, size: 48, color: Colors.grey.shade300),
+                Icon(
+                  Icons.inventory_2_outlined,
+                  size: 48,
+                  color: Colors.grey.shade300,
+                ),
                 const SizedBox(height: 12),
-                Text('No hay productos en el catálogo', style: TextStyle(color: Colors.grey.shade500)),
+                Text(
+                  'No hay productos en el catálogo',
+                  style: TextStyle(color: Colors.grey.shade500),
+                ),
               ],
             ),
           )
@@ -657,9 +852,21 @@ class _ProductSettingsTabState extends State<_ProductSettingsTab> {
               return Card(
                 child: ListTile(
                   leading: p['imagen1'] != null
-                      ? ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(p['imagen1'], width: 48, height: 48, fit: BoxFit.cover))
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            p['imagen1'],
+                            width: 48,
+                            height: 48,
+                            fit: BoxFit.cover,
+                          ),
+                        )
                       : const Icon(Icons.image_outlined),
-                  title: Text(p['titulo'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis),
+                  title: Text(
+                    p['titulo'] ?? '',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   subtitle: Text(
                     '${p['visible_en_tienda'] == true ? "Visible" : "Oculto"} | ${p['destacado'] == true ? "Destacado" : ""} | \$${p['precio'] ?? 0}',
                   ),
@@ -685,13 +892,13 @@ class _ProductSettingDialogState extends State<_ProductSettingDialog> {
   late bool _visibleEnTienda;
   late bool _destacado;
   late int _orden;
-  late String _etiqueta;
-  late String _precioOfertaWeb;
-  late String _descripcionWeb;
-  late String _imagenDestacadaUrl;
   late bool _permitirCompraOnline;
   late bool _permitirWhatsapp;
   late bool _requiereInstalacion;
+  late final TextEditingController _etiquetaCtrl;
+  late final TextEditingController _precioOfertaWebCtrl;
+  late final TextEditingController _descripcionWebCtrl;
+  late final TextEditingController _imagenDestacadaUrlCtrl;
 
   @override
   void initState() {
@@ -700,13 +907,28 @@ class _ProductSettingDialogState extends State<_ProductSettingDialog> {
     _visibleEnTienda = p['visible_en_tienda'] == true;
     _destacado = p['destacado'] == true;
     _orden = p['orden'] ?? 0;
-    _etiqueta = p['etiqueta'] ?? '';
-    _precioOfertaWeb = '${p['precio_oferta_web'] ?? ''}';
-    _descripcionWeb = p['descripcion_web'] ?? '';
-    _imagenDestacadaUrl = p['imagen_destacada_url'] ?? '';
+    _etiquetaCtrl = TextEditingController(text: p['etiqueta'] ?? '');
+    _precioOfertaWebCtrl = TextEditingController(
+      text: '${p['precio_oferta_web'] ?? ''}',
+    );
+    _descripcionWebCtrl = TextEditingController(
+      text: p['descripcion_web'] ?? '',
+    );
+    _imagenDestacadaUrlCtrl = TextEditingController(
+      text: p['imagen_destacada_url'] ?? '',
+    );
     _permitirCompraOnline = p['permitir_compra_online'] != false;
     _permitirWhatsapp = p['permitir_whatsapp'] != false;
     _requiereInstalacion = p['requiere_instalacion'] == true;
+  }
+
+  @override
+  void dispose() {
+    _etiquetaCtrl.dispose();
+    _precioOfertaWebCtrl.dispose();
+    _descripcionWebCtrl.dispose();
+    _imagenDestacadaUrlCtrl.dispose();
+    super.dispose();
   }
 
   @override
@@ -717,34 +939,83 @@ class _ProductSettingDialogState extends State<_ProductSettingDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SwitchListTile(title: const Text('Visible en tienda'), value: _visibleEnTienda, onChanged: (v) => setState(() => _visibleEnTienda = v), contentPadding: EdgeInsets.zero),
-            SwitchListTile(title: const Text('Destacado'), value: _destacado, onChanged: (v) => setState(() => _destacado = v), contentPadding: EdgeInsets.zero),
-            SwitchListTile(title: const Text('Permitir compra online'), value: _permitirCompraOnline, onChanged: (v) => setState(() => _permitirCompraOnline = v), contentPadding: EdgeInsets.zero),
-            SwitchListTile(title: const Text('Permitir WhatsApp'), value: _permitirWhatsapp, onChanged: (v) => setState(() => _permitirWhatsapp = v), contentPadding: EdgeInsets.zero),
-            SwitchListTile(title: const Text('Requiere instalación'), value: _requiereInstalacion, onChanged: (v) => setState(() => _requiereInstalacion = v), contentPadding: EdgeInsets.zero),
+            SwitchListTile(
+              title: const Text('Visible en tienda'),
+              value: _visibleEnTienda,
+              onChanged: (v) => setState(() => _visibleEnTienda = v),
+              contentPadding: EdgeInsets.zero,
+            ),
+            SwitchListTile(
+              title: const Text('Destacado'),
+              value: _destacado,
+              onChanged: (v) => setState(() => _destacado = v),
+              contentPadding: EdgeInsets.zero,
+            ),
+            SwitchListTile(
+              title: const Text('Permitir compra online'),
+              value: _permitirCompraOnline,
+              onChanged: (v) => setState(() => _permitirCompraOnline = v),
+              contentPadding: EdgeInsets.zero,
+            ),
+            SwitchListTile(
+              title: const Text('Permitir WhatsApp'),
+              value: _permitirWhatsapp,
+              onChanged: (v) => setState(() => _permitirWhatsapp = v),
+              contentPadding: EdgeInsets.zero,
+            ),
+            SwitchListTile(
+              title: const Text('Requiere instalación'),
+              value: _requiereInstalacion,
+              onChanged: (v) => setState(() => _requiereInstalacion = v),
+              contentPadding: EdgeInsets.zero,
+            ),
             const SizedBox(height: 8),
-            TextField(controller: TextEditingController.fromValue(TextEditingValue(text: _etiqueta)), decoration: const InputDecoration(labelText: 'Etiqueta'), onChanged: (v) => _etiqueta = v),
+            TextField(
+              controller: _etiquetaCtrl,
+              decoration: const InputDecoration(labelText: 'Etiqueta'),
+            ),
             const SizedBox(height: 8),
-            TextField(controller: TextEditingController.fromValue(TextEditingValue(text: _precioOfertaWeb)), decoration: const InputDecoration(labelText: 'Precio oferta web'), keyboardType: TextInputType.number, onChanged: (v) => _precioOfertaWeb = v),
+            TextField(
+              controller: _precioOfertaWebCtrl,
+              decoration: const InputDecoration(labelText: 'Precio oferta web'),
+              keyboardType: TextInputType.number,
+            ),
             const SizedBox(height: 8),
-            TextField(controller: TextEditingController.fromValue(TextEditingValue(text: _descripcionWeb)), decoration: const InputDecoration(labelText: 'Descripción web'), maxLines: 3, onChanged: (v) => _descripcionWeb = v),
+            TextField(
+              controller: _descripcionWebCtrl,
+              decoration: const InputDecoration(labelText: 'Descripción web'),
+              maxLines: 3,
+            ),
             const SizedBox(height: 8),
-            TextField(controller: TextEditingController.fromValue(TextEditingValue(text: _imagenDestacadaUrl)), decoration: const InputDecoration(labelText: 'URL imagen destacada'), onChanged: (v) => _imagenDestacadaUrl = v),
+            ImageUploadField(
+              controller: _imagenDestacadaUrlCtrl,
+              label: 'Imagen destacada',
+              folder: 'storefront/product-settings',
+              context: 'product-highlight',
+              botId: context.read<BotProvider>().botSeleccionado?.id,
+              aspectRatio: 1,
+              hintText: 'https://...',
+            ),
           ],
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
         FilledButton(
           onPressed: () {
             Navigator.pop(context, {
               'visible_en_tienda': _visibleEnTienda,
               'destacado': _destacado,
               'orden': _orden,
-              'etiqueta': _etiqueta,
-              'precio_oferta_web': _precioOfertaWeb.isNotEmpty ? double.tryParse(_precioOfertaWeb) : null,
-              'descripcion_web': _descripcionWeb,
-              'imagen_destacada_url': _imagenDestacadaUrl,
+              'etiqueta': _etiquetaCtrl.text.trim(),
+              'precio_oferta_web': _precioOfertaWebCtrl.text.trim().isNotEmpty
+                  ? double.tryParse(_precioOfertaWebCtrl.text.trim())
+                  : null,
+              'descripcion_web': _descripcionWebCtrl.text.trim(),
+              'imagen_destacada_url': _imagenDestacadaUrlCtrl.text.trim(),
               'permitir_compra_online': _permitirCompraOnline,
               'permitir_whatsapp': _permitirWhatsapp,
               'requiere_instalacion': _requiereInstalacion,
@@ -782,7 +1053,10 @@ class _CartsTabState extends State<_CartsTab> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final res = await StorefrontApiService.getAdminCarts(_botId, estado: _filtro);
+      final res = await StorefrontApiService.getAdminCarts(
+        _botId,
+        estado: _filtro,
+      );
       setState(() {
         _carts = res['data'] ?? [];
         _loading = false;
@@ -813,21 +1087,28 @@ class _CartsTabState extends State<_CartsTab> {
             child: _loading
                 ? const Center(child: CircularProgressIndicator(strokeWidth: 3))
                 : _carts.isEmpty
-                    ? Center(child: Text('Sin carritos', style: TextStyle(color: Colors.grey.shade500)))
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: _carts.length,
-                        itemBuilder: (_, i) {
-                          final c = _carts[i];
-                          return Card(
-                            child: ListTile(
-                              title: Text('Carrito #${c['id']}'),
-                              subtitle: Text('Total: \$${c['total'] ?? 0} | ${c['telefono_cliente'] ?? "Sin cliente"}'),
-                              trailing: Text(c['estado'] ?? ''),
-                            ),
-                          );
-                        },
-                      ),
+                ? Center(
+                    child: Text(
+                      'Sin carritos',
+                      style: TextStyle(color: Colors.grey.shade500),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: _carts.length,
+                    itemBuilder: (_, i) {
+                      final c = _carts[i];
+                      return Card(
+                        child: ListTile(
+                          title: Text('Carrito #${c['id']}'),
+                          subtitle: Text(
+                            'Total: \$${c['total'] ?? 0} | ${c['telefono_cliente'] ?? "Sin cliente"}',
+                          ),
+                          trailing: Text(c['estado'] ?? ''),
+                        ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -883,16 +1164,24 @@ class _PaymentsTabState extends State<_PaymentsTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator(strokeWidth: 3));
+    if (_loading)
+      return const Center(child: CircularProgressIndicator(strokeWidth: 3));
 
     return _payments.isEmpty
         ? Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.payments_outlined, size: 48, color: Colors.grey.shade300),
+                Icon(
+                  Icons.payments_outlined,
+                  size: 48,
+                  color: Colors.grey.shade300,
+                ),
                 const SizedBox(height: 12),
-                Text('Sin pagos registrados', style: TextStyle(color: Colors.grey.shade500)),
+                Text(
+                  'Sin pagos registrados',
+                  style: TextStyle(color: Colors.grey.shade500),
+                ),
               ],
             ),
           )
@@ -906,16 +1195,24 @@ class _PaymentsTabState extends State<_PaymentsTab> {
                   leading: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: p['estado'] == 'pagado' ? Colors.green.shade50 : Colors.orange.shade50,
+                      color: p['estado'] == 'pagado'
+                          ? Colors.green.shade50
+                          : Colors.orange.shade50,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
-                      p['estado'] == 'pagado' ? Icons.check_circle : Icons.pending,
-                      color: p['estado'] == 'pagado' ? Colors.green : Colors.orange,
+                      p['estado'] == 'pagado'
+                          ? Icons.check_circle
+                          : Icons.pending,
+                      color: p['estado'] == 'pagado'
+                          ? Colors.green
+                          : Colors.orange,
                     ),
                   ),
                   title: Text('\$${p['monto'] ?? 0}'),
-                  subtitle: Text('${p['metodo_pago']} | ${p['estado']} | Pedido: ${p['pedido_id'] ?? "-"}'),
+                  subtitle: Text(
+                    '${p['metodo_pago']} | ${p['estado']} | Pedido: ${p['pedido_id'] ?? "-"}',
+                  ),
                 ),
               );
             },

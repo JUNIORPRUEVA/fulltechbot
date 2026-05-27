@@ -12,6 +12,7 @@ class ApiConfig {
   static const String catalogoEndpoint = '$baseUrl/api/catalogo';
 
   static const String storageUploadEndpoint = '$baseUrl/api/storage/upload';
+  static const String uploadsImageEndpoint = '$baseUrl/api/uploads/image';
 
   static const String ordersEndpoint = '$baseUrl/api/orders';
 
