@@ -7,7 +7,6 @@ import '../../public/widgets/public_store_layout.dart';
 import '../services/storefront_api_service.dart';
 import '../services/storefront_helpers.dart';
 import '../theme/storefront_theme.dart';
-import '../widgets/storefront_banner_slider.dart';
 import '../widgets/storefront_error_state.dart';
 import '../widgets/storefront_footer.dart';
 import '../widgets/storefront_product_card.dart';
@@ -256,40 +255,15 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
       secondaryColor: secondaryColor,
       heroTitle: heroTitle,
       heroSubtitle: heroSubtitle,
+      banners: _banners,
       onSearchTap: _openSearch,
       onCategoriesTap: _openCategories,
       onOffersTap: _openOffers,
+      onAdminTap: () =>
+          Navigator.pushNamed(context, '/login?redirect=/admin'),
+      onCartTap: () =>
+          Navigator.pushNamed(context, '/tienda/${widget.slug}/carrito'),
       slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
-              child: _SearchShortcutCard(onTap: _openSearch),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
-              child: _BenefitStrip(secondaryColor: secondaryColor),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(0, 18, 0, 0),
-              child: _banners.isNotEmpty
-                  ? StorefrontBannerSlider(
-                      banners: _banners,
-                      primaryColor: primaryColor,
-                      secondaryColor: secondaryColor,
-                    )
-                  : Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: _FallbackPromoCard(
-                        primaryColor: primaryColor,
-                        secondaryColor: secondaryColor,
-                      ),
-                    ),
-            ),
-          ),
           SliverToBoxAdapter(
             child: _SectionHeader(
               title: 'Categorías rápidas',
