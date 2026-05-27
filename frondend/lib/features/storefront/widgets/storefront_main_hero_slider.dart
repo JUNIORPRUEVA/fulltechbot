@@ -497,7 +497,14 @@ class _HeroTopBar extends StatelessWidget {
               foregroundColor: Colors.white,
               side: BorderSide(color: Colors.white.withValues(alpha: 0.26)),
             ),
-            child: const Text('Iniciar sesion'),
+          child: const Text('Iniciar sesion'),
+          ),
+          const SizedBox(width: 8),
+        ],
+        if (!isDesktop) ...[
+          _GlassIconButton(
+            icon: Icons.person_outline_rounded,
+            onTap: onAdminTap,
           ),
           const SizedBox(width: 8),
         ],

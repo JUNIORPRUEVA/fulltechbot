@@ -78,7 +78,7 @@ class PublicStoreLayout extends StatelessWidget {
                 onMenuTap: isDesktop
                     ? null
                     : () => Scaffold.of(heroContext).openDrawer(),
-                canPop: Navigator.of(heroContext).canPop(),
+                canPop: false,
                 isDesktop: isDesktop,
               ),
             ),
