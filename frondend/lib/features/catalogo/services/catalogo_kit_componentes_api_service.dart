@@ -4,7 +4,7 @@ import '../models/catalogo_kit_componente_model.dart';
 import '../../../core/constants/api_config.dart';
 
 class CatalogoKitComponentesApiService {
-  static const String _baseUrl = ApiConfig.baseUrl;
+  static String get _baseUrl => ApiConfig.baseUrl;
 
   /// Obtener todos los componentes de un kit
   Future<List<CatalogoKitComponenteModel>> obtenerComponentesKit(
