@@ -169,6 +169,7 @@ async function getDefaultPublicStore(preferredSlug = null) {
     envDefaultSlug: process.env.DEFAULT_STOREFRONT_SLUG || null,
     strategy: null,
     candidateCount: 0,
+    fallbackReason: null,
   };
 
   if (preferredSlug) {
@@ -188,33 +189,53 @@ async function getDefaultPublicStore(preferredSlug = null) {
     }
   }
 
-  const rows = await prisma.$queryRawUnsafe(
-    `SELECT
-       sc.*,
-       COALESCE(b.estado, 'activo') as bot_estado,
-       COALESCE(visible.visible_products, 0)::int as visible_products
-     FROM storefront_config sc
-     LEFT JOIN bots b ON b.id = sc.bot_id
-     LEFT JOIN (
-       SELECT
-         ps.bot_id,
-         COUNT(*)::int as visible_products
-       FROM storefront_product_settings ps
-       INNER JOIN catalogo c ON c.id::text = ps.producto_id
-       WHERE ps.visible_en_tienda = true
-         AND ps.activo = true
-         AND (c.estado = 'activo' OR c.estado IS NULL)
-       GROUP BY ps.bot_id
-     ) visible ON visible.bot_id = sc.bot_id
-     WHERE sc.activo = true
-     ORDER BY
-       CASE WHEN COALESCE(visible.visible_products, 0) > 0 THEN 0 ELSE 1 END,
-       CASE WHEN COALESCE(b.estado, 'activo') = 'activo' THEN 0 ELSE 1 END,
-       sc.actualizado_en DESC NULLS LAST,
-       sc.creado_en DESC NULLS LAST`
-  );
+  let candidates = [];
 
-  const candidates = serializeRows(rows);
+  try {
+    const rows = await prisma.$queryRawUnsafe(
+      `SELECT
+         sc.*,
+         COALESCE(b.estado, 'activo') as bot_estado,
+         COALESCE(visible.visible_products, 0)::int as visible_products
+       FROM storefront_config sc
+       LEFT JOIN bots b ON b.id = sc.bot_id
+       LEFT JOIN (
+         SELECT
+           ps.bot_id,
+           COUNT(*)::int as visible_products
+         FROM storefront_product_settings ps
+         INNER JOIN catalogo c ON c.id::text = ps.producto_id
+         WHERE ps.visible_en_tienda = true
+           AND ps.activo = true
+           AND (c.estado = 'activo' OR c.estado IS NULL)
+         GROUP BY ps.bot_id
+       ) visible ON visible.bot_id = sc.bot_id
+       WHERE sc.activo = true
+       ORDER BY
+         CASE WHEN COALESCE(visible.visible_products, 0) > 0 THEN 0 ELSE 1 END,
+         CASE WHEN COALESCE(b.estado, 'activo') = 'activo' THEN 0 ELSE 1 END,
+         sc.actualizado_en DESC NULLS LAST,
+         sc.creado_en DESC NULLS LAST`
+    );
+    candidates = serializeRows(rows);
+  } catch (error) {
+    diagnostics.fallbackReason = error.message;
+
+    try {
+      const fallbackRows = await prisma.$queryRawUnsafe(
+        `SELECT *
+         FROM storefront_config
+         WHERE activo = true
+         ORDER BY actualizado_en DESC NULLS LAST, creado_en DESC NULLS LAST`
+      );
+      candidates = serializeRows(fallbackRows);
+      diagnostics.strategy = 'fallback-storefront-config-only';
+    } catch (fallbackError) {
+      diagnostics.fallbackReason = `${error.message} | fallback: ${fallbackError.message}`;
+      candidates = [];
+    }
+  }
+
   diagnostics.candidateCount = candidates.length;
 
   if (candidates.length === 0) {
