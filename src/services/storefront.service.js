@@ -19,9 +19,53 @@ const botClientService = require('./botClient.service');
 // HELPERS
 // ============================================
 
-function serializeBigInt(value) {
+/**
+ * Convierte un valor numérico string (NUMERIC de PG) a Number.
+ * No convierte IDs grandes (bigint) para evitar pérdida de precisión.
+ */
+function toNumber(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : value;
+}
+
+/**
+ * Campos conocidos que son NUMERIC(12,2) en la BD y deben salir como Number.
+ */
+const _NUMERIC_FIELDS = new Set([
+  'precio', 'precio_minimo', 'precio_oferta', 'precio_oferta_web',
+  'precio_adicional', 'precio_minimo_adicional',
+  'subtotal', 'total', 'precio_unitario',
+  'costo_delivery', 'monto',
+]);
+
+/**
+ * IDs BIGSERIAL/BIGINT que deben salir como String para evitar pérdida de precisión.
+ */
+const _BIGINT_ID_FIELDS = new Set([
+  'id', 'cart_id', 'item_id', 'payment_id', 'pedido_id',
+]);
+
+function serializeBigInt(value, key) {
   if (value === null || value === undefined) return null;
-  if (typeof value === 'bigint') return Number(value);
+
+  // IDs grandes → String
+  if (key && _BIGINT_ID_FIELDS.has(key) && typeof value === 'bigint') {
+    return value.toString();
+  }
+
+  // NUMERIC → Number
+  if (key && _NUMERIC_FIELDS.has(key)) {
+    return toNumber(value);
+  }
+
+  // BigInt genérico → Number (solo si es seguro)
+  if (typeof value === 'bigint') {
+    const n = Number(value);
+    if (n > Number.MAX_SAFE_INTEGER) return value.toString();
+    return n;
+  }
+
   return value;
 }
 
@@ -29,7 +73,7 @@ function serializeRow(row) {
   if (!row) return null;
   const obj = {};
   for (const [key, val] of Object.entries(row)) {
-    obj[key] = serializeBigInt(val);
+    obj[key] = serializeBigInt(val, key);
   }
   return obj;
 }
@@ -428,21 +472,19 @@ async function getStorefrontCategories(botId) {
 // ============================================
 
 async function getOrCreateCart(botId, sessionId) {
-  let rows = await prisma.$queryRawUnsafe(
-    `SELECT * FROM storefront_carts WHERE bot_id = $1 AND session_id = $2 AND estado = 'activo' LIMIT 1`,
+  // Intentar INSERT con ON CONFLICT DO NOTHING para evitar race condition
+  await prisma.$executeRawUnsafe(
+    `INSERT INTO storefront_carts (bot_id, session_id)
+     VALUES ($1, $2)
+     ON CONFLICT (bot_id, session_id) WHERE estado = 'activo' DO NOTHING`,
     botId, sessionId
   );
 
-  if (rows.length === 0) {
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO storefront_carts (bot_id, session_id) VALUES ($1, $2)`,
-      botId, sessionId
-    );
-    rows = await prisma.$queryRawUnsafe(
-      `SELECT * FROM storefront_carts WHERE bot_id = $1 AND session_id = $2 LIMIT 1`,
-      botId, sessionId
-    );
-  }
+  // Siempre hacer SELECT después del INSERT
+  const rows = await prisma.$queryRawUnsafe(
+    `SELECT * FROM storefront_carts WHERE bot_id = $1 AND session_id = $2 AND estado = 'activo' LIMIT 1`,
+    botId, sessionId
+  );
 
   return rows[0] ? serializeRow(rows[0]) : null;
 }

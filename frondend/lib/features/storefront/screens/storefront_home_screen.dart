@@ -1,8 +1,12 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/storefront_api_service.dart';
+import '../widgets/storefront_banner_slider.dart';
+import '../widgets/storefront_product_card.dart';
+import '../widgets/storefront_category_chip.dart';
+import '../widgets/storefront_footer.dart';
+import '../widgets/storefront_skeleton.dart';
+import '../widgets/storefront_error_state.dart';
 
 class StorefrontHomeScreen extends StatefulWidget {
   final String slug;
@@ -18,26 +22,16 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
   List<dynamic> _categories = [];
   List<dynamic> _featuredProducts = [];
   List<dynamic> _recentProducts = [];
+  List<dynamic> _offerProducts = [];
+  List<dynamic> _bestSellers = [];
   bool _loading = true;
   String? _error;
   final _searchController = TextEditingController();
-  String _sessionId = '';
 
   @override
   void initState() {
     super.initState();
-    _initSession();
     _loadData();
-  }
-
-  Future<void> _initSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    String? sid = prefs.getString('storefront_session_${widget.slug}');
-    if (sid == null) {
-      sid = '${widget.slug}_${DateTime.now().millisecondsSinceEpoch}';
-      await prefs.setString('storefront_session_${widget.slug}', sid);
-    }
-    _sessionId = sid;
   }
 
   Future<void> _loadData() async {
@@ -47,7 +41,17 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     });
 
     try {
-      final configRes = await StorefrontApiService.getConfig(widget.slug);
+      final results = await Future.wait([
+        StorefrontApiService.getConfig(widget.slug),
+        StorefrontApiService.getBanners(widget.slug),
+        StorefrontApiService.getCategories(widget.slug),
+        StorefrontApiService.getProducts(widget.slug, destacado: true, limit: 10),
+        StorefrontApiService.getProducts(widget.slug, limit: 10),
+        StorefrontApiService.getProducts(widget.slug, limit: 10, busqueda: 'oferta'),
+        StorefrontApiService.getProducts(widget.slug, limit: 10, busqueda: 'mas vendido'),
+      ]);
+
+      final configRes = results[0];
       if (configRes['ok'] != true) {
         setState(() {
           _error = configRes['message'] ?? 'Error al cargar tienda';
@@ -56,24 +60,14 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
         return;
       }
 
-      final bannersRes = await StorefrontApiService.getBanners(widget.slug);
-      final categoriesRes = await StorefrontApiService.getCategories(widget.slug);
-      final featuredRes = await StorefrontApiService.getProducts(
-        widget.slug,
-        destacado: true,
-        limit: 8,
-      );
-      final recentRes = await StorefrontApiService.getProducts(
-        widget.slug,
-        limit: 8,
-      );
-
       setState(() {
         _config = configRes['data'];
-        _banners = bannersRes['data'] ?? [];
-        _categories = categoriesRes['data'] ?? [];
-        _featuredProducts = featuredRes['products'] ?? [];
-        _recentProducts = recentRes['products'] ?? [];
+        _banners = results[1]['data'] ?? [];
+        _categories = results[2]['data'] ?? [];
+        _featuredProducts = results[3]['products'] ?? [];
+        _recentProducts = results[4]['products'] ?? [];
+        _offerProducts = results[5]['products'] ?? [];
+        _bestSellers = results[6]['products'] ?? [];
         _loading = false;
       });
     } catch (e) {
@@ -102,44 +96,16 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return Scaffold(
-        backgroundColor: const Color(0xFFF6F7F9),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const CircularProgressIndicator(strokeWidth: 3),
-              const SizedBox(height: 16),
-              Text('Cargando tienda...', style: TextStyle(color: Colors.grey.shade500)),
-            ],
-          ),
-        ),
-      );
+      return const StorefrontHomeSkeleton();
     }
 
     if (_error != null) {
       return Scaffold(
-        backgroundColor: const Color(0xFFF6F7F9),
+        backgroundColor: const Color(0xFFF8FAFC),
         appBar: AppBar(title: const Text('Tienda')),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.store_mall_directory_outlined, size: 64, color: Colors.grey.shade300),
-                const SizedBox(height: 16),
-                Text(_error!, textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 16)),
-                const SizedBox(height: 24),
-                FilledButton.icon(
-                  onPressed: _loadData,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Reintentar'),
-                ),
-              ],
-            ),
-          ),
+        body: StorefrontErrorState(
+          message: _error!,
+          onRetry: _loadData,
         ),
       );
     }
@@ -150,54 +116,116 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     final whatsapp = config['whatsapp_numero'] ?? '';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F7F9),
+      backgroundColor: const Color(0xFFF8FAFC),
       body: CustomScrollView(
         slivers: [
-          // App Bar
+          // ==========================================
+          // HEADER PREMIUM MEJORADO
+          // ==========================================
           SliverAppBar(
-            expandedHeight: 120,
+            expandedHeight: 140,
             pinned: true,
+            stretch: true,
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [primaryColor, primaryColor.withValues(alpha: 0.85)],
+                    colors: [
+                      primaryColor,
+                      primaryColor.withValues(alpha: 0.92),
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                 ),
-                padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 16, left: 20, right: 20),
+                padding: EdgeInsets.only(
+                  top: MediaQuery.of(context).padding.top + 12,
+                  left: 16,
+                  right: 16,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
                         if (config['logo_url'] != null)
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(config['logo_url'], height: 36, width: 36, fit: BoxFit.cover),
+                          Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              color: Colors.white.withValues(alpha: 0.15),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Image.network(
+                                config['logo_url'],
+                                height: 38,
+                                width: 38,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => const Icon(
+                                  Icons.store_rounded, color: Colors.white, size: 22,
+                                ),
+                              ),
+                            ),
                           ),
                         if (config['logo_url'] != null) const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            config['nombre_tienda'] ?? 'Tienda',
-                            style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                            config['nombre_tienda'] ?? 'FULLTECH',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.5,
+                            ),
                           ),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
-                          onPressed: () => Navigator.pushNamed(context, '/tienda/${widget.slug}/carrito'),
+                        // Botón carrito
+                        Material(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          child: InkWell(
+                            onTap: () => Navigator.pushNamed(
+                              context,
+                              '/tienda/${widget.slug}/carrito',
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              alignment: Alignment.center,
+                              child: const Icon(
+                                Icons.shopping_cart_outlined,
+                                color: Colors.white,
+                                size: 22,
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
+                    if (config['mensaje_principal'] != null)
+                      Text(
+                        config['mensaje_principal'],
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                   ],
                 ),
               ),
             ),
           ),
 
-          // Buscador
+          // ==========================================
+          // BUSCADOR
+          // ==========================================
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -205,10 +233,10 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
                 controller: _searchController,
                 decoration: InputDecoration(
                   hintText: 'Buscar productos...',
-                  prefixIcon: const Icon(Icons.search),
+                  prefixIcon: Icon(Icons.search_rounded, color: const Color(0xFF9CA3AF)),
                   suffixIcon: _searchController.text.isNotEmpty
                       ? IconButton(
-                          icon: const Icon(Icons.clear),
+                          icon: const Icon(Icons.clear_rounded, size: 20),
                           onPressed: () {
                             _searchController.clear();
                             setState(() {});
@@ -221,6 +249,12 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
                     borderRadius: BorderRadius.circular(16),
                     borderSide: BorderSide.none,
                   ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(
+                      color: const Color(0xFFE5E7EB).withValues(alpha: 0.5),
+                    ),
+                  ),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                 ),
                 onSubmitted: _search,
@@ -229,97 +263,24 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
             ),
           ),
 
-          // Mensaje principal
-          if (config['mensaje_principal'] != null)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: Text(
-                  config['mensaje_principal'],
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: primaryColor),
-                ),
-              ),
-            ),
-
-          if (config['mensaje_secundario'] != null)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-                child: Text(
-                  config['mensaje_secundario'],
-                  style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                ),
-              ),
-            ),
-
-          // Banners
+          // ==========================================
+          // BANNER SLIDER
+          // ==========================================
           if (_banners.isNotEmpty)
             SliverToBoxAdapter(
-              child: SizedBox(
-                height: 200,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  itemCount: _banners.length,
-                  itemBuilder: (context, index) {
-                    final banner = _banners[index];
-                    return Container(
-                      width: MediaQuery.of(context).size.width - 64,
-                      margin: const EdgeInsets.only(right: 12),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        color: secondaryColor.withValues(alpha: 0.1),
-                        image: banner['imagen_url'] != null
-                            ? DecorationImage(
-                                image: NetworkImage(banner['imagen_url']),
-                                fit: BoxFit.cover,
-                              )
-                            : null,
-                      ),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          gradient: LinearGradient(
-                            colors: [Colors.black.withValues(alpha: 0.3), Colors.transparent],
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                          ),
-                        ),
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(banner['titulo'] ?? '',
-                              style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                            if (banner['subtitulo'] != null)
-                              Text(banner['subtitulo'],
-                                style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 14)),
-                            if (banner['boton_texto'] != null) ...[
-                              const SizedBox(height: 8),
-                              ElevatedButton(
-                                onPressed: () {
-                                  if (banner['link_url'] != null) {
-                                    launchUrl(Uri.parse(banner['link_url']));
-                                  }
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.white,
-                                  foregroundColor: primaryColor,
-                                ),
-                                child: Text(banner['boton_texto']),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    );
-                  },
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: StorefrontBannerSlider(
+                  banners: _banners,
+                  primaryColor: primaryColor,
+                  secondaryColor: secondaryColor,
                 ),
               ),
             ),
 
-          // Categorías
+          // ==========================================
+          // CATEGORÍAS RÁPIDAS
+          // ==========================================
           if (_categories.isNotEmpty)
             SliverToBoxAdapter(
               child: Padding(
@@ -327,7 +288,53 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Categorías', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: primaryColor)),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Categorías',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: primaryColor,
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: () {},
+                          icon: const Icon(Icons.arrow_forward_ios, size: 14),
+                          label: const Text('Ver todo', style: TextStyle(fontSize: 13)),
+                          style: TextButton.styleFrom(
+                            foregroundColor: secondaryColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 90,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _categories.length,
+                        itemBuilder: (context, index) {
+                          final cat = _categories[index];
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 12),
+                            child: StorefrontCategoryIcon(
+                              categoria: cat['categoria'] ?? '',
+                              primaryColor: primaryColor,
+                              secondaryColor: secondaryColor,
+                              onTap: () {
+                                Navigator.pushNamed(
+                                  context,
+                                  '/tienda/${widget.slug}/categoria/${Uri.encodeComponent(cat['categoria'])}',
+                                );
+                              },
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    // Chips de categorías
                     const SizedBox(height: 12),
                     SizedBox(
                       height: 44,
@@ -338,16 +345,17 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
                           final cat = _categories[index];
                           return Padding(
                             padding: const EdgeInsets.only(right: 8),
-                            child: ActionChip(
-                              label: Text('${cat['categoria']} (${cat['total']})'),
-                              onPressed: () {
+                            child: StorefrontCategoryChip(
+                              categoria: cat['categoria'] ?? '',
+                              total: cat['total'] ?? 0,
+                              primaryColor: primaryColor,
+                              secondaryColor: secondaryColor,
+                              onTap: () {
                                 Navigator.pushNamed(
                                   context,
                                   '/tienda/${widget.slug}/categoria/${Uri.encodeComponent(cat['categoria'])}',
                                 );
                               },
-                              backgroundColor: secondaryColor.withValues(alpha: 0.1),
-                              side: BorderSide(color: secondaryColor.withValues(alpha: 0.3)),
                             ),
                           );
                         },
@@ -358,40 +366,201 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
               ),
             ),
 
-          // Productos destacados
-          if (_featuredProducts.isNotEmpty)
+          // ==========================================
+          // OFERTAS DEL DÍA
+          // ==========================================
+          if (_offerProducts.isNotEmpty)
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Text('Destacados',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: primaryColor)),
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFEF4444), Color(0xFFF87171)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.local_fire_department_rounded, size: 16, color: Colors.white),
+                          SizedBox(width: 4),
+                          Text(
+                            'OFERTAS DEL DÍA',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    TextButton.icon(
+                      onPressed: () {},
+                      icon: const Icon(Icons.arrow_forward_ios, size: 14),
+                      label: const Text('Ver todo', style: TextStyle(fontSize: 13)),
+                      style: TextButton.styleFrom(foregroundColor: secondaryColor),
+                    ),
+                  ],
+                ),
               ),
             ),
-          if (_featuredProducts.isNotEmpty)
+          if (_offerProducts.isNotEmpty)
             SliverToBoxAdapter(
               child: SizedBox(
-                height: 280,
+                height: 340,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: _featuredProducts.length,
-                  itemBuilder: (context, index) => _ProductCard(
-                    product: _featuredProducts[index],
-                    slug: widget.slug,
-                    primaryColor: primaryColor,
-                    secondaryColor: secondaryColor,
+                  itemCount: _offerProducts.length,
+                  itemBuilder: (context, index) => Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: StorefrontProductCard(
+                      product: _offerProducts[index],
+                      slug: widget.slug,
+                      primaryColor: primaryColor,
+                      secondaryColor: secondaryColor,
+                      whatsapp: whatsapp,
+                    ),
                   ),
                 ),
               ),
             ),
 
-          // Productos recientes
+          // ==========================================
+          // PRODUCTOS DESTACADOS
+          // ==========================================
+          if (_featuredProducts.isNotEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '⭐ Destacados',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: primaryColor,
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () {},
+                      icon: const Icon(Icons.arrow_forward_ios, size: 14),
+                      label: const Text('Ver todo', style: TextStyle(fontSize: 13)),
+                      style: TextButton.styleFrom(foregroundColor: secondaryColor),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          if (_featuredProducts.isNotEmpty)
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: 340,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: _featuredProducts.length,
+                  itemBuilder: (context, index) => Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: StorefrontProductCard(
+                      product: _featuredProducts[index],
+                      slug: widget.slug,
+                      primaryColor: primaryColor,
+                      secondaryColor: secondaryColor,
+                      whatsapp: whatsapp,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // ==========================================
+          // MÁS VENDIDOS
+          // ==========================================
+          if (_bestSellers.isNotEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '🔥 Más vendidos',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: primaryColor,
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () {},
+                      icon: const Icon(Icons.arrow_forward_ios, size: 14),
+                      label: const Text('Ver todo', style: TextStyle(fontSize: 13)),
+                      style: TextButton.styleFrom(foregroundColor: secondaryColor),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          if (_bestSellers.isNotEmpty)
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: 340,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: _bestSellers.length,
+                  itemBuilder: (context, index) => Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: StorefrontProductCard(
+                      product: _bestSellers[index],
+                      slug: widget.slug,
+                      primaryColor: primaryColor,
+                      secondaryColor: secondaryColor,
+                      whatsapp: whatsapp,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // ==========================================
+          // PRODUCTOS RECIENTES (GRID)
+          // ==========================================
           if (_recentProducts.isNotEmpty)
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Text('Productos',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: primaryColor)),
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '🆕 Productos',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: primaryColor,
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () {},
+                      icon: const Icon(Icons.arrow_forward_ios, size: 14),
+                      label: const Text('Ver todo', style: TextStyle(fontSize: 13)),
+                      style: TextButton.styleFrom(foregroundColor: secondaryColor),
+                    ),
+                  ],
+                ),
               ),
             ),
           if (_recentProducts.isNotEmpty)
@@ -405,35 +574,105 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
                   mainAxisSpacing: 12,
                 ),
                 delegate: SliverChildBuilderDelegate(
-                  (context, index) => _ProductCard(
+                  (context, index) => StorefrontProductCard(
                     product: _recentProducts[index],
                     slug: widget.slug,
                     primaryColor: primaryColor,
                     secondaryColor: secondaryColor,
                     compact: true,
+                    whatsapp: whatsapp,
                   ),
                   childCount: _recentProducts.length,
                 ),
               ),
             ),
 
-          // Footer
+          // ==========================================
+          // INSTALACIÓN INCLUIDA (BANNER PROMOCIONAL)
+          // ==========================================
           SliverToBoxAdapter(
-            child: Container(
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                children: [
-                  if (config['direccion'] != null)
-                    Text(config['direccion'], textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
-                  if (config['horario'] != null)
-                    Text(config['horario'], textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
-                  const SizedBox(height: 16),
-                  Text('© ${DateTime.now().year} ${config['nombre_tienda'] ?? ''}',
-                    style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
-                ],
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [secondaryColor, secondaryColor.withValues(alpha: 0.85)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '🔧 Instalación incluida',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'En cámaras, motores y kits de seguridad.\nProfesionales certificados.',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              fontSize: 13,
+                              height: 1.4,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          ElevatedButton(
+                            onPressed: () {},
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: secondaryColor,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: const Text(
+                              'Ver kits',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Icon(
+                        Icons.build_circle_outlined,
+                        size: 40,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+            ),
+          ),
+
+          // ==========================================
+          // FOOTER ELEGANTE
+          // ==========================================
+          SliverToBoxAdapter(
+            child: StorefrontFooter(
+              config: config,
+              primaryColor: primaryColor,
+              secondaryColor: secondaryColor,
             ),
           ),
         ],
@@ -447,7 +686,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
                 launchUrl(Uri.parse('https://wa.me/$num'));
               },
               backgroundColor: const Color(0xFF25D366),
-              child: const Icon(Icons.chat, color: Colors.white),
+              child: const Icon(Icons.chat_rounded, color: Colors.white),
             )
           : null,
     );
@@ -458,130 +697,4 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     _searchController.dispose();
     super.dispose();
   }
-}
-
-class _ProductCard extends StatelessWidget {
-  final Map<String, dynamic> product;
-  final String slug;
-  final Color primaryColor;
-  final Color secondaryColor;
-  final bool compact;
-
-  const _ProductCard({
-    required this.product,
-    required this.slug,
-    required this.primaryColor,
-    required this.secondaryColor,
-    this.compact = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final precio = product['precio_oferta_web'] ?? product['precio_oferta'] ?? product['precio'] ?? 0;
-    final precioOriginal = (product['precio_oferta_web'] != null || product['precio_oferta'] != null)
-        ? (product['precio'] ?? 0)
-        : null;
-    final imagen = product['imagen_destacada_url'] ?? product['imagen1'] ?? '';
-    final etiqueta = product['etiqueta'] ?? '';
-    final tieneOferta = precioOriginal != null && precioOriginal > precio;
-
-    final card = Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 2))],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Imagen
-          Expanded(
-            child: Stack(
-              children: [
-                Container(
-                  width: double.infinity,
-                  color: Colors.grey.shade100,
-                  child: imagen.isNotEmpty
-                      ? Image.network(imagen, fit: BoxFit.cover, width: double.infinity,
-                          errorBuilder: (_, __, ___) => _placeholderIcon())
-                      : _placeholderIcon(),
-                ),
-                // Etiqueta
-                if (etiqueta.isNotEmpty)
-                  Positioned(
-                    top: 8,
-                    left: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: secondaryColor,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(etiqueta, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
-                    ),
-                  ),
-                // Oferta
-                if (tieneOferta)
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text('-${((1 - precio / precioOriginal) * 100).round()}%',
-                        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          // Info
-          Padding(
-            padding: const EdgeInsets.all(compact ? 10 : 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(product['titulo'] ?? '',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: compact ? 13 : 14, fontWeight: FontWeight.w600, height: 1.2)),
-                const SizedBox(height: 4),
-                if (tieneOferta)
-                  Text('\$$precioOriginal',
-                    style: TextStyle(color: Colors.grey.shade400, fontSize: 12, decoration: TextDecoration.lineThrough)),
-                Row(
-                  children: [
-                    Text('\$$precio',
-                      style: TextStyle(
-                        fontSize: compact ? 16 : 18,
-                        fontWeight: FontWeight.w800,
-                        color: primaryColor,
-                      )),
-                    if (product['requiere_instalacion'] == true)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 4),
-                        child: Text('+inst', style: TextStyle(color: Colors.grey.shade500, fontSize: 10)),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-
-    return GestureDetector(
-      onTap: () => Navigator.pushNamed(context, '/tienda/$slug/producto/${product['id']}'),
-      child: compact ? SizedBox(child: card) : SizedBox(width: 200, child: card),
-    );
-  }
-
-  Widget _placeholderIcon() => Center(
-    child: Icon(Icons.image_outlined, size: 48, color: Colors.grey.shade300),
-  );
 }

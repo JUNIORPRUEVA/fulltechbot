@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../services/storefront_api_service.dart';
 
 class StorefrontCheckoutScreen extends StatefulWidget {
@@ -110,6 +109,7 @@ class _StorefrontCheckoutScreenState extends State<StorefrontCheckoutScreen> {
   Widget build(BuildContext context) {
     if (_loading) {
       return Scaffold(
+        backgroundColor: const Color(0xFFF8FAFC),
         appBar: AppBar(title: const Text('Checkout')),
         body: const Center(child: CircularProgressIndicator(strokeWidth: 3)),
       );
@@ -117,12 +117,11 @@ class _StorefrontCheckoutScreenState extends State<StorefrontCheckoutScreen> {
 
     final config = _config ?? {};
     final primaryColor = _getColor(config['color_principal'] ?? '#0F172A');
-    final secondaryColor = _getColor(config['color_secundario'] ?? '#2563EB');
     final items = _cart != null ? (_cart!['items'] as List<dynamic>?) ?? [] : [];
     final total = _cart?['total'] ?? 0;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F7F9),
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text('Checkout'),
         centerTitle: false,
@@ -132,36 +131,42 @@ class _StorefrontCheckoutScreenState extends State<StorefrontCheckoutScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // Resumen del carrito
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-              ),
+            // Resumen del pedido
+            _buildSectionCard(
+              title: 'Resumen del pedido',
+              icon: Icons.receipt_long_outlined,
+              primaryColor: primaryColor,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Resumen del pedido', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: primaryColor)),
-                  const SizedBox(height: 12),
                   ...items.map((item) => Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Row(
                       children: [
                         Expanded(
-                          child: Text('${item['nombre_producto']} x${item['cantidad']}',
-                            style: const TextStyle(fontSize: 14)),
+                          child: Text(
+                            '${item['nombre_producto']} x${item['cantidad']}',
+                            style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+                          ),
                         ),
-                        Text('\$${item['subtotal']}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                        Text(
+                          '\$${item['subtotal']}',
+                          style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+                        ),
                       ],
                     ),
                   )),
-                  const Divider(),
+                  const Divider(height: 20),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Total', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: primaryColor)),
-                      Text('\$$total', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: primaryColor)),
+                      Text(
+                        'Total',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: primaryColor),
+                      ),
+                      Text(
+                        '\$$total',
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: primaryColor),
+                      ),
                     ],
                   ),
                 ],
@@ -171,26 +176,27 @@ class _StorefrontCheckoutScreenState extends State<StorefrontCheckoutScreen> {
             const SizedBox(height: 16),
 
             // Datos del cliente
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-              ),
+            _buildSectionCard(
+              title: 'Datos del cliente',
+              icon: Icons.person_outline,
+              primaryColor: primaryColor,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Datos del cliente', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: primaryColor)),
-                  const SizedBox(height: 16),
                   TextFormField(
                     controller: _nombreCtrl,
-                    decoration: const InputDecoration(labelText: 'Nombre completo *', prefixIcon: Icon(Icons.person_outline)),
+                    decoration: const InputDecoration(
+                      labelText: 'Nombre completo *',
+                      prefixIcon: Icon(Icons.person_outline),
+                    ),
                     validator: (v) => v == null || v.trim().isEmpty ? 'Requerido' : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _telefonoCtrl,
-                    decoration: const InputDecoration(labelText: 'Teléfono *', prefixIcon: Icon(Icons.phone_outlined)),
+                    decoration: const InputDecoration(
+                      labelText: 'Teléfono *',
+                      prefixIcon: Icon(Icons.phone_outlined),
+                    ),
                     keyboardType: TextInputType.phone,
                     validator: (v) => v == null || v.trim().isEmpty ? 'Requerido' : null,
                   ),
@@ -201,52 +207,57 @@ class _StorefrontCheckoutScreenState extends State<StorefrontCheckoutScreen> {
             const SizedBox(height: 16),
 
             // Método de entrega
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-              ),
+            _buildSectionCard(
+              title: 'Método de entrega',
+              icon: Icons.local_shipping_outlined,
+              primaryColor: primaryColor,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Método de entrega', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: primaryColor)),
-                  const SizedBox(height: 12),
                   if (config['permitir_retiro_tienda'] == true)
-                    RadioListTile(
-                      title: const Text('Retiro en tienda'),
+                    _buildRadioTile(
+                      title: 'Retiro en tienda',
+                      subtitle: 'Sin costo adicional',
                       value: 'retiro_tienda',
                       groupValue: _metodoEntrega,
+                      icon: Icons.store_outlined,
+                      primaryColor: primaryColor,
                       onChanged: (v) => setState(() => _metodoEntrega = v!),
-                      contentPadding: EdgeInsets.zero,
                     ),
                   if (config['permitir_delivery'] == true)
-                    RadioListTile(
-                      title: const Text('Delivery'),
-                      subtitle: const Text('Con costo adicional'),
+                    _buildRadioTile(
+                      title: 'Delivery',
+                      subtitle: 'Con costo adicional',
                       value: 'delivery',
                       groupValue: _metodoEntrega,
+                      icon: Icons.delivery_dining_outlined,
+                      primaryColor: primaryColor,
                       onChanged: (v) => setState(() => _metodoEntrega = v!),
-                      contentPadding: EdgeInsets.zero,
                     ),
-
-                  // Dirección para delivery
                   if (_metodoEntrega == 'delivery') ...[
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _direccionCtrl,
-                      decoration: const InputDecoration(labelText: 'Dirección *', prefixIcon: Icon(Icons.location_on_outlined)),
-                      validator: (v) => _metodoEntrega == 'delivery' && (v == null || v.trim().isEmpty) ? 'Requerido para delivery' : null,
+                      decoration: const InputDecoration(
+                        labelText: 'Dirección *',
+                        prefixIcon: Icon(Icons.location_on_outlined),
+                      ),
+                      validator: (v) => _metodoEntrega == 'delivery' && (v == null || v.trim().isEmpty) ? 'Requerido' : null,
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _ciudadCtrl,
-                      decoration: const InputDecoration(labelText: 'Ciudad', prefixIcon: Icon(Icons.location_city_outlined)),
+                      decoration: const InputDecoration(
+                        labelText: 'Ciudad',
+                        prefixIcon: Icon(Icons.location_city_outlined),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _sectorCtrl,
-                      decoration: const InputDecoration(labelText: 'Sector', prefixIcon: Icon(Icons.map_outlined)),
+                      decoration: const InputDecoration(
+                        labelText: 'Sector',
+                        prefixIcon: Icon(Icons.map_outlined),
+                      ),
                     ),
                   ],
                 ],
@@ -256,33 +267,30 @@ class _StorefrontCheckoutScreenState extends State<StorefrontCheckoutScreen> {
             const SizedBox(height: 16),
 
             // Método de pago
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-              ),
+            _buildSectionCard(
+              title: 'Método de pago',
+              icon: Icons.payment_outlined,
+              primaryColor: primaryColor,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Método de pago', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: primaryColor)),
-                  const SizedBox(height: 12),
-                  RadioListTile(
-                    title: const Text('WhatsApp - Pagar al recibir'),
-                    subtitle: const Text('Te contactaremos para coordinar el pago'),
+                  _buildRadioTile(
+                    title: 'WhatsApp - Pagar al recibir',
+                    subtitle: 'Te contactaremos para coordinar el pago',
                     value: 'whatsapp',
                     groupValue: _metodoPago,
+                    icon: Icons.chat_rounded,
+                    primaryColor: primaryColor,
                     onChanged: (v) => setState(() => _metodoPago = v!),
-                    contentPadding: EdgeInsets.zero,
                   ),
                   if (config['permitir_paypal'] == true)
-                    RadioListTile(
-                      title: const Text('PayPal'),
-                      subtitle: const Text('Pago seguro online'),
+                    _buildRadioTile(
+                      title: 'PayPal',
+                      subtitle: 'Pago seguro online',
                       value: 'paypal',
                       groupValue: _metodoPago,
+                      icon: Icons.account_balance_wallet_outlined,
+                      primaryColor: primaryColor,
                       onChanged: (v) => setState(() => _metodoPago = v!),
-                      contentPadding: EdgeInsets.zero,
                     ),
                 ],
               ),
@@ -291,26 +299,16 @@ class _StorefrontCheckoutScreenState extends State<StorefrontCheckoutScreen> {
             const SizedBox(height: 16),
 
             // Notas
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Notas adicionales', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: primaryColor)),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _notasCtrl,
-                    decoration: const InputDecoration(
-                      hintText: 'Ej: Prefiero que llamen antes de enviar...',
-                      border: OutlineInputBorder(),
-                    ),
-                    maxLines: 3,
-                  ),
-                ],
+            _buildSectionCard(
+              title: 'Notas adicionales',
+              icon: Icons.notes_rounded,
+              primaryColor: primaryColor,
+              child: TextFormField(
+                controller: _notasCtrl,
+                decoration: const InputDecoration(
+                  hintText: 'Ej: Prefiero que llamen antes de enviar...',
+                ),
+                maxLines: 3,
               ),
             ),
 
@@ -326,13 +324,91 @@ class _StorefrontCheckoutScreenState extends State<StorefrontCheckoutScreen> {
               style: FilledButton.styleFrom(
                 backgroundColor: primaryColor,
                 minimumSize: const Size(double.infinity, 56),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
             ),
 
             const SizedBox(height: 32),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSectionCard({
+    required String title,
+    required IconData icon,
+    required Color primaryColor,
+    required Widget child,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: primaryColor),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: primaryColor),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRadioTile({
+    required String title,
+    required String subtitle,
+    required String value,
+    required String groupValue,
+    required IconData icon,
+    required Color primaryColor,
+    required ValueChanged<String?> onChanged,
+  }) {
+    final isSelected = value == groupValue;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: isSelected ? primaryColor.withValues(alpha: 0.04) : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isSelected ? primaryColor.withValues(alpha: 0.2) : const Color(0xFFE5E7EB),
+        ),
+      ),
+      child: RadioListTile<String>(
+        title: Row(
+          children: [
+            Icon(icon, size: 18, color: isSelected ? primaryColor : const Color(0xFF6B7280)),
+            const SizedBox(width: 8),
+            Text(title, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+          ],
+        ),
+        subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
+        value: value,
+        groupValue: groupValue,
+        onChanged: onChanged,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+        activeColor: primaryColor,
+        dense: true,
       ),
     );
   }

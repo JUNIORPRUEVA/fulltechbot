@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../bots/providers/bot_provider.dart';
+import '../../bots/providers/bot_provider.dart';
 import '../../storefront/services/storefront_api_service.dart';
 
 class StorefrontAdminScreen extends StatefulWidget {
