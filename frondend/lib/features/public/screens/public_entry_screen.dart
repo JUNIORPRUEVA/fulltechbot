@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/app_config.dart';
 import '../services/public_store_service.dart';
 
 class PublicEntryScreen extends StatefulWidget {
@@ -36,15 +37,16 @@ class _PublicEntryScreenState extends State<PublicEntryScreen> {
 
       if (!mounted) return;
 
-      if (resolution.found && resolution.slug != null) {
-        final target = '/tienda/${resolution.slug}';
-        debugPrint(
-          '[PublicEntryScreen] tienda encontrada slug=${resolution.slug} '
-          'strategy=${resolution.diagnostics?['strategy']} target=$target',
+      final resolvedSlug = _pickBestSlug(
+        apiSlug: resolution.slug,
+        diagnostics: resolution.diagnostics,
+      );
+
+      if (resolvedSlug != null) {
+        _redirectToStore(
+          slug: resolvedSlug,
+          diagnostics: resolution.diagnostics,
         );
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          Navigator.of(context).pushReplacementNamed(target);
-        });
         return;
       }
 
@@ -64,11 +66,56 @@ class _PublicEntryScreenState extends State<PublicEntryScreen> {
     } catch (error) {
       debugPrint('[PublicEntryScreen] error resolviendo tienda publica: $error');
       if (!mounted) return;
+
+      final fallbackSlug = _pickBestSlug(apiSlug: null, diagnostics: null);
+      if (fallbackSlug != null) {
+        _redirectToStore(slug: fallbackSlug, diagnostics: const {});
+        return;
+      }
+
       setState(() {
         _loading = false;
         _message = 'No se pudo cargar la tienda publica en este momento.';
       });
     }
+  }
+
+  String? _pickBestSlug({
+    required String? apiSlug,
+    required Map<String, dynamic>? diagnostics,
+  }) {
+    if (widget.preferredSlug != null && widget.preferredSlug!.trim().isNotEmpty) {
+      return widget.preferredSlug!.trim();
+    }
+
+    if (apiSlug != null && apiSlug.trim().isNotEmpty) {
+      return apiSlug.trim();
+    }
+
+    final envSlug = diagnostics?['envDefaultSlug']?.toString().trim();
+    if (envSlug != null && envSlug.isNotEmpty) {
+      return envSlug;
+    }
+
+    if (AppConfig.hasDefaultStore) {
+      return AppConfig.defaultStoreSlug.trim();
+    }
+
+    return null;
+  }
+
+  void _redirectToStore({
+    required String slug,
+    required Map<String, dynamic>? diagnostics,
+  }) {
+    final target = '/tienda/$slug';
+    debugPrint(
+      '[PublicEntryScreen] tienda resuelta slug=$slug '
+      'strategy=${diagnostics?['strategy']} target=$target',
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Navigator.of(context).pushReplacementNamed(target);
+    });
   }
 
   @override
