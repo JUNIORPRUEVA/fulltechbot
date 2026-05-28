@@ -11,7 +11,6 @@ import '../widgets/storefront_product_card.dart';
 import '../widgets/storefront_product_detail_skeleton.dart';
 import '../widgets/storefront_product_gallery.dart';
 import '../widgets/storefront_product_info_section.dart';
-import '../widgets/storefront_trust_badges.dart';
 
 class StorefrontProductDetailScreen extends StatefulWidget {
   final String slug;
@@ -99,7 +98,7 @@ class _StorefrontProductDetailScreenState
       _fadeController.forward();
     } catch (e) {
       setState(() {
-        _error = 'Error de conexión: $e';
+        _error = 'Error de conexion: $e';
         _loading = false;
       });
     }
@@ -170,7 +169,7 @@ class _StorefrontProductDetailScreenState
     final message =
         'Hola FULLTECH, estoy interesado en este producto: '
         '${product['titulo']}. Precio: RD\$${price.toStringAsFixed(0)}. '
-        '¿Está disponible? $productUrl';
+        'Esta disponible? $productUrl';
 
     await launchUrl(
       Uri.parse('https://wa.me/$number?text=${Uri.encodeComponent(message)}'),
@@ -231,60 +230,56 @@ class _StorefrontProductDetailScreenState
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 1280),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: isDesktop
-                      ? BorderRadius.circular(28)
-                      : const BorderRadius.vertical(top: Radius.circular(24)),
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  isDesktop ? 24 : 16,
+                  16,
+                  isDesktop ? 24 : 16,
+                  0,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (isDesktop)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              flex: 6,
-                              child: StorefrontProductGallery(
-                                images: gallery,
-                                title: product['titulo']?.toString() ?? '',
-                                isDesktop: true,
-                                accentColor: secondaryColor,
-                              ),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            flex: 6,
+                            child: StorefrontProductGallery(
+                              images: gallery,
+                              title: product['titulo']?.toString() ?? '',
+                              isDesktop: true,
+                              accentColor: secondaryColor,
                             ),
-                            const SizedBox(width: 28),
-                            Expanded(
-                              flex: 5,
-                              child: _ProductSummarySection(
-                                product: product,
-                                price: price,
-                                originalPrice: originalPrice,
-                                stock: stock,
-                                canBuy: canBuy,
-                                primaryColor: primaryColor,
-                                secondaryColor: secondaryColor,
-                                quantity: _quantity,
-                                whatsapp: whatsapp,
-                                isDesktop: true,
-                                onDecrease: () {
-                                  if (_quantity > 1) {
-                                    setState(() => _quantity--);
-                                  }
-                                },
-                                onIncrease: () => setState(() => _quantity++),
-                                onAddToCart: () => _addToCart(),
-                                onBuyNow: () => _addToCart(goToCart: true),
-                                onWhatsapp: whatsapp.isEmpty
-                                    ? null
-                                    : () => _openWhatsApp(whatsapp),
-                              ),
+                          ),
+                          const SizedBox(width: 28),
+                          Expanded(
+                            flex: 5,
+                            child: _ProductSummarySection(
+                              product: product,
+                              price: price,
+                              originalPrice: originalPrice,
+                              canBuy: canBuy,
+                              primaryColor: primaryColor,
+                              secondaryColor: secondaryColor,
+                              quantity: _quantity,
+                              whatsapp: whatsapp,
+                              isDesktop: true,
+                              onDecrease: () {
+                                if (_quantity > 1) {
+                                  setState(() => _quantity--);
+                                }
+                              },
+                              onIncrease: () => setState(() => _quantity++),
+                              onAddToCart: () => _addToCart(),
+                              onBuyNow: () => _addToCart(goToCart: true),
+                              onWhatsapp: whatsapp.isEmpty
+                                  ? null
+                                  : () => _openWhatsApp(whatsapp),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       )
                     else ...[
                       StorefrontProductGallery(
@@ -294,12 +289,11 @@ class _StorefrontProductDetailScreenState
                         accentColor: secondaryColor,
                       ),
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+                        padding: const EdgeInsets.fromLTRB(4, 18, 4, 0),
                         child: _ProductSummarySection(
                           product: product,
                           price: price,
                           originalPrice: originalPrice,
-                          stock: stock,
                           canBuy: canBuy,
                           primaryColor: primaryColor,
                           secondaryColor: secondaryColor,
@@ -320,68 +314,49 @@ class _StorefrontProductDetailScreenState
                         ),
                       ),
                     ],
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        isDesktop ? 24 : 20,
-                        24,
-                        isDesktop ? 24 : 20,
-                        0,
+                    const SizedBox(height: 26),
+                    ..._buildInfoSections(product, secondaryColor),
+                    if (_relatedProducts.isNotEmpty) ...[
+                      const SizedBox(height: 34),
+                      const Text(
+                        'Productos relacionados',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF0F172A),
+                        ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          StorefrontTrustBadges(
-                            installationAvailable:
-                                product['instalacion_incluida'] == true ||
-                                product['requiere_instalacion'] == true,
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Opciones similares dentro de la misma categoria.',
+                        style: TextStyle(
+                          color: Color(0xFF64748B),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height: isDesktop ? 370 : 326,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemBuilder: (context, index) => SizedBox(
+                            width: isDesktop ? 292 : 236,
+                            child: StorefrontProductCard(
+                              product: Map<String, dynamic>.from(
+                                _relatedProducts[index] as Map,
+                              ),
+                              slug: widget.slug,
+                              primaryColor: primaryColor,
+                              secondaryColor: secondaryColor,
+                              whatsapp: whatsapp,
+                            ),
                           ),
-                          const SizedBox(height: 28),
-                          ..._buildInfoSections(product),
-                          if (_relatedProducts.isNotEmpty) ...[
-                            const SizedBox(height: 30),
-                            const Text(
-                              'Productos relacionados',
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFF0F172A),
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            const Text(
-                              'Opciones similares dentro de la misma categoría.',
-                              style: TextStyle(
-                                color: Color(0xFF64748B),
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            SizedBox(
-                              height: isDesktop ? 340 : 300,
-                              child: ListView.separated(
-                                scrollDirection: Axis.horizontal,
-                                itemBuilder: (context, index) => SizedBox(
-                                  width: isDesktop ? 260 : 220,
-                                  child: StorefrontProductCard(
-                                    product: Map<String, dynamic>.from(
-                                      _relatedProducts[index] as Map,
-                                    ),
-                                    slug: widget.slug,
-                                    primaryColor: primaryColor,
-                                    secondaryColor: secondaryColor,
-                                    whatsapp: whatsapp,
-                                  ),
-                                ),
-                                separatorBuilder: (_, __) =>
-                                    const SizedBox(width: 14),
-                                itemCount: _relatedProducts.length,
-                              ),
-                            ),
-                          ],
-                          const SizedBox(height: 28),
-                        ],
+                          separatorBuilder: (_, __) => const SizedBox(width: 14),
+                          itemCount: _relatedProducts.length,
+                        ),
                       ),
-                    ),
+                    ],
+                    const SizedBox(height: 28),
                   ],
                 ),
               ),
@@ -412,7 +387,10 @@ class _StorefrontProductDetailScreenState
     );
   }
 
-  List<Widget> _buildInfoSections(Map<String, dynamic> product) {
+  List<Widget> _buildInfoSections(
+    Map<String, dynamic> product,
+    Color secondaryColor,
+  ) {
     final sections = <Widget>[];
     final description =
         product['descripcion_web']?.toString().trim().isNotEmpty == true
@@ -420,52 +398,14 @@ class _StorefrontProductDetailScreenState
         : product['descripcion']?.toString().trim().isNotEmpty == true
         ? product['descripcion'].toString().trim()
         : product['informacion']?.toString().trim() ?? '';
-
-    final informacion = product['informacion']?.toString().trim() ?? '';
-    final incluye = product['incluye']?.toString().trim() ?? '';
-    final reglas = product['reglasNegociacion']?.toString().trim() ?? '';
     final video = product['video']?.toString().trim() ?? '';
 
     if (description.isNotEmpty) {
       sections.add(
         StorefrontProductInfoSection(
-          title: 'Descripción del producto',
+          title: 'Descripcion del producto',
           content: description,
-          icon: Icons.description_outlined,
-        ),
-      );
-      sections.add(const SizedBox(height: 20));
-    }
-
-    if (incluye.isNotEmpty) {
-      sections.add(
-        StorefrontProductInfoSection(
-          title: 'Qué incluye',
-          content: incluye,
-          icon: Icons.checklist_rounded,
-        ),
-      );
-      sections.add(const SizedBox(height: 20));
-    }
-
-    if (informacion.isNotEmpty &&
-        informacion.toLowerCase() != description.toLowerCase()) {
-      sections.add(
-        StorefrontProductInfoSection(
-          title: 'Información adicional',
-          content: informacion,
-          icon: Icons.info_outline_rounded,
-        ),
-      );
-      sections.add(const SizedBox(height: 20));
-    }
-
-    if (reglas.isNotEmpty) {
-      sections.add(
-        StorefrontProductInfoSection(
-          title: 'Condiciones y negociación',
-          content: reglas,
-          icon: Icons.rule_folder_outlined,
+          accentColor: secondaryColor,
         ),
       );
       sections.add(const SizedBox(height: 20));
@@ -497,7 +437,6 @@ class _ProductSummarySection extends StatelessWidget {
   final Map<String, dynamic> product;
   final num price;
   final num? originalPrice;
-  final int stock;
   final bool canBuy;
   final bool isDesktop;
   final int quantity;
@@ -514,7 +453,6 @@ class _ProductSummarySection extends StatelessWidget {
     required this.product,
     required this.price,
     required this.originalPrice,
-    required this.stock,
     required this.canBuy,
     required this.isDesktop,
     required this.quantity,
@@ -530,40 +468,16 @@ class _ProductSummarySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final category = product['categoria']?.toString().trim() ?? '';
-    final tipoProducto = product['tipo_producto']?.toString().trim() ?? '';
-    final etiqueta = product['etiqueta']?.toString().trim() ?? '';
-    final installationIncluded = product['instalacion_incluida'] == true;
-    final requiresInstallation = product['requiere_instalacion'] == true;
+    final description =
+        product['descripcion_web']?.toString().trim().isNotEmpty == true
+        ? product['descripcion_web'].toString().trim()
+        : product['descripcion']?.toString().trim().isNotEmpty == true
+        ? product['descripcion'].toString().trim()
+        : product['informacion']?.toString().trim() ?? '';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            if (category.isNotEmpty)
-              _TagChip(
-                label: category,
-                color: secondaryColor,
-                background: const Color(0xFFEFF6FF),
-              ),
-            if (tipoProducto.isNotEmpty)
-              _TagChip(
-                label: tipoProducto,
-                color: const Color(0xFF334155),
-                background: const Color(0xFFF1F5F9),
-              ),
-            if (installationIncluded)
-              const _TagChip(
-                label: 'Instalación incluida',
-                color: Color(0xFF166534),
-                background: Color(0xFFF0FDF4),
-              ),
-          ],
-        ),
-        const SizedBox(height: 10),
         Text(
           product['titulo']?.toString() ?? '',
           style: TextStyle(
@@ -574,77 +488,26 @@ class _ProductSummarySection extends StatelessWidget {
             letterSpacing: -0.8,
           ),
         ),
-        if (etiqueta.isNotEmpty) ...[
+        if (description.isNotEmpty) ...[
           const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              gradient: StorefrontColors.offerGradient,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              etiqueta,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-              ),
+          Text(
+            description,
+            maxLines: isDesktop ? 5 : 6,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Color(0xFF475569),
+              fontSize: 15.5,
+              height: 1.65,
             ),
           ),
         ],
-        const SizedBox(height: 14),
-        const Text(
-          'Precio final',
-          style: TextStyle(
-            color: Color(0xFF64748B),
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 18),
         StorefrontPriceWidget(
           precio: price,
           precioOriginal: originalPrice,
           large: true,
           primaryColor: primaryColor,
           currencyPrefix: 'RD\$',
-        ),
-        const SizedBox(height: 6),
-        const Text(
-          'Precio sujeto a disponibilidad y confirmación final.',
-          style: TextStyle(
-            color: Color(0xFF64748B),
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 18),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            _StatusPill(
-              icon: canBuy
-                  ? Icons.check_circle_outline_rounded
-                  : Icons.error_outline_rounded,
-              label: canBuy ? 'Disponible' : 'Agotado',
-              color: canBuy ? const Color(0xFF166534) : const Color(0xFFB91C1C),
-              background: canBuy
-                  ? const Color(0xFFF0FDF4)
-                  : const Color(0xFFFEF2F2),
-            ),
-            _StatusPill(
-              icon: Icons.inventory_2_outlined,
-              label: 'Stock: $stock',
-              color: const Color(0xFF1D4ED8),
-              background: const Color(0xFFEFF6FF),
-            ),
-            if (requiresInstallation)
-              const _StatusPill(
-                icon: Icons.handyman_outlined,
-                label: 'Instalación disponible',
-                color: Color(0xFF7C2D12),
-                background: Color(0xFFFFF7ED),
-              ),
-          ],
         ),
         const SizedBox(height: 22),
         if (isDesktop)
@@ -661,73 +524,6 @@ class _ProductSummarySection extends StatelessWidget {
             onWhatsapp: onWhatsapp,
           ),
       ],
-    );
-  }
-}
-
-class _TagChip extends StatelessWidget {
-  final String label;
-  final Color color;
-  final Color background;
-
-  const _TagChip({
-    required this.label,
-    required this.color,
-    required this.background,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.w800,
-          fontSize: 12,
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusPill extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final Color background;
-
-  const _StatusPill({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.background,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: TextStyle(color: color, fontWeight: FontWeight.w800),
-          ),
-        ],
-      ),
     );
   }
 }
