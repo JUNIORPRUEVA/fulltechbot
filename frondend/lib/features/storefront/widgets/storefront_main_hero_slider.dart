@@ -15,6 +15,7 @@ class StorefrontMainHeroSlider extends StatefulWidget {
   final String heroTitle;
   final String heroSubtitle;
   final List<dynamic> banners;
+  final List<dynamic> promotedProducts;
   final bool isDesktop;
   final VoidCallback onSearchTap;
   final VoidCallback onCategoriesTap;
@@ -34,6 +35,7 @@ class StorefrontMainHeroSlider extends StatefulWidget {
     required this.heroTitle,
     required this.heroSubtitle,
     required this.banners,
+    required this.promotedProducts,
     required this.isDesktop,
     required this.onSearchTap,
     required this.onCategoriesTap,
@@ -55,12 +57,21 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
   int _currentIndex = 0;
 
   List<Map<String, dynamic>> get _slides {
+    if (widget.promotedProducts.isNotEmpty) {
+      return widget.promotedProducts
+          .whereType<Map>()
+          .map((item) => _mapProductSlide(Map<String, dynamic>.from(item)))
+          .where((item) => (item['imagen_url']?.toString().trim().isNotEmpty ?? false))
+          .toList();
+    }
+
     if (widget.banners.isEmpty) {
       return const [
         {
           'titulo': 'FULLTECH SRL',
           'subtitulo': 'Tecnologia, seguridad y soporte profesional',
           'imagen_url': null,
+          'label': 'Portada comercial',
         },
       ];
     }
@@ -68,6 +79,37 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
     return widget.banners
         .map((item) => Map<String, dynamic>.from(item as Map))
         .toList();
+  }
+
+  Map<String, dynamic> _mapProductSlide(Map<String, dynamic> product) {
+    final image =
+        product['imagen_destacada_url'] ??
+        product['imagen1'] ??
+        product['imagen2'] ??
+        product['imagen3'];
+    final title = product['titulo']?.toString().trim();
+    final category = product['categoria']?.toString().trim();
+    final offerPrice = product['precio_oferta_web'] ?? product['precioOferta'];
+    final regularPrice = product['precio'];
+
+    String subtitle;
+    if (offerPrice != null) {
+      subtitle = regularPrice != null
+          ? 'Oferta disponible en ${category?.isNotEmpty == true ? category : 'tienda'}'
+          : 'Producto en oferta por tiempo limitado';
+    } else {
+      subtitle = product['descripcion']?.toString().trim().isNotEmpty == true
+          ? product['descripcion'].toString().trim()
+          : 'Disponible en la tienda online de FULLTECH';
+    }
+
+    return {
+      'titulo': title?.isNotEmpty == true ? title : widget.heroTitle,
+      'subtitulo': subtitle,
+      'imagen_url': image,
+      'label': offerPrice != null ? 'Oferta del dia' : 'Producto destacado',
+      'source': 'offer-product',
+    };
   }
 
   @override
@@ -533,7 +575,12 @@ class _DesktopVisualPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final image = slide['imagen_url'] ?? slide['imagen'] ?? slide['imageUrl'];
+    final image = StorefrontHelpers.resolveMediaUrl(
+      slide['imagen_url'] ?? slide['imagen'] ?? slide['imageUrl'],
+    );
+    final label = slide['label']?.toString().trim().isNotEmpty == true
+        ? slide['label'].toString().trim()
+        : 'Portada comercial';
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -546,7 +593,7 @@ class _DesktopVisualPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Portada comercial',
+            label,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.88),
               fontWeight: FontWeight.w700,

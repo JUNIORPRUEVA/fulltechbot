@@ -11,6 +11,7 @@ class PublicStoreLayout extends StatelessWidget {
   final String heroTitle;
   final String heroSubtitle;
   final List<dynamic> banners;
+  final List<dynamic> promotedProducts;
   final VoidCallback onSearchTap;
   final VoidCallback onCategoriesTap;
   final VoidCallback onOffersTap;
@@ -29,6 +30,7 @@ class PublicStoreLayout extends StatelessWidget {
     required this.heroTitle,
     required this.heroSubtitle,
     required this.banners,
+    required this.promotedProducts,
     required this.onSearchTap,
     required this.onCategoriesTap,
     required this.onOffersTap,
@@ -70,6 +72,7 @@ class PublicStoreLayout extends StatelessWidget {
                 heroTitle: heroTitle,
                 heroSubtitle: heroSubtitle,
                 banners: banners,
+                promotedProducts: promotedProducts,
                 onSearchTap: onSearchTap,
                 onCategoriesTap: onCategoriesTap,
                 onOffersTap: onOffersTap,

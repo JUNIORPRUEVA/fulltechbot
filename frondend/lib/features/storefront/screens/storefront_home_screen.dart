@@ -266,6 +266,9 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
       heroTitle: heroTitle,
       heroSubtitle: heroSubtitle,
       banners: _banners,
+      promotedProducts: _offerProducts.isNotEmpty
+          ? _offerProducts
+          : (_featuredProducts.isNotEmpty ? _featuredProducts : _products),
       onSearchTap: _openSearch,
       onCategoriesTap: _openCategories,
       onOffersTap: _openOffers,
