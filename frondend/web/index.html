@@ -34,16 +34,48 @@
 
   <title>FULLTECH SRL</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Meta tags anti-cache para evitar que el navegador sirva versiones viejas del HTML -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+
+  <!-- Service Worker personalizado con estrategia de cache optimizada -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      // Registrar service worker personalizado
+      navigator.serviceWorker.register('/service_worker.js')
+        .then((registration) => {
+          console.log('[PWA] Service Worker registrado correctamente');
+
+          // Detectar nueva versión del service worker
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                console.log('[PWA] Nueva versión disponible - actualizando automáticamente');
+                // Enviar mensaje para activar el nuevo SW inmediatamente
+                newWorker.postMessage('SKIP_WAITING');
+              }
+            });
+          });
+        })
+        .catch((error) => {
+          console.warn('[PWA] Error registrando Service Worker:', error);
+        });
+
+      // Refrescar automáticamente cuando se active un nuevo service worker
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshing) return;
+        refreshing = true;
+        console.log('[PWA] Nuevo service worker activado, recargando para aplicar cambios...');
+        window.location.reload();
+      });
+    }
+  </script>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

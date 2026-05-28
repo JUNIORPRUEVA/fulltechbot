@@ -8,6 +8,9 @@ class StorefrontProductGallery extends StatefulWidget {
   final String title;
   final bool isDesktop;
   final Color accentColor;
+  
+  /// Versión del producto (updatedAt) para versionado de imágenes
+  final String? version;
 
   const StorefrontProductGallery({
     super.key,
@@ -15,7 +18,9 @@ class StorefrontProductGallery extends StatefulWidget {
     required this.title,
     required this.isDesktop,
     required this.accentColor,
+    this.version,
   });
+
 
   @override
   State<StorefrontProductGallery> createState() =>
@@ -24,7 +29,6 @@ class StorefrontProductGallery extends StatefulWidget {
 
 class _StorefrontProductGalleryState extends State<StorefrontProductGallery> {
   int _selectedIndex = 0;
-  final Set<int> _failedIndexes = <int>{};
 
   @override
   void didUpdateWidget(covariant StorefrontProductGallery oldWidget) {
@@ -33,7 +37,6 @@ class _StorefrontProductGalleryState extends State<StorefrontProductGallery> {
       _selectedIndex = 0;
     }
     if (oldWidget.images != widget.images) {
-      _failedIndexes.clear();
       _selectedIndex = 0;
     }
   }
@@ -41,120 +44,113 @@ class _StorefrontProductGalleryState extends State<StorefrontProductGallery> {
   @override
   Widget build(BuildContext context) {
     final hasImages = widget.images.isNotEmpty;
-    final selectedImage = hasImages ? _getSelectedImage() : null;
-    final imageHeight = widget.isDesktop ? 560.0 : 360.0;
+    final selectedImage = hasImages ? widget.images[_selectedIndex] : null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          height: imageHeight,
           width: double.infinity,
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(widget.isDesktop ? 28 : 22),
             border: Border.all(color: const Color(0xFFE5E7EB)),
           ),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(28),
-            onTap: hasImages ? () => _openImageViewer(context) : null,
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: Padding(
-                    padding: EdgeInsets.all(widget.isDesktop ? 28 : 20),
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 240),
-                      switchInCurve: Curves.easeOut,
-                      switchOutCurve: Curves.easeIn,
-                      child: hasImages
-                          ? Hero(
-                              tag:
-                                  'product-image-${widget.title}-$_selectedIndex',
-                              child: StorefrontSmartImage(
-                                key: ValueKey(selectedImage),
-                                source: selectedImage,
-                                fit: BoxFit.contain,
-                                placeholder: Builder(
-                                  builder: (context) {
-                                    WidgetsBinding.instance.addPostFrameCallback((
-                                      _,
-                                    ) {
-                                      _handleImageError(_selectedIndex);
-                                    });
-                                    return _GalleryPlaceholder(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: widget.isDesktop ? 560 : 360,
+            ),
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(widget.isDesktop ? 28 : 22),
+                onTap: hasImages ? () => _openImageViewer(context) : null,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: Padding(
+                        padding: EdgeInsets.all(widget.isDesktop ? 28 : 14),
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 220),
+                          child: hasImages
+                              ? Hero(
+                                  key: ValueKey(selectedImage),
+                                  tag:
+                                      'product-image-${widget.title}-$_selectedIndex',
+                                  child: StorefrontSmartImage(
+                                    source: selectedImage,
+                                    fit: BoxFit.contain,
+                                    placeholder: _GalleryPlaceholder(
                                       isDesktop: widget.isDesktop,
-                                    );
-                                  },
+                                    ),
+                                  ),
+                                )
+                              : _GalleryPlaceholder(
+                                  key: const ValueKey('placeholder'),
+                                  isDesktop: widget.isDesktop,
                                 ),
-                              ),
-                            )
-                          : _GalleryPlaceholder(
-                              key: const ValueKey('placeholder'),
-                              isDesktop: widget.isDesktop,
-                            ),
+                        ),
+                      ),
                     ),
-                  ),
+                    if (hasImages)
+                      Positioned(
+                        top: 12,
+                        right: 12,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.92),
+                            borderRadius: BorderRadius.circular(999),
+                            boxShadow: StorefrontShadows.soft,
+                          ),
+                          child: IconButton(
+                            onPressed: () => _openImageViewer(context),
+                            icon: const Icon(Icons.zoom_out_map_rounded),
+                            tooltip: 'Ver imagen grande',
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-                if (hasImages)
-                  Positioned(
-                    top: 18,
-                    right: 18,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.92),
-                        borderRadius: BorderRadius.circular(999),
-                        boxShadow: StorefrontShadows.soft,
-                      ),
-                      child: IconButton(
-                        onPressed: () => _openImageViewer(context),
-                        icon: const Icon(Icons.zoom_out_map_rounded),
-                        tooltip: 'Ver imagen grande',
-                      ),
-                    ),
-                  ),
-              ],
+              ),
             ),
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         if (hasImages)
           SizedBox(
-            height: widget.isDesktop ? 92 : 82,
+            height: widget.isDesktop ? 92 : 80,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemBuilder: (context, index) {
                 final isActive = index == _selectedIndex;
-                return MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: GestureDetector(
-                    onTap: () => setState(() => _selectedIndex = index),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      width: widget.isDesktop ? 92 : 82,
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: isActive
-                              ? widget.accentColor
-                              : const Color(0xFFE5E7EB),
-                          width: isActive ? 2 : 1,
-                        ),
-                        boxShadow: isActive ? StorefrontShadows.soft : null,
+                return GestureDetector(
+                  onTap: () => setState(() => _selectedIndex = index),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    width: widget.isDesktop ? 92 : 76,
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isActive
+                            ? widget.accentColor
+                            : const Color(0xFFE5E7EB),
+                        width: isActive ? 2 : 1,
                       ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: StorefrontSmartImage(
-                          source: widget.images[index],
-                          fit: BoxFit.contain,
-                          placeholder: Container(
-                            color: const Color(0xFFF8FAFC),
-                            child: const Icon(
-                              Icons.image_not_supported_outlined,
-                              color: Color(0xFF94A3B8),
-                            ),
+                      boxShadow: isActive ? StorefrontShadows.soft : null,
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: StorefrontSmartImage(
+                        source: widget.images[index],
+                        fit: BoxFit.contain,
+                        placeholder: Container(
+                          color: const Color(0xFFF8FAFC),
+                          child: const Icon(
+                            Icons.image_not_supported_outlined,
+                            color: Color(0xFF94A3B8),
                           ),
                         ),
                       ),
@@ -162,7 +158,7 @@ class _StorefrontProductGalleryState extends State<StorefrontProductGallery> {
                   ),
                 );
               },
-              separatorBuilder: (context, index) => const SizedBox(width: 10),
+              separatorBuilder: (context, index) => const SizedBox(width: 8),
               itemCount: widget.images.length,
             ),
           )
@@ -183,11 +179,15 @@ class _StorefrontProductGalleryState extends State<StorefrontProductGallery> {
                   color: Color(0xFF64748B),
                 ),
                 SizedBox(width: 8),
-                Text(
-                  'No hay más imágenes disponibles',
-                  style: TextStyle(
-                    color: Color(0xFF64748B),
-                    fontWeight: FontWeight.w600,
+                Flexible(
+                  child: Text(
+                    'No hay más imágenes disponibles',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Color(0xFF64748B),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
@@ -218,7 +218,7 @@ class _StorefrontProductGalleryState extends State<StorefrontProductGallery> {
                       child: Hero(
                         tag: 'product-image-${widget.title}-$_selectedIndex',
                         child: StorefrontSmartImage(
-                          source: _getSelectedImage(),
+                          source: widget.images[_selectedIndex],
                           fit: BoxFit.contain,
                           placeholder: const _GalleryPlaceholder(
                             isDesktop: true,
@@ -250,42 +250,6 @@ class _StorefrontProductGalleryState extends State<StorefrontProductGallery> {
       },
     );
   }
-
-  String _getSelectedImage() {
-    if (widget.images.isEmpty) {
-      return '';
-    }
-
-    if (!_failedIndexes.contains(_selectedIndex) &&
-        _selectedIndex < widget.images.length) {
-      return widget.images[_selectedIndex];
-    }
-
-    for (var i = 0; i < widget.images.length; i++) {
-      if (!_failedIndexes.contains(i)) {
-        _selectedIndex = i;
-        return widget.images[i];
-      }
-    }
-
-    return widget.images.first;
-  }
-
-  void _handleImageError(int failedIndex) {
-    if (!mounted || _failedIndexes.contains(failedIndex)) {
-      return;
-    }
-
-    setState(() {
-      _failedIndexes.add(failedIndex);
-      for (var i = 0; i < widget.images.length; i++) {
-        if (!_failedIndexes.contains(i)) {
-          _selectedIndex = i;
-          break;
-        }
-      }
-    });
-  }
 }
 
 class _GalleryPlaceholder extends StatelessWidget {
@@ -310,8 +274,8 @@ class _GalleryPlaceholder extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.videocam_outlined,
-              size: compact ? (isDesktop ? 76 : 62) : 90,
+              Icons.image_outlined,
+              size: compact ? (isDesktop ? 76 : 56) : 90,
               color: const Color(0xFFB6C2D4),
             ),
             const SizedBox(height: 12),

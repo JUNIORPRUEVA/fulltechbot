@@ -90,67 +90,47 @@ class StorefrontProductActionBar extends StatelessWidget {
     }
 
     return Container(
-      padding: EdgeInsets.fromLTRB(
-        16,
-        12,
-        16,
-        MediaQuery.of(context).padding.bottom + 12,
-      ),
+      constraints: const BoxConstraints(maxHeight: 76),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.96),
+        color: Colors.white.withValues(alpha: 0.98),
         border: const Border(top: BorderSide(color: Color(0xFFE5E7EB))),
         boxShadow: StorefrontShadows.medium,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              _QuantitySelector(
-                quantity: quantity,
-                onDecrease: onDecrease,
-                onIncrease: onIncrease,
-                compact: true,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: canBuy ? onBuyNow : null,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: primaryColor,
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                  ),
-                  icon: const Icon(Icons.shopping_bag_outlined),
-                  label: const Text('Comprar'),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: canBuy ? onAddToCart : null,
+                icon: const Icon(Icons.add_shopping_cart_outlined, size: 18),
+                label: const Text(
+                  'Agregar',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              if (canWhatsapp) ...[
-                const SizedBox(width: 10),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: onWhatsapp,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: StorefrontColors.whatsapp,
-                      side: const BorderSide(color: StorefrontColors.whatsapp),
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                    ),
-                    icon: const Icon(Icons.chat_outlined),
-                    label: const Text('WhatsApp'),
-                  ),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: canBuy ? onAddToCart : null,
-              icon: const Icon(Icons.add_shopping_cart_outlined),
-              label: const Text('Agregar al carrito'),
             ),
-          ),
-        ],
+            const SizedBox(width: 10),
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: canBuy ? onBuyNow : null,
+                style: FilledButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                icon: const Icon(Icons.shopping_bag_outlined, size: 18),
+                label: const Text(
+                  'Comprar',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -158,7 +138,6 @@ class StorefrontProductActionBar extends StatelessWidget {
 
 class _QuantitySelector extends StatelessWidget {
   final int quantity;
-  final bool compact;
   final VoidCallback onDecrease;
   final VoidCallback onIncrease;
 
@@ -166,7 +145,6 @@ class _QuantitySelector extends StatelessWidget {
     required this.quantity,
     required this.onDecrease,
     required this.onIncrease,
-    this.compact = false,
   });
 
   @override
@@ -183,14 +161,13 @@ class _QuantitySelector extends StatelessWidget {
           IconButton(
             onPressed: quantity > 1 ? onDecrease : null,
             icon: const Icon(Icons.remove_rounded),
-            visualDensity: compact ? VisualDensity.compact : null,
           ),
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: compact ? 2 : 8),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Text(
               '$quantity',
               style: TextStyle(
-                fontSize: compact ? 16 : 18,
+                fontSize: 18,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -198,7 +175,6 @@ class _QuantitySelector extends StatelessWidget {
           IconButton(
             onPressed: onIncrease,
             icon: const Icon(Icons.add_rounded),
-            visualDensity: compact ? VisualDensity.compact : null,
           ),
         ],
       ),

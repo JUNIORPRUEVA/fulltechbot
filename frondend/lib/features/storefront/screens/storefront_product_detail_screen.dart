@@ -12,14 +12,17 @@ import '../widgets/storefront_product_detail_skeleton.dart';
 import '../widgets/storefront_product_gallery.dart';
 import '../widgets/storefront_product_info_section.dart';
 
+
 class StorefrontProductDetailScreen extends StatefulWidget {
   final String slug;
   final String productId;
+  final Map<String, dynamic>? initialProduct;
 
   const StorefrontProductDetailScreen({
     super.key,
     required this.slug,
     required this.productId,
+    this.initialProduct,
   });
 
   @override
@@ -42,14 +45,20 @@ class _StorefrontProductDetailScreenState
   @override
   void initState() {
     super.initState();
+    _product = widget.initialProduct == null
+        ? null
+        : Map<String, dynamic>.from(widget.initialProduct!);
     _fadeController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 280),
+      duration: const Duration(milliseconds: 240),
     );
     _fadeAnimation = CurvedAnimation(
       parent: _fadeController,
       curve: Curves.easeOut,
     );
+    if (_product != null) {
+      _fadeController.value = 1;
+    }
     _loadData();
   }
 
@@ -84,18 +93,26 @@ class _StorefrontProductDetailScreenState
         return;
       }
 
-      final product = Map<String, dynamic>.from(productResponse['data'] as Map);
+      final fetched = Map<String, dynamic>.from(productResponse['data'] as Map);
+      final mergedProduct = {
+        ...?_product,
+        ...fetched,
+      };
+
       _fadeController.reset();
       setState(() {
         _config = Map<String, dynamic>.from(configResponse['data'] as Map);
-        _product = product;
+        _product = mergedProduct;
         _relatedProducts = List<dynamic>.from(
-          product['relatedProducts'] as List? ?? const [],
+          fetched['relatedProducts'] as List? ?? const [],
         );
         _quantity = 1;
         _loading = false;
       });
       _fadeController.forward();
+      
+      // Precargar imágenes del producto para que carguen instantáneamente
+      _precacheProductImages(mergedProduct);
     } catch (e) {
       setState(() {
         _error = 'Error de conexion: $e';
@@ -103,6 +120,19 @@ class _StorefrontProductDetailScreenState
       });
     }
   }
+  
+  /// Precarga las imágenes del producto en cache para visualización instantánea.
+  void _precacheProductImages(Map<String, dynamic> product) {
+    if (!mounted) return;
+    
+    final images = StorefrontHelpers.getProductImages(product);
+    for (final url in images) {
+      if (url.startsWith('http')) {
+        precacheImage(NetworkImage(url), context);
+      }
+    }
+  }
+
 
   Color _getColor(String hex) {
     var normalized = hex.replaceAll('#', '');
@@ -178,7 +208,7 @@ class _StorefrontProductDetailScreenState
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
+    if (_loading && _product == null) {
       return const StorefrontProductDetailSkeleton();
     }
 
@@ -201,12 +231,12 @@ class _StorefrontProductDetailScreenState
       config['color_secundario']?.toString() ?? '#2563EB',
     );
     final whatsapp = config['whatsapp_numero']?.toString() ?? '';
-    final gallery = StorefrontHelpers.getGallery(product);
+    final gallery = StorefrontHelpers.getProductImages(product);
     final price = StorefrontHelpers.getEffectivePrice(product);
     final originalPrice = StorefrontHelpers.getOriginalPrice(product);
     final stock = int.tryParse(product['stock']?.toString() ?? '0') ?? 0;
     final canBuy = stock > 0;
-    final isDesktop = MediaQuery.of(context).size.width >= 1000;
+    final isDesktop = MediaQuery.sizeOf(context).width >= 1000;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7FB),
@@ -223,144 +253,158 @@ class _StorefrontProductDetailScreenState
           ),
         ],
       ),
-      body: FadeTransition(
-        opacity: _fadeAnimation,
-        child: SingleChildScrollView(
-          padding: EdgeInsets.only(bottom: isDesktop ? 40 : 160),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1280),
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(
-                  isDesktop ? 24 : 16,
-                  16,
-                  isDesktop ? 24 : 16,
-                  0,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (isDesktop)
-                      Row(
+      body: SafeArea(
+        top: false,
+        bottom: false,
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: CustomScrollView(
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
+            ),
+            slivers: [
+              SliverToBoxAdapter(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1280),
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        isDesktop ? 24 : 12,
+                        12,
+                        isDesktop ? 24 : 12,
+                        isDesktop ? 40 : 110,
+                      ),
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            flex: 6,
-                            child: StorefrontProductGallery(
+                          if (isDesktop)
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  flex: 6,
+                                  child: StorefrontProductGallery(
+                                    images: gallery,
+                                    title: product['titulo']?.toString() ?? '',
+                                    isDesktop: true,
+                                    accentColor: secondaryColor,
+                                    version: product['actualizadoEn']?.toString() ?? product['updatedAt']?.toString(),
+                                  ),
+
+                                ),
+                                const SizedBox(width: 28),
+                                Expanded(
+                                  flex: 5,
+                                  child: _ProductSummarySection(
+                                    product: product,
+                                    price: price,
+                                    originalPrice: originalPrice,
+                                    canBuy: canBuy,
+                                    primaryColor: primaryColor,
+                                    secondaryColor: secondaryColor,
+                                    quantity: _quantity,
+                                    whatsapp: whatsapp,
+                                    isDesktop: true,
+                                    onDecrease: () {
+                                      if (_quantity > 1) {
+                                        setState(() => _quantity--);
+                                      }
+                                    },
+                                    onIncrease: () => setState(() => _quantity++),
+                                    onAddToCart: () => _addToCart(),
+                                    onBuyNow: () => _addToCart(goToCart: true),
+                                    onWhatsapp: whatsapp.isEmpty
+                                        ? null
+                                        : () => _openWhatsApp(whatsapp),
+                                  ),
+                                ),
+                              ],
+                            )
+                          else ...[
+                            StorefrontProductGallery(
                               images: gallery,
                               title: product['titulo']?.toString() ?? '',
-                              isDesktop: true,
+                              isDesktop: false,
                               accentColor: secondaryColor,
+                              version: product['actualizadoEn']?.toString() ?? product['updatedAt']?.toString(),
                             ),
-                          ),
-                          const SizedBox(width: 28),
-                          Expanded(
-                            flex: 5,
-                            child: _ProductSummarySection(
-                              product: product,
-                              price: price,
-                              originalPrice: originalPrice,
-                              canBuy: canBuy,
-                              primaryColor: primaryColor,
-                              secondaryColor: secondaryColor,
-                              quantity: _quantity,
-                              whatsapp: whatsapp,
-                              isDesktop: true,
-                              onDecrease: () {
-                                if (_quantity > 1) {
-                                  setState(() => _quantity--);
-                                }
-                              },
-                              onIncrease: () => setState(() => _quantity++),
-                              onAddToCart: () => _addToCart(),
-                              onBuyNow: () => _addToCart(goToCart: true),
-                              onWhatsapp: whatsapp.isEmpty
-                                  ? null
-                                  : () => _openWhatsApp(whatsapp),
-                            ),
-                          ),
-                        ],
-                      )
-                    else ...[
-                      StorefrontProductGallery(
-                        images: gallery,
-                        title: product['titulo']?.toString() ?? '',
-                        isDesktop: false,
-                        accentColor: secondaryColor,
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(4, 18, 4, 0),
-                        child: _ProductSummarySection(
-                          product: product,
-                          price: price,
-                          originalPrice: originalPrice,
-                          canBuy: canBuy,
-                          primaryColor: primaryColor,
-                          secondaryColor: secondaryColor,
-                          quantity: _quantity,
-                          whatsapp: whatsapp,
-                          isDesktop: false,
-                          onDecrease: () {
-                            if (_quantity > 1) {
-                              setState(() => _quantity--);
-                            }
-                          },
-                          onIncrease: () => setState(() => _quantity++),
-                          onAddToCart: () => _addToCart(),
-                          onBuyNow: () => _addToCart(goToCart: true),
-                          onWhatsapp: whatsapp.isEmpty
-                              ? null
-                              : () => _openWhatsApp(whatsapp),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 26),
-                    ..._buildInfoSections(product, secondaryColor),
-                    if (_relatedProducts.isNotEmpty) ...[
-                      const SizedBox(height: 34),
-                      const Text(
-                        'Productos relacionados',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFF0F172A),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'Opciones similares dentro de la misma categoria.',
-                        style: TextStyle(
-                          color: Color(0xFF64748B),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        height: isDesktop ? 370 : 326,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemBuilder: (context, index) => SizedBox(
-                            width: isDesktop ? 292 : 236,
-                            child: StorefrontProductCard(
-                              product: Map<String, dynamic>.from(
-                                _relatedProducts[index] as Map,
+
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(2, 14, 2, 0),
+                              child: _ProductSummarySection(
+                                product: product,
+                                price: price,
+                                originalPrice: originalPrice,
+                                canBuy: canBuy,
+                                primaryColor: primaryColor,
+                                secondaryColor: secondaryColor,
+                                quantity: _quantity,
+                                whatsapp: whatsapp,
+                                isDesktop: false,
+                                onDecrease: () {
+                                  if (_quantity > 1) {
+                                    setState(() => _quantity--);
+                                  }
+                                },
+                                onIncrease: () => setState(() => _quantity++),
+                                onAddToCart: () => _addToCart(),
+                                onBuyNow: () => _addToCart(goToCart: true),
+                                onWhatsapp: whatsapp.isEmpty
+                                    ? null
+                                    : () => _openWhatsApp(whatsapp),
                               ),
-                              slug: widget.slug,
-                              primaryColor: primaryColor,
-                              secondaryColor: secondaryColor,
-                              whatsapp: whatsapp,
                             ),
-                          ),
-                          separatorBuilder: (_, __) => const SizedBox(width: 14),
-                          itemCount: _relatedProducts.length,
-                        ),
+                          ],
+                          const SizedBox(height: 22),
+                          ..._buildInfoSections(product, secondaryColor),
+                          if (_relatedProducts.isNotEmpty) ...[
+                            const SizedBox(height: 30),
+                            const Text(
+                              'Productos relacionados',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF0F172A),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'Opciones similares dentro de la misma categoría.',
+                              style: TextStyle(
+                                color: Color(0xFF64748B),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            SizedBox(
+                              height: isDesktop ? 370 : 308,
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemBuilder: (context, index) => SizedBox(
+                                  width: isDesktop ? 292 : 188,
+                                  child: StorefrontProductCard(
+                                    product: Map<String, dynamic>.from(
+                                      _relatedProducts[index] as Map,
+                                    ),
+                                    slug: widget.slug,
+                                    primaryColor: primaryColor,
+                                    secondaryColor: secondaryColor,
+                                    whatsapp: whatsapp,
+                                  ),
+                                ),
+                                separatorBuilder: (context, index) =>
+                                    const SizedBox(width: 12),
+                                itemCount: _relatedProducts.length,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
-                    ],
-                    const SizedBox(height: 28),
-                  ],
+                    ),
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
         ),
       ),
@@ -403,7 +447,7 @@ class _StorefrontProductDetailScreenState
     if (description.isNotEmpty) {
       sections.add(
         StorefrontProductInfoSection(
-          title: 'Descripcion del producto',
+          title: 'Descripción del producto',
           content: description,
           accentColor: secondaryColor,
         ),
@@ -478,30 +522,51 @@ class _ProductSummarySection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if ((product['categoria']?.toString().trim().isNotEmpty ?? false))
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: primaryColor.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              product['categoria'].toString(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: primaryColor,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        const SizedBox(height: 10),
         Text(
           product['titulo']?.toString() ?? '',
+          maxLines: isDesktop ? 3 : 2,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            fontSize: isDesktop ? 34 : 28,
+            fontSize: isDesktop ? 34 : 24,
             fontWeight: FontWeight.w900,
-            height: 1.12,
+            height: 1.1,
             color: const Color(0xFF0F172A),
             letterSpacing: -0.8,
           ),
         ),
         if (description.isNotEmpty) ...[
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           Text(
             description,
-            maxLines: isDesktop ? 5 : 6,
+            maxLines: isDesktop ? 5 : 4,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: Color(0xFF475569),
-              fontSize: 15.5,
-              height: 1.65,
+              fontSize: 14.5,
+              height: 1.55,
             ),
           ),
         ],
-        const SizedBox(height: 18),
+        const SizedBox(height: 16),
         StorefrontPriceWidget(
           precio: price,
           precioOriginal: originalPrice,
@@ -509,7 +574,29 @@ class _ProductSummarySection extends StatelessWidget {
           primaryColor: primaryColor,
           currencyPrefix: 'RD\$',
         ),
-        const SizedBox(height: 22),
+        const SizedBox(height: 18),
+        if (!isDesktop) ...[
+          _InlineQuantitySelector(
+            quantity: quantity,
+            onDecrease: onDecrease,
+            onIncrease: onIncrease,
+          ),
+          if (onWhatsapp != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onWhatsapp,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: StorefrontColors.whatsapp,
+                  side: const BorderSide(color: StorefrontColors.whatsapp),
+                ),
+                icon: const Icon(Icons.chat_outlined),
+                label: const Text('Consultar por WhatsApp'),
+              ),
+            ),
+          ],
+        ],
         if (isDesktop)
           StorefrontProductActionBar(
             isDesktop: true,
@@ -524,6 +611,64 @@ class _ProductSummarySection extends StatelessWidget {
             onWhatsapp: onWhatsapp,
           ),
       ],
+    );
+  }
+}
+
+class _InlineQuantitySelector extends StatelessWidget {
+  final int quantity;
+  final VoidCallback onDecrease;
+  final VoidCallback onIncrease;
+
+  const _InlineQuantitySelector({
+    required this.quantity,
+    required this.onDecrease,
+    required this.onIncrease,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Cantidad',
+            style: TextStyle(
+              color: Color(0xFF64748B),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(width: 10),
+          IconButton(
+            onPressed: quantity > 1 ? onDecrease : null,
+            icon: const Icon(Icons.remove_rounded),
+            visualDensity: VisualDensity.compact,
+          ),
+          SizedBox(
+            width: 20,
+            child: Text(
+              '$quantity',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          IconButton(
+            onPressed: onIncrease,
+            icon: const Icon(Icons.add_rounded),
+            visualDensity: VisualDensity.compact,
+          ),
+        ],
+      ),
     );
   }
 }

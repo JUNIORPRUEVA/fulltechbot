@@ -38,7 +38,7 @@ class StorefrontPriceWidget extends StatelessWidget {
               '$currencyPrefix${_format(precioOriginal)}',
               style: TextStyle(
                 color: const Color(0xFF9CA3AF),
-                fontSize: large ? 16 : 12,
+                fontSize: large ? 15 : 11,
                 decoration: TextDecoration.lineThrough,
                 decorationColor: const Color(0xFF9CA3AF),
                 decorationThickness: 1.5,
@@ -52,10 +52,11 @@ class StorefrontPriceWidget extends StatelessWidget {
             Text(
               '$currencyPrefix${_format(precio)}',
               style: TextStyle(
-                fontSize: large ? 28 : 18,
+                fontSize: large ? 28 : 19,
                 fontWeight: FontWeight.w900,
                 color: color,
-                letterSpacing: -0.5,
+                height: 1,
+                letterSpacing: -0.8,
               ),
             ),
             if (tieneOferta) ...[
@@ -74,7 +75,7 @@ class StorefrontPriceWidget extends StatelessWidget {
                   '-${_calcularDescuento()}%',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: large ? 13 : 10,
+                    fontSize: large ? 12 : 9,
                     fontWeight: FontWeight.w800,
                   ),
                 ),

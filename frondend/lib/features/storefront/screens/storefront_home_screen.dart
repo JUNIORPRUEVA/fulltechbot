@@ -41,9 +41,17 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
   @override
   void initState() {
     super.initState();
+    // Estrategia stale-while-revalidate:
+    // 1. Mostrar skeleton inmediatamente
+    // 2. Cargar datos frescos de la API
+    // 3. Si hay datos en memoria, mostrarlos rápido y refrescar en segundo plano
     _loadInitialData();
   }
 
+  /// Carga datos iniciales con estrategia stale-while-revalidate:
+  /// - Muestra skeleton mientras carga
+  /// - Consulta API fresca (no cache local)
+  /// - Si hay datos previos en memoria, los muestra rápido y refresca en background
   Future<void> _loadInitialData() async {
     setState(() {
       _loading = true;
@@ -51,6 +59,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     });
 
     try {
+      // Consultar API fresca con headers anti-cache
       final results = await Future.wait([
         StorefrontApiService.getConfig(widget.slug),
         StorefrontApiService.getBanners(widget.slug),
@@ -120,13 +129,130 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
         _totalPages = productsResponse['totalPages'] as int? ?? 1;
         _loading = false;
       });
+      
+      // Después de cargar datos, precargar imágenes visibles
+      _precacheVisibleImages();
     } catch (e) {
       setState(() {
-        _error = 'Error de conexiÃ³n: $e';
+        _error = 'Error de conexión: $e';
         _loading = false;
       });
     }
   }
+  
+  /// Refresca datos en segundo plano (stale-while-revalidate).
+  /// No muestra skeleton, solo actualiza los datos si hay cambios.
+  Future<void> _refreshInBackground() async {
+    try {
+      final results = await Future.wait([
+        StorefrontApiService.getConfig(widget.slug),
+        StorefrontApiService.getBanners(widget.slug),
+        StorefrontApiService.getCategories(widget.slug),
+        StorefrontApiService.getProducts(
+          widget.slug,
+          destacado: true,
+          sort: 'featured',
+          limit: 8,
+        ),
+        StorefrontApiService.getProducts(widget.slug, sort: 'offers', limit: 8),
+        StorefrontApiService.getProducts(
+          widget.slug,
+          page: 1,
+          limit: 16,
+          sort: 'featured',
+        ),
+      ]);
+
+      if (!mounted) return;
+
+      final configResponse = results[0];
+      if (configResponse['ok'] != true) return;
+
+      final featuredProducts = _dedupeProducts(
+        List<dynamic>.from(results[3]['items'] as List? ?? const []),
+      );
+      final offerProducts = _dedupeProducts(
+        List<dynamic>.from(results[4]['items'] as List? ?? const []).where((
+          item,
+        ) {
+          final map = Map<String, dynamic>.from(item as Map);
+          return map['precio_oferta_web'] != null ||
+              map['precioOferta'] != null;
+        }).toList(),
+      );
+      final offerIds = offerProducts
+          .map((item) => (item as Map)['id']?.toString() ?? '')
+          .where((id) => id.isNotEmpty)
+          .toSet();
+      final productsResponse = results[5];
+      final catalogProducts = _dedupeProducts(
+        List<dynamic>.from(productsResponse['items'] as List? ?? const []),
+      );
+      final categories = _buildDisplayCategories(
+        List<dynamic>.from(results[2]['data'] as List? ?? const []),
+        [...featuredProducts, ...offerProducts, ...catalogProducts],
+      );
+
+      setState(() {
+        _config = Map<String, dynamic>.from(configResponse['data'] as Map);
+        _banners = List<dynamic>.from(results[1]['data'] as List? ?? const []);
+        _categories = categories;
+        _featuredProducts = featuredProducts.where((item) {
+          final id = (item as Map)['id']?.toString() ?? '';
+          return id.isEmpty || !offerIds.contains(id);
+        }).toList();
+        _offerProducts = offerProducts;
+        _products = catalogProducts;
+        _page = productsResponse['page'] as int? ?? 1;
+        _totalPages = productsResponse['totalPages'] as int? ?? 1;
+      });
+    } catch (_) {
+      // Silencioso - no mostrar error en refresco en segundo plano
+    }
+  }
+
+  
+  /// Precarga las imágenes de los productos visibles para que carguen más rápido.
+  void _precacheVisibleImages() {
+    if (!mounted) return;
+    
+    final imagesToPrecache = <String>[];
+    
+    // Precargar imágenes de banners
+    for (final banner in _banners) {
+      final map = Map<String, dynamic>.from(banner as Map);
+      final imageUrl = map['imagen_url']?.toString();
+      if (imageUrl != null && imageUrl.isNotEmpty) {
+        imagesToPrecache.add(imageUrl);
+      }
+    }
+    
+    // Precargar imágenes de ofertas
+    for (final product in _offerProducts) {
+      final map = Map<String, dynamic>.from(product as Map);
+      final image = StorefrontHelpers.getPrimaryImage(map);
+      if (image != null && image.isNotEmpty) {
+        imagesToPrecache.add(image);
+      }
+    }
+    
+    // Precargar imágenes de destacados
+    for (final product in _featuredProducts) {
+      final map = Map<String, dynamic>.from(product as Map);
+      final image = StorefrontHelpers.getPrimaryImage(map);
+      if (image != null && image.isNotEmpty) {
+        imagesToPrecache.add(image);
+      }
+    }
+    
+    // Precargar usando el sistema de Flutter
+    for (final url in imagesToPrecache.take(12)) {
+      if (url.startsWith('http')) {
+        precacheImage(NetworkImage(url), context);
+      }
+    }
+  }
+
 
   Future<void> _loadMore() async {
     if (_loadingMore || _page >= _totalPages) {
@@ -268,19 +394,19 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     final heroTitle =
         config['mensaje_principal']?.toString().trim().isNotEmpty == true
         ? config['mensaje_principal'].toString().trim()
-        : 'TecnologÃ­a y seguridad para tu hogar y negocio';
+        : 'Tecnología y seguridad para tu hogar y negocio';
     final heroSubtitle =
         config['mensaje_secundario']?.toString().trim().isNotEmpty == true
         ? config['mensaje_secundario'].toString().trim()
-        : 'Compra cÃ¡maras, motores, automatizaciÃ³n y accesorios con asesorÃ­a profesional de FULLTECH SRL.';
+        : 'Compra cámaras, motores, automatización y accesorios con asesoría profesional de FULLTECH SRL.';
     final isTablet = screenWidth >= 700 && screenWidth < 1100;
     final isDesktop = screenWidth >= 1100;
-    final contentPadding = math.max(16.0, ((screenWidth - 1240) / 2) + 16);
-    final categoryCardWidth = isDesktop ? 176.0 : isTablet ? 156.0 : 136.0;
-    final featuredCardWidth = isDesktop ? 292.0 : isTablet ? 270.0 : 248.0;
-    final carouselHeight = isDesktop ? 382.0 : 352.0;
+    final contentPadding = math.max(14.0, ((screenWidth - 1240) / 2) + 16);
+    final categoryCardWidth = isDesktop ? 162.0 : isTablet ? 148.0 : 118.0;
+    final featuredCardWidth = isDesktop ? 260.0 : isTablet ? 236.0 : 196.0;
+    final carouselHeight = isDesktop ? 318.0 : isTablet ? 306.0 : 286.0;
     final catalogCrossAxisCount = isDesktop ? 4 : (isTablet ? 3 : 2);
-    final catalogAspectRatio = isDesktop ? 0.78 : (isTablet ? 0.74 : 0.66);
+    final catalogAspectRatio = isDesktop ? 0.78 : (isTablet ? 0.70 : 0.64);
 
     return PublicStoreLayout(
       slug: widget.slug,
@@ -305,7 +431,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
         if (_categories.isNotEmpty) ...[
           SliverToBoxAdapter(
             child: _SectionHeader(
-              title: 'CategorÃ­as rÃ¡pidas',
+              title: 'Categorías rápidas',
               subtitle: 'Encuentra lo que necesitas en segundos.',
               actionLabel: 'Explorar',
               horizontalPadding: contentPadding,
@@ -314,7 +440,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
           ),
           SliverToBoxAdapter(
             child: SizedBox(
-              height: isDesktop ? 184 : 164,
+              height: isDesktop ? 164 : 144,
               child: ListView.separated(
                 padding: EdgeInsets.symmetric(horizontal: contentPadding),
                 scrollDirection: Axis.horizontal,
@@ -339,7 +465,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
         if (_offerProducts.isNotEmpty) ...[
           SliverToBoxAdapter(
             child: _SectionHeader(
-              title: 'Ofertas del dÃ­a',
+              title: 'Ofertas del día',
               subtitle: 'Promociones pensadas para vender hoy.',
               actionLabel: 'Ver productos',
               horizontalPadding: contentPadding,
@@ -374,8 +500,8 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
           SliverToBoxAdapter(
             child: _SectionHeader(
               title: 'Destacados',
-              subtitle: 'Lo mÃ¡s buscado por nuestros clientes.',
-              actionLabel: 'Ver mÃ¡s',
+              subtitle: 'Lo más buscado por nuestros clientes.',
+              actionLabel: 'Ver más',
               horizontalPadding: contentPadding,
               onTap: () {
                 final category =
@@ -415,7 +541,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
         ],
         SliverToBoxAdapter(
           child: _SectionHeader(
-            title: 'Todo el catÃ¡logo',
+            title: 'Todo el catálogo',
             subtitle: 'Explora la tienda completa de $storeName.',
             horizontalPadding: contentPadding,
           ),
@@ -473,7 +599,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
                               color: Colors.white,
                             ),
                           )
-                        : const Text('Ver mÃ¡s productos'),
+                        : const Text('Ver más productos'),
                   )
                 : const SizedBox.shrink(),
           ),
@@ -637,8 +763,8 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
   String _displayCategoryName(String value) {
     final normalized = value.trim().toLowerCase();
     return switch (normalized) {
-      'camaras' => 'CÃ¡maras',
-      'camaras ip' => 'CÃ¡maras IP',
+      'camaras' => 'Cámaras',
+      'camaras ip' => 'Cámaras IP',
       'dvr' => 'DVR',
       _ => value.trim(),
     };
@@ -647,13 +773,13 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
   String _normalizeCategoryKey(String value) {
     final lower = value.trim().toLowerCase();
     final decomposed = lower
-        .replaceAll('Ã¡', 'a')
-        .replaceAll('Ã©', 'e')
-        .replaceAll('Ã­', 'i')
-        .replaceAll('Ã³', 'o')
-        .replaceAll('Ãº', 'u')
-        .replaceAll('Ã¼', 'u')
-        .replaceAll('Ã±', 'n');
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ü', 'u')
+        .replaceAll('ñ', 'n');
     return decomposed.replaceAll(_combiningMarks, '');
   }
 }
@@ -741,11 +867,12 @@ class _CategoryCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         width: width,
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: StorefrontShadows.card,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: const Color(0xFFE6ECF2)),
+          boxShadow: StorefrontShadows.soft,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -753,9 +880,9 @@ class _CategoryCard extends StatelessWidget {
             Expanded(
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(16),
                   gradient: const LinearGradient(
-                    colors: [Color(0xFFF8FBFF), Color(0xFFEFF6FF)],
+                    colors: [Color(0xFFF8FAFD), Color(0xFFF1F5F9)],
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                   ),
@@ -763,24 +890,24 @@ class _CategoryCard extends StatelessWidget {
                 child: StorefrontSmartImage(
                   source: category['imagen'],
                   fit: BoxFit.contain,
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(16),
                   placeholder: Center(
                     child: Icon(
                       Icons.category_outlined,
                       color: secondaryColor,
-                      size: 26,
+                      size: 22,
                     ),
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Text(
               name,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: FontWeight.w800,
                 color: Color(0xFF0F172A),
                 height: 1.2,
@@ -989,7 +1116,7 @@ class _StorefrontSearchSheetState extends State<_StorefrontSearchSheet> {
                 controller: _controller,
                 autofocus: true,
                 decoration: InputDecoration(
-                  hintText: 'Busca cÃ¡maras, motores, routers y mÃ¡s',
+                  hintText: 'Busca cámaras, motores, routers y más',
                   prefixIcon: const Icon(Icons.search_rounded),
                   suffixIcon: _controller.text.trim().isNotEmpty
                       ? IconButton(
@@ -1028,6 +1155,7 @@ class _StorefrontSearchSheetState extends State<_StorefrontSearchSheet> {
                               Navigator.pushNamed(
                                 context,
                                 '/tienda/${widget.slug}/producto/${product['id']}',
+                                arguments: {'product': product},
                               );
                             },
                             child: Padding(
@@ -1136,7 +1264,7 @@ class _SearchEmptyState extends StatelessWidget {
             ),
             SizedBox(height: 12),
             Text(
-              'No encontramos productos con esa bÃºsqueda.',
+              'No encontramos productos con esa búsqueda.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Color(0xFF64748B),

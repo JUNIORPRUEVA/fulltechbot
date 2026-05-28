@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import 'features/auth/screens/admin_login_screen.dart';
@@ -64,11 +65,15 @@ class MyApp extends StatelessWidget {
     if (uri.pathSegments.length == 4 &&
         uri.pathSegments[0] == 'tienda' &&
         uri.pathSegments[2] == 'producto') {
+      final args = settings.arguments as Map<String, dynamic>?;
       return _route(
         settings,
         StorefrontProductDetailScreen(
           slug: uri.pathSegments[1],
           productId: uri.pathSegments[3],
+          initialProduct: args?['product'] is Map
+              ? Map<String, dynamic>.from(args!['product'] as Map)
+              : null,
         ),
       );
     }
@@ -219,6 +224,7 @@ class MyApp extends StatelessWidget {
 
     return ThemeData(
       useMaterial3: true,
+      textTheme: GoogleFonts.manropeTextTheme(),
       colorScheme: ColorScheme.light(
         primary: primaryColor,
         secondary: secondaryColor,
@@ -229,6 +235,7 @@ class MyApp extends StatelessWidget {
         onSurface: const Color(0xFF111827),
       ),
       scaffoldBackgroundColor: backgroundColor,
+      splashFactory: InkRipple.splashFactory,
       appBarTheme: const AppBarTheme(
         centerTitle: false,
         elevation: 0,
@@ -249,26 +256,26 @@ class MyApp extends StatelessWidget {
       ),
       inputDecorationTheme: InputDecorationTheme(
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(18),
           borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(18),
           borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(18),
           borderSide: const BorderSide(color: secondaryColor, width: 1.5),
         ),
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         labelStyle: const TextStyle(color: Color(0xFF6B7280)),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(18),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           textStyle: const TextStyle(fontWeight: FontWeight.w600),
@@ -277,7 +284,7 @@ class MyApp extends StatelessWidget {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(18),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           textStyle: const TextStyle(fontWeight: FontWeight.w600),

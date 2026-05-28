@@ -1,9 +1,19 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'storefront_image_resolver.dart';
+import '../../../core/utils/image_utils.dart';
 
 class StorefrontHelpers {
-  static String? resolveMediaUrl(dynamic value) {
-    return StorefrontImageResolver.resolve(value)?.value;
+  /// Obtiene la versión (updatedAt) de un producto para versionado de imágenes.
+  static String? getProductVersion(Map<String, dynamic> product) {
+    return product['actualizadoEn']?.toString() ??
+           product['updatedAt']?.toString() ??
+           product['creadoEn']?.toString() ??
+           product['imageVersion']?.toString();
+  }
+
+
+  static String? resolveMediaUrl(dynamic value, {String? version}) {
+    return StorefrontImageResolver.resolve(value, version: version)?.value;
   }
 
   static Future<String> ensureSessionId(String slug) async {
@@ -35,27 +45,45 @@ class StorefrontHelpers {
     return original;
   }
 
+  /// Obtiene la imagen principal con versionado automático.
   static String? getPrimaryImage(Map<String, dynamic> product) {
-    final image =
-        product['imagen_destacada_url'] ??
-        product['imagen1'] ??
-        product['imagen2'] ??
-        product['imagen3'];
-    return StorefrontImageResolver.resolveUrl(image);
+    final images = getProductImages(product);
+    return images.isEmpty ? null : images.first;
   }
 
   static List<String> getGallery(Map<String, dynamic> product) {
-    final dynamic gallery = product['gallery'];
-    if (gallery is List) {
-      return StorefrontImageResolver.resolveGallery(gallery);
+    return getProductImages(product);
+  }
+
+  /// Obtiene todas las imágenes del producto con versionado automático.
+  static List<String> getProductImages(Map<String, dynamic> product) {
+    final version = getProductVersion(product);
+    final rawImages = <dynamic>[
+      product['imagen_destacada_url'],
+      product['imageUrl'],
+      product['image'],
+      product['foto'],
+      product['imagen1'],
+      product['imagen2'],
+      product['imagen3'],
+    ];
+
+    final gallery = product['gallery'];
+    if (gallery is Iterable) {
+      rawImages.addAll(gallery);
     }
 
-    return StorefrontImageResolver.resolveGallery([
-          product['imagen_destacada_url'],
-          product['imagen1'],
-          product['imagen2'],
-          product['imagen3'],
-        ]);
+    final images = product['images'];
+    if (images is Iterable) {
+      rawImages.addAll(images);
+    }
+
+    final mediaUrls = product['media_urls'];
+    if (mediaUrls is Iterable) {
+      rawImages.addAll(mediaUrls);
+    }
+
+    return StorefrontImageResolver.resolveGallery(rawImages, version: version);
   }
 
   static num? _toNum(dynamic value) {
@@ -63,3 +91,4 @@ class StorefrontHelpers {
     return num.tryParse(value?.toString() ?? '');
   }
 }
+

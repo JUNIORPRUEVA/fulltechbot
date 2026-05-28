@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:html' as html;
+import 'dart:js_interop';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -16,9 +18,47 @@ import 'features/orders/providers/order_provider.dart';
 import 'features/quotations/providers/quotation_provider.dart';
 import 'features/followups/providers/followups_provider.dart';
 
+/// Escucha cambios en el Service Worker para detectar nuevas versiones.
+/// Cuando se detecta una nueva versión, recarga la página automáticamente.
+void _setupServiceWorkerUpdateDetection() {
+  if (html.window.navigator.serviceWorker != null) {
+    final navigator = html.window.navigator;
+    
+    // Escuchar cuando un nuevo service worker toma el control
+    navigator.serviceWorker!.onControllerChange!.listen((_) {
+      debugPrint('[PWA] Service Worker actualizado - recargando para aplicar cambios');
+      html.window.location.reload();
+    });
+    
+    // Registrar el service worker y detectar actualizaciones
+    navigator.serviceWorker!.register('/service_worker.js').then((registration) {
+      debugPrint('[PWA] Service Worker registrado correctamente');
+      
+      // Detectar cuando hay una nueva versión disponible
+      registration.onUpdateFound!.listen((_) {
+        final installing = registration.installing;
+        if (installing != null) {
+          installing.onStateChange!.listen((_) {
+            if (installing.state == 'installed' && navigator.serviceWorker!.controller != null) {
+              debugPrint('[PWA] Nueva versión detectada - activando...');
+              // Enviar mensaje para activar el nuevo SW inmediatamente
+              installing.postMessage('SKIP_WAITING'.toJS);
+            }
+          });
+        }
+      });
+    }).catchError((error) {
+      debugPrint('[PWA] Error registrando Service Worker: $error');
+    });
+  }
+}
+
 void main() {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
+
+    // Configurar detección de nuevas versiones PWA
+    _setupServiceWorkerUpdateDetection();
 
     FlutterError.onError = (FlutterErrorDetails details) {
       FlutterError.presentError(details);

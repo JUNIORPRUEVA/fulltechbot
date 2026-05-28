@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class StorefrontColors {
   // Colores de marca
@@ -6,6 +7,7 @@ class StorefrontColors {
   static const Color secondary = Color(0xFF2563EB);
   static const Color accent = Color(0xFFF97316);
   static const Color background = Color(0xFFF8FAFC);
+  static const Color backgroundSoft = Color(0xFFF3F5F8);
   static const Color card = Color(0xFFFFFFFF);
   static const Color textPrimary = Color(0xFF111827);
   static const Color textSecondary = Color(0xFF6B7280);
@@ -43,6 +45,14 @@ class StorefrontColors {
 }
 
 class StorefrontShadows {
+  static const List<BoxShadow> surface = [
+    BoxShadow(
+      color: Color(0x120F172A),
+      blurRadius: 22,
+      offset: Offset(0, 10),
+    ),
+  ];
+
   static List<BoxShadow> get soft => [
         BoxShadow(
           color: Colors.black.withValues(alpha: 0.04),
@@ -86,6 +96,7 @@ class StorefrontTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
+      textTheme: GoogleFonts.manropeTextTheme(),
       scaffoldBackgroundColor: StorefrontColors.background,
       colorScheme: const ColorScheme.light(
         primary: StorefrontColors.primary,

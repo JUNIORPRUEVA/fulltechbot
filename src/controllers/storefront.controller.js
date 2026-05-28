@@ -47,9 +47,32 @@ function handleError(res, error, defaultMessage = 'Error del servidor') {
 // RUTAS PÚBLICAS (por slug)
 // ============================================
 
+// ============================================
+// CACHE HEADERS HELPERS
+// ============================================
+
+/** Para respuestas JSON dinámicas: no cachear nunca */
+function setNoCacheHeaders(res) {
+  res.set({
+    'Cache-Control': 'no-cache, no-store, must-revalidate, private',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+    'Surrogate-Control': 'no-store',
+  });
+}
+
+/** Para imágenes: cache largo pero con versionado por URL */
+function setImageCacheHeaders(res) {
+  res.set({
+    'Cache-Control': 'public, max-age=31536000, immutable',
+    'Expires': new Date(Date.now() + 31536000000).toUTCString(),
+  });
+}
+
 async function getConfig(req, res) {
   try {
     const { slug } = req.params;
+    setNoCacheHeaders(res);
     const config = await storefrontService.getConfigBySlug(slug);
 
     if (!config) {
@@ -68,6 +91,7 @@ async function getConfig(req, res) {
 async function getBanners(req, res) {
   try {
     const { slug } = req.params;
+    setNoCacheHeaders(res);
     const config = await storefrontService.getConfigBySlug(slug);
 
     if (!config) {
@@ -84,6 +108,7 @@ async function getBanners(req, res) {
 async function getProducts(req, res) {
   try {
     const { slug } = req.params;
+    setNoCacheHeaders(res);
     const config = await storefrontService.getConfigBySlug(slug);
 
     if (!config) {
@@ -110,6 +135,7 @@ async function getProducts(req, res) {
 async function getProductById(req, res) {
   try {
     const { slug, id } = req.params;
+    setNoCacheHeaders(res);
     const config = await storefrontService.getConfigBySlug(slug);
 
     if (!config) {
@@ -131,6 +157,7 @@ async function getProductById(req, res) {
 async function getCategories(req, res) {
   try {
     const { slug } = req.params;
+    setNoCacheHeaders(res);
     const config = await storefrontService.getConfigBySlug(slug);
 
     if (!config) {

@@ -4,10 +4,29 @@ import 'package:http/http.dart' as http;
 
 import '../../../core/constants/api_config.dart';
 
+/// Servicio de API para Storefront con estrategia siempre-fresca.
+/// 
+/// - Siempre consulta API fresca (network-only) con headers anti-cache.
+/// - No cachea respuestas críticas (productos, precios, ofertas, stock).
+/// - Las imágenes se cachean con versionado por URL (v=updatedAt) en el SW.
+/// - Si la API falla, usa datos cacheados en memoria como fallback offline.
 class StorefrontApiService {
   static final String _baseUrl = '${ApiConfig.baseUrl}/api/storefront';
+  
+  // Headers anti-cache para todas las requests
+  static final Map<String, String> _noCacheHeaders = {
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+  };
+  
+  // Cache en memoria SOLO para fallback offline (stale-while-revalidate)
+  // NOTA: El catálogo NO se cachea en memoria para evitar datos viejos.
+  // Cada vez que se abre la tienda, se consulta API fresca.
+  // El cache de config es mínimo y solo para casos de error de red.
   static final Map<String, Map<String, dynamic>> _configCache = {};
-  static final Map<String, List<Map<String, dynamic>>> _catalogCache = {};
+
+
 
   // ============================================
   // PUBLICAS
@@ -228,7 +247,10 @@ class StorefrontApiService {
   ) async {
     final res = await http.post(
       Uri.parse('$_baseUrl/$slug/cart'),
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        ..._noCacheHeaders,
+      },
       body: jsonEncode({'session_id': sessionId}),
     );
     return _decodeResponse(res);
@@ -238,7 +260,10 @@ class StorefrontApiService {
     String slug,
     String sessionId,
   ) async {
-    final res = await http.get(Uri.parse('$_baseUrl/$slug/cart/$sessionId'));
+    final res = await http.get(
+      Uri.parse('$_baseUrl/$slug/cart/$sessionId'),
+      headers: _noCacheHeaders,
+    );
     return _decodeResponse(res);
   }
 
@@ -254,7 +279,10 @@ class StorefrontApiService {
   }) async {
     final res = await http.post(
       Uri.parse('$_baseUrl/$slug/cart/$sessionId/items'),
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        ..._noCacheHeaders,
+      },
       body: jsonEncode({
         'producto_id': productoId,
         'nombre_producto': nombreProducto,
@@ -275,7 +303,10 @@ class StorefrontApiService {
   }) async {
     final res = await http.put(
       Uri.parse('$_baseUrl/$slug/cart/$sessionId/items/$itemId'),
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        ..._noCacheHeaders,
+      },
       body: jsonEncode({'cantidad': cantidad}),
     );
     return _decodeResponse(res);
@@ -288,6 +319,7 @@ class StorefrontApiService {
   ) async {
     final res = await http.delete(
       Uri.parse('$_baseUrl/$slug/cart/$sessionId/items/$itemId'),
+      headers: _noCacheHeaders,
     );
     return _decodeResponse(res);
   }
@@ -310,7 +342,10 @@ class StorefrontApiService {
   }) async {
     final res = await http.post(
       Uri.parse('$_baseUrl/$slug/checkout'),
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        ..._noCacheHeaders,
+      },
       body: jsonEncode({
         'session_id': sessionId,
         'telefono_cliente': telefonoCliente,
@@ -339,7 +374,10 @@ class StorefrontApiService {
   }) async {
     final res = await http.post(
       Uri.parse('$_baseUrl/$slug/whatsapp-order'),
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        ..._noCacheHeaders,
+      },
       body: jsonEncode({
         'session_id': sessionId,
         'nombre_cliente': nombreCliente,
@@ -359,7 +397,10 @@ class StorefrontApiService {
   // ============================================
 
   static Future<Map<String, dynamic>> getAdminConfig(String botId) async {
-    final res = await http.get(Uri.parse('$_baseUrl/admin/$botId/config'));
+    final res = await http.get(
+      Uri.parse('$_baseUrl/admin/$botId/config'),
+      headers: _noCacheHeaders,
+    );
     return _decodeResponse(res);
   }
 
@@ -369,14 +410,20 @@ class StorefrontApiService {
   ) async {
     final res = await http.put(
       Uri.parse('$_baseUrl/admin/$botId/config'),
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        ..._noCacheHeaders,
+      },
       body: jsonEncode(data),
     );
     return _decodeResponse(res);
   }
 
   static Future<Map<String, dynamic>> getAdminBanners(String botId) async {
-    final res = await http.get(Uri.parse('$_baseUrl/admin/$botId/banners'));
+    final res = await http.get(
+      Uri.parse('$_baseUrl/admin/$botId/banners'),
+      headers: _noCacheHeaders,
+    );
     return _decodeResponse(res);
   }
 
@@ -386,7 +433,10 @@ class StorefrontApiService {
   ) async {
     final res = await http.post(
       Uri.parse('$_baseUrl/admin/$botId/banners'),
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        ..._noCacheHeaders,
+      },
       body: jsonEncode(data),
     );
     return _decodeResponse(res);
@@ -399,7 +449,10 @@ class StorefrontApiService {
   ) async {
     final res = await http.put(
       Uri.parse('$_baseUrl/admin/$botId/banners/$id'),
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        ..._noCacheHeaders,
+      },
       body: jsonEncode(data),
     );
     return _decodeResponse(res);
@@ -411,6 +464,7 @@ class StorefrontApiService {
   ) async {
     final res = await http.delete(
       Uri.parse('$_baseUrl/admin/$botId/banners/$id'),
+      headers: _noCacheHeaders,
     );
     return _decodeResponse(res);
   }
@@ -420,6 +474,7 @@ class StorefrontApiService {
   ) async {
     final res = await http.get(
       Uri.parse('$_baseUrl/admin/$botId/product-settings'),
+      headers: _noCacheHeaders,
     );
     return _decodeResponse(res);
   }
@@ -431,7 +486,10 @@ class StorefrontApiService {
   ) async {
     final res = await http.put(
       Uri.parse('$_baseUrl/admin/$botId/product-settings/$productoId'),
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        ..._noCacheHeaders,
+      },
       body: jsonEncode(data),
     );
     return _decodeResponse(res);
@@ -448,12 +506,15 @@ class StorefrontApiService {
     final uri = Uri.parse(
       '$_baseUrl/admin/$botId/carts',
     ).replace(queryParameters: params);
-    final res = await http.get(uri);
+    final res = await http.get(uri, headers: _noCacheHeaders);
     return _decodeResponse(res);
   }
 
   static Future<Map<String, dynamic>> getAdminPayments(String botId) async {
-    final res = await http.get(Uri.parse('$_baseUrl/admin/$botId/payments'));
+    final res = await http.get(
+      Uri.parse('$_baseUrl/admin/$botId/payments'),
+      headers: _noCacheHeaders,
+    );
     return _decodeResponse(res);
   }
 
@@ -462,6 +523,7 @@ class StorefrontApiService {
   ) async {
     final res = await http.get(
       Uri.parse('$_baseUrl/admin/$botId/delivery-zones'),
+      headers: _noCacheHeaders,
     );
     return _decodeResponse(res);
   }
@@ -472,7 +534,10 @@ class StorefrontApiService {
   ) async {
     final res = await http.post(
       Uri.parse('$_baseUrl/admin/$botId/delivery-zones'),
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        ..._noCacheHeaders,
+      },
       body: jsonEncode(data),
     );
     return _decodeResponse(res);
@@ -485,7 +550,10 @@ class StorefrontApiService {
   ) async {
     final res = await http.put(
       Uri.parse('$_baseUrl/admin/$botId/delivery-zones/$id'),
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        ..._noCacheHeaders,
+      },
       body: jsonEncode(data),
     );
     return _decodeResponse(res);
@@ -497,6 +565,7 @@ class StorefrontApiService {
   ) async {
     final res = await http.delete(
       Uri.parse('$_baseUrl/admin/$botId/delivery-zones/$id'),
+      headers: _noCacheHeaders,
     );
     return _decodeResponse(res);
   }
@@ -559,10 +628,9 @@ class StorefrontApiService {
   static Future<List<Map<String, dynamic>>> _getFallbackCatalog(
     String slug,
   ) async {
-    final cached = _catalogCache[slug];
-    if (cached != null) {
-      return cached;
-    }
+    // NOTA: No cacheamos el catálogo en memoria para evitar datos viejos.
+    // Cada llamada consulta API fresca. Esto es intencional para que
+    // cambios en productos/precios/ofertas se reflejen inmediatamente.
 
     final bot = await _getBotBySlug(slug);
     final botId = bot['id']?.toString() ?? '';
@@ -586,9 +654,9 @@ class StorefrontApiService {
         .where((item) => item['estado']?.toString().toLowerCase() == 'activo')
         .toList();
 
-    _catalogCache[slug] = items;
     return items;
   }
+
 
   static Map<String, dynamic> _mapCatalogProduct(
     Map<String, dynamic> raw,
@@ -644,6 +712,8 @@ class StorefrontApiService {
       'bot_id': bot['id']?.toString(),
       'bot_slug': bot['slug']?.toString(),
       'bot_nombre': bot['nombre']?.toString(),
+      // Incluir updatedAt para versionado de imágenes
+      'actualizadoEn': raw['actualizadoEn']?.toString() ?? raw['updatedAt']?.toString(),
     };
   }
 
@@ -720,12 +790,12 @@ class StorefrontApiService {
     Map<String, String>? queryParameters,
   }) async {
     final uri = Uri.parse('$_baseUrl$path').replace(queryParameters: queryParameters);
-    final res = await http.get(uri);
+    final res = await http.get(uri, headers: _noCacheHeaders);
     return _decodeResponse(res);
   }
 
   static Future<Map<String, dynamic>> _getJson(Uri uri) async {
-    final res = await http.get(uri);
+    final res = await http.get(uri, headers: _noCacheHeaders);
     return _decodeResponse(res);
   }
 

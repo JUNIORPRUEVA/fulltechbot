@@ -159,6 +159,7 @@ class _BannerItem extends StatelessWidget {
             StorefrontSmartImage(
               source: imageUrl,
               fit: BoxFit.cover,
+              version: banner['actualizadoEn']?.toString() ?? banner['updatedAt']?.toString(),
               placeholder: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -169,6 +170,7 @@ class _BannerItem extends StatelessWidget {
                 ),
               ),
             ),
+
           DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(

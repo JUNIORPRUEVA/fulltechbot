@@ -1,4 +1,5 @@
 import '../../../core/constants/api_config.dart';
+import '../../../core/utils/image_utils.dart';
 
 class ResolvedStorefrontImage {
   final String value;
@@ -14,18 +15,23 @@ class ResolvedStorefrontImage {
 }
 
 class StorefrontImageResolver {
-  static ResolvedStorefrontImage? resolve(dynamic rawValue) {
+  /// Resuelve una URL de imagen aplicando versionado automático
+  /// basado en el campo `actualizadoEn` del producto si está disponible.
+  static ResolvedStorefrontImage? resolve(dynamic rawValue, {String? version}) {
     if (rawValue == null) {
       return null;
     }
 
     final clean = rawValue.toString().trim();
-    if (clean.isEmpty) {
+    if (clean.isEmpty || clean.toLowerCase() == 'null') {
       return null;
     }
 
     if (_isAbsoluteUrl(clean)) {
-      return ResolvedStorefrontImage(value: clean, isAsset: false);
+      return ResolvedStorefrontImage(
+        value: _addVersion(clean, version),
+        isAsset: false,
+      );
     }
 
     if (_isAssetPath(clean)) {
@@ -37,42 +43,52 @@ class StorefrontImageResolver {
       return null;
     }
 
+    String absolute;
     if (_startsWithApiPath(normalized) || clean.startsWith('/')) {
-      return ResolvedStorefrontImage(
-        value: _join(ApiConfig.apiBaseUrl, normalized),
-        isAsset: false,
-      );
-    }
-
-    if (ApiConfig.storagePublicUrl.trim().isNotEmpty) {
-      return ResolvedStorefrontImage(
-        value: _join(ApiConfig.storagePublicUrl, normalized),
-        isAsset: false,
-      );
+      absolute = _join(ApiConfig.apiBaseUrl, normalized);
+    } else if (ApiConfig.storagePublicUrl.trim().isNotEmpty) {
+      absolute = _join(ApiConfig.storagePublicUrl, normalized);
+    } else {
+      absolute = _join('${ApiConfig.apiBaseUrl}/api/storage/file', normalized);
     }
 
     return ResolvedStorefrontImage(
-      value: _join('${ApiConfig.apiBaseUrl}/api/storage/file', normalized),
+      value: _addVersion(absolute, version),
       isAsset: false,
     );
   }
 
-  static String? resolveUrl(dynamic rawValue) {
-    final resolved = resolve(rawValue);
+  /// Versión simple que solo devuelve la URL como String.
+  static String? resolveUrl(dynamic rawValue, {String? version}) {
+    final resolved = resolve(rawValue, version: version);
     if (resolved == null || resolved.isAsset) {
       return resolved?.value;
     }
     return resolved.value;
   }
 
-  static List<String> resolveGallery(Iterable<dynamic> values) {
+  /// Resuelve una galería de imágenes aplicando versionado.
+  static List<String> resolveGallery(
+    Iterable<dynamic> values, {
+    String? version,
+  }) {
     return values
-        .map(resolve)
+        .map((item) => resolve(item, version: version))
         .whereType<ResolvedStorefrontImage>()
         .map((item) => item.value)
         .where((value) => value.trim().isNotEmpty)
         .toSet()
         .toList();
+  }
+
+  /// Extrae la versión (updatedAt) de un mapa de producto.
+  static String? extractVersion(Map<String, dynamic>? product) {
+    if (product == null) return null;
+    return getProductVersion(product);
+  }
+
+  static String _addVersion(String url, String? version) {
+    return buildImageUrl(url, version: version);
   }
 
   static bool _isAbsoluteUrl(String value) {
