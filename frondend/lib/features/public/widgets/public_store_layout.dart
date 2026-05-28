@@ -17,6 +17,7 @@ class PublicStoreLayout extends StatelessWidget {
   final VoidCallback onOffersTap;
   final VoidCallback onAdminTap;
   final VoidCallback onCartTap;
+  final VoidCallback? onWhatsappTap;
   final List<Widget> slivers;
   final Widget? floatingActionButton;
 
@@ -36,6 +37,7 @@ class PublicStoreLayout extends StatelessWidget {
     required this.onOffersTap,
     required this.onAdminTap,
     required this.onCartTap,
+    this.onWhatsappTap,
     required this.slivers,
     this.floatingActionButton,
   });
@@ -46,6 +48,10 @@ class PublicStoreLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDesktop = _isDesktop(context);
+    final width = MediaQuery.sizeOf(context).width;
+    final sidePadding = width >= 1280
+        ? ((width - 1240) / 2).clamp(16.0, 9999.0)
+        : 16.0;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7FB),
@@ -57,32 +63,36 @@ class PublicStoreLayout extends StatelessWidget {
               onOffersTap: onOffersTap,
               onAdminTap: onAdminTap,
               onCartTap: onCartTap,
+              onWhatsappTap: onWhatsappTap,
             ),
       floatingActionButton: floatingActionButton,
       body: CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(
-            child: Builder(
-              builder: (heroContext) => StorefrontMainHeroSlider(
-                slug: slug,
-                storeName: storeName,
-                logoUrl: logoUrl,
-                primaryColor: primaryColor,
-                secondaryColor: secondaryColor,
-                heroTitle: heroTitle,
-                heroSubtitle: heroSubtitle,
-                banners: banners,
-                promotedProducts: promotedProducts,
-                onSearchTap: onSearchTap,
-                onCategoriesTap: onCategoriesTap,
-                onOffersTap: onOffersTap,
-                onAdminTap: onAdminTap,
-                onCartTap: onCartTap,
-                onMenuTap: isDesktop
-                    ? null
-                    : () => Scaffold.of(heroContext).openDrawer(),
-                canPop: false,
-                isDesktop: isDesktop,
+          SliverPadding(
+            padding: EdgeInsets.symmetric(horizontal: sidePadding),
+            sliver: SliverToBoxAdapter(
+              child: Builder(
+                builder: (heroContext) => StorefrontMainHeroSlider(
+                  slug: slug,
+                  storeName: storeName,
+                  logoUrl: logoUrl,
+                  primaryColor: primaryColor,
+                  secondaryColor: secondaryColor,
+                  heroTitle: heroTitle,
+                  heroSubtitle: heroSubtitle,
+                  banners: banners,
+                  promotedProducts: promotedProducts,
+                  onSearchTap: onSearchTap,
+                  onCategoriesTap: onCategoriesTap,
+                  onOffersTap: onOffersTap,
+                  onAdminTap: onAdminTap,
+                  onCartTap: onCartTap,
+                  onMenuTap: isDesktop
+                      ? null
+                      : () => Scaffold.of(heroContext).openDrawer(),
+                  canPop: false,
+                  isDesktop: isDesktop,
+                ),
               ),
             ),
           ),
@@ -99,6 +109,7 @@ class _PublicMenuDrawer extends StatelessWidget {
   final VoidCallback onOffersTap;
   final VoidCallback onAdminTap;
   final VoidCallback onCartTap;
+  final VoidCallback? onWhatsappTap;
 
   const _PublicMenuDrawer({
     required this.slug,
@@ -106,6 +117,7 @@ class _PublicMenuDrawer extends StatelessWidget {
     required this.onOffersTap,
     required this.onAdminTap,
     required this.onCartTap,
+    this.onWhatsappTap,
   });
 
   @override
@@ -147,6 +159,14 @@ class _PublicMenuDrawer extends StatelessWidget {
               },
             ),
             ListTile(
+              leading: const Icon(Icons.inventory_2_outlined),
+              title: const Text('Catalogo'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/tienda/$slug');
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.shopping_cart_outlined),
               title: const Text('Carrito'),
               onTap: () {
@@ -159,6 +179,7 @@ class _PublicMenuDrawer extends StatelessWidget {
               title: const Text('WhatsApp'),
               onTap: () {
                 Navigator.pop(context);
+                onWhatsappTap?.call();
               },
             ),
             ListTile(

@@ -58,27 +58,34 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
 
   List<Map<String, dynamic>> get _slides {
     if (widget.promotedProducts.isNotEmpty) {
-      return widget.promotedProducts
+      final productSlides = widget.promotedProducts
           .whereType<Map>()
           .map((item) => _mapProductSlide(Map<String, dynamic>.from(item)))
-          .where((item) => (item['imagen_url']?.toString().trim().isNotEmpty ?? false))
+          .where(
+            (item) =>
+                (item['imagen_url']?.toString().trim().isNotEmpty ?? false),
+          )
+          .toList();
+      if (productSlides.isNotEmpty) {
+        return productSlides;
+      }
+    }
+
+    if (widget.banners.isNotEmpty) {
+      return widget.banners
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
           .toList();
     }
 
-    if (widget.banners.isEmpty) {
-      return const [
-        {
-          'titulo': 'FULLTECH SRL',
-          'subtitulo': 'Tecnologia, seguridad y soporte profesional',
-          'imagen_url': null,
-          'label': 'Portada comercial',
-        },
-      ];
-    }
-
-    return widget.banners
-        .map((item) => Map<String, dynamic>.from(item as Map))
-        .toList();
+    return [
+      {
+        'titulo': widget.heroTitle,
+        'subtitulo': widget.heroSubtitle,
+        'imagen_url': null,
+        'label': 'Flyer principal',
+      },
+    ];
   }
 
   Map<String, dynamic> _mapProductSlide(Map<String, dynamic> product) {
@@ -90,35 +97,32 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
     final title = product['titulo']?.toString().trim();
     final category = product['categoria']?.toString().trim();
     final offerPrice = product['precio_oferta_web'] ?? product['precioOferta'];
-    final regularPrice = product['precio'];
-
-    String subtitle;
-    if (offerPrice != null) {
-      subtitle = regularPrice != null
-          ? 'Oferta disponible en ${category?.isNotEmpty == true ? category : 'tienda'}'
-          : 'Producto en oferta por tiempo limitado';
-    } else {
-      subtitle = product['descripcion']?.toString().trim().isNotEmpty == true
-          ? product['descripcion'].toString().trim()
-          : 'Disponible en la tienda online de FULLTECH';
-    }
+    final description =
+        product['descripcion_web']?.toString().trim().isNotEmpty == true
+        ? product['descripcion_web'].toString().trim()
+        : product['descripcion']?.toString().trim() ?? '';
 
     return {
       'titulo': title?.isNotEmpty == true ? title : widget.heroTitle,
-      'subtitulo': subtitle,
+      'subtitulo': description.isNotEmpty
+          ? description
+          : offerPrice != null
+          ? 'Promocion activa en ${category?.isNotEmpty == true ? category : 'la tienda'}'
+          : widget.heroSubtitle,
       'imagen_url': image,
       'label': offerPrice != null ? 'Oferta del dia' : 'Producto destacado',
-      'source': 'offer-product',
     };
   }
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(viewportFraction: 1);
+    _pageController = PageController();
     if (_slides.length > 1) {
       _autoSlideTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-        if (!_pageController.hasClients) return;
+        if (!_pageController.hasClients) {
+          return;
+        }
         final nextPage = (_currentIndex + 1) % _slides.length;
         _pageController.animateToPage(
           nextPage,
@@ -138,119 +142,430 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top;
-    final height = widget.isDesktop ? 620.0 : 580.0;
-
-    return Container(
-      height: height + topPadding,
-      margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(34),
-              child: PageView.builder(
-                controller: _pageController,
-                itemCount: _slides.length,
-                onPageChanged: (index) {
-                  setState(() => _currentIndex = index);
-                },
-                itemBuilder: (context, index) {
-                  return _HeroSlideBackground(
-                    slide: _slides[index],
-                    primaryColor: widget.primaryColor,
-                    secondaryColor: widget.secondaryColor,
-                  );
-                },
-              ),
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final isDesktop = widget.isDesktop;
+        final mobileAspectRatio = width < 360
+            ? 1.05
+            : width < 520
+            ? 1.10
+            : 1.16;
+        final desktopHeight = width >= 1320 ? 560.0 : 520.0;
+        final heroChild = DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(isDesktop ? 34 : 30),
+            boxShadow: StorefrontShadows.strong,
           ),
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(34),
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xD90F172A),
-                    widget.primaryColor.withValues(alpha: 0.86),
-                    widget.secondaryColor.withValues(alpha: 0.72),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(isDesktop ? 34 : 30),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Positioned.fill(
+                  child: PageView.builder(
+                    controller: _pageController,
+                    itemCount: _slides.length,
+                    onPageChanged: (index) {
+                      if (mounted) {
+                        setState(() => _currentIndex = index);
+                      }
+                    },
+                    itemBuilder: (context, index) {
+                      return _HeroSlideBackground(
+                        slide: _slides[index],
+                        primaryColor: widget.primaryColor,
+                        secondaryColor: widget.secondaryColor,
+                      );
+                    },
+                  ),
                 ),
-                boxShadow: StorefrontShadows.strong,
-              ),
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xF20B1220),
+                          widget.primaryColor.withValues(alpha: 0.90),
+                          widget.secondaryColor.withValues(alpha: 0.72),
+                        ],
+                        stops: const [0, 0.56, 1],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: -30,
+                  right: -18,
+                  child: _GlowOrb(
+                    size: isDesktop ? 220 : 160,
+                    opacity: 0.12,
+                  ),
+                ),
+                Positioned(
+                  left: -54,
+                  bottom: -72,
+                  child: _GlowOrb(
+                    size: isDesktop ? 240 : 180,
+                    opacity: 0.08,
+                  ),
+                ),
+                SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      isDesktop ? 28 : 18,
+                      isDesktop ? 22 : 14,
+                      isDesktop ? 28 : 18,
+                      isDesktop ? 26 : 18,
+                    ),
+                    child: isDesktop
+                        ? _DesktopHeroContent(
+                            storeName: widget.storeName,
+                            logoUrl: widget.logoUrl,
+                            currentSlide: _slides[_currentIndex],
+                            currentIndex: _currentIndex,
+                            totalSlides: _slides.length,
+                            primaryColor: widget.primaryColor,
+                            secondaryColor: widget.secondaryColor,
+                            canPop: widget.canPop,
+                            onSearchTap: widget.onSearchTap,
+                            onCartTap: widget.onCartTap,
+                            onAdminTap: widget.onAdminTap,
+                            onCategoriesTap: widget.onCategoriesTap,
+                            onOffersTap: widget.onOffersTap,
+                          )
+                        : _MobileHeroContent(
+                            width: width,
+                            storeName: widget.storeName,
+                            currentSlide: _slides[_currentIndex],
+                            currentIndex: _currentIndex,
+                            totalSlides: _slides.length,
+                            canPop: widget.canPop,
+                            onMenuTap: widget.onMenuTap,
+                            onSearchTap: widget.onSearchTap,
+                            onCartTap: widget.onCartTap,
+                            onAdminTap: widget.onAdminTap,
+                            onOffersTap: widget.onOffersTap,
+                          ),
+                  ),
+                ),
+              ],
             ),
           ),
-          Positioned(
-            right: -40,
-            top: 16,
-            child: Container(
-              width: 200,
-              height: 200,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.07),
-              ),
-            ),
-          ),
-          Positioned(
-            left: -48,
-            bottom: -58,
-            child: Container(
-              width: 220,
-              height: 220,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.08),
-              ),
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.fromLTRB(18, topPadding + 14, 18, 22),
-            child: widget.isDesktop
-                ? _buildDesktopContent(context)
-                : _buildMobileContent(context),
-          ),
-        ],
-      ),
+        );
+
+        return Padding(
+          padding: const EdgeInsets.only(top: 10),
+          child: isDesktop
+              ? SizedBox(height: desktopHeight, child: heroChild)
+              : AspectRatio(aspectRatio: mobileAspectRatio, child: heroChild),
+        );
+      },
     );
   }
+}
 
-  Widget _buildMobileContent(BuildContext context) {
+class _MobileHeroContent extends StatelessWidget {
+  final double width;
+  final String storeName;
+  final Map<String, dynamic> currentSlide;
+  final int currentIndex;
+  final int totalSlides;
+  final bool canPop;
+  final VoidCallback? onMenuTap;
+  final VoidCallback onSearchTap;
+  final VoidCallback onCartTap;
+  final VoidCallback onAdminTap;
+  final VoidCallback onOffersTap;
+
+  const _MobileHeroContent({
+    required this.width,
+    required this.storeName,
+    required this.currentSlide,
+    required this.currentIndex,
+    required this.totalSlides,
+    required this.canPop,
+    required this.onMenuTap,
+    required this.onSearchTap,
+    required this.onCartTap,
+    required this.onAdminTap,
+    required this.onOffersTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final compactTopBar = width < 385;
+    final titleSize = width < 360 ? 26.0 : width < 430 ? 29.0 : 32.0;
+    final subtitleSize = width < 360 ? 13.0 : 14.0;
+    final label =
+        currentSlide['label']?.toString().trim().isNotEmpty == true
+        ? currentSlide['label'].toString().trim()
+        : 'Flyer principal';
+    final title =
+        currentSlide['titulo']?.toString().trim().isNotEmpty == true
+        ? currentSlide['titulo'].toString().trim()
+        : storeName;
+    final subtitle =
+        currentSlide['subtitulo']?.toString().trim().isNotEmpty == true
+        ? currentSlide['subtitulo'].toString().trim()
+        : 'Explora productos con entrega, soporte y garantia.';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _HeroTopBar(
-          storeName: widget.storeName,
-          logoUrl: widget.logoUrl,
-          canPop: widget.canPop,
-          isDesktop: false,
-          onAdminTap: widget.onAdminTap,
-          onCartTap: widget.onCartTap,
-          onSearchTap: widget.onSearchTap,
-          onMenuTap: widget.onMenuTap,
+        Row(
+          children: [
+            if (onMenuTap != null) ...[
+              _GlassIconButton(icon: Icons.menu_rounded, onTap: onMenuTap!),
+              const SizedBox(width: 10),
+            ],
+            if (canPop) ...[
+              _GlassIconButton(
+                icon: Icons.arrow_back_ios_new_rounded,
+                onTap: () => Navigator.of(context).maybePop(),
+              ),
+              const SizedBox(width: 10),
+            ],
+            if (!compactTopBar)
+              Expanded(
+                child: Text(
+                  storeName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              )
+            else
+              const Spacer(),
+            if (!compactTopBar) const SizedBox(width: 10),
+            _GlassIconButton(
+              icon: Icons.search_rounded,
+              onTap: onSearchTap,
+            ),
+            const SizedBox(width: 8),
+            _GlassIconButton(icon: Icons.person_outline_rounded, onTap: onAdminTap),
+            const SizedBox(width: 8),
+            _GlassIconButton(
+              icon: Icons.shopping_cart_outlined,
+              onTap: onCartTap,
+            ),
+          ],
         ),
         const Spacer(),
-        _buildBody(context, includeSearchField: false),
+        _HeroLabel(label: label),
+        const SizedBox(height: 12),
+        Text(
+          title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: titleSize,
+            fontWeight: FontWeight.w900,
+            height: 1.02,
+            letterSpacing: -0.9,
+          ),
+        ),
+        const SizedBox(height: 10),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Text(
+            subtitle,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.88),
+              fontSize: subtitleSize,
+              height: 1.4,
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        const Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _TrustChip(icon: Icons.verified_outlined, label: 'Garantia'),
+            _TrustChip(icon: Icons.support_agent_outlined, label: 'Soporte'),
+            _TrustChip(icon: Icons.handyman_outlined, label: 'Instalacion'),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            FilledButton.icon(
+              onPressed: onSearchTap,
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFF0F172A),
+                minimumSize: const Size(0, 46),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              icon: const Icon(Icons.search_rounded, size: 18),
+              label: const Text('Buscar productos'),
+            ),
+            OutlinedButton.icon(
+              onPressed: onOffersTap,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                minimumSize: const Size(0, 46),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                side: BorderSide(color: Colors.white.withValues(alpha: 0.32)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              icon: const Icon(Icons.local_offer_outlined, size: 18),
+              label: const Text('Ver ofertas'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        _SliderIndicators(currentIndex: currentIndex, totalSlides: totalSlides),
       ],
     );
   }
+}
 
-  Widget _buildDesktopContent(BuildContext context) {
+class _DesktopHeroContent extends StatelessWidget {
+  final String storeName;
+  final dynamic logoUrl;
+  final Map<String, dynamic> currentSlide;
+  final int currentIndex;
+  final int totalSlides;
+  final Color primaryColor;
+  final Color secondaryColor;
+  final bool canPop;
+  final VoidCallback onSearchTap;
+  final VoidCallback onCartTap;
+  final VoidCallback onAdminTap;
+  final VoidCallback onCategoriesTap;
+  final VoidCallback onOffersTap;
+
+  const _DesktopHeroContent({
+    required this.storeName,
+    required this.logoUrl,
+    required this.currentSlide,
+    required this.currentIndex,
+    required this.totalSlides,
+    required this.primaryColor,
+    required this.secondaryColor,
+    required this.canPop,
+    required this.onSearchTap,
+    required this.onCartTap,
+    required this.onAdminTap,
+    required this.onCategoriesTap,
+    required this.onOffersTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final title =
+        currentSlide['titulo']?.toString().trim().isNotEmpty == true
+        ? currentSlide['titulo'].toString().trim()
+        : storeName;
+    final subtitle =
+        currentSlide['subtitulo']?.toString().trim().isNotEmpty == true
+        ? currentSlide['subtitulo'].toString().trim()
+        : 'Explora el catalogo online con soporte comercial y garantia.';
+    final label =
+        currentSlide['label']?.toString().trim().isNotEmpty == true
+        ? currentSlide['label'].toString().trim()
+        : 'Flyer principal';
+
     return Column(
       children: [
-        _HeroTopBar(
-          storeName: widget.storeName,
-          logoUrl: widget.logoUrl,
-          canPop: widget.canPop,
-          isDesktop: true,
-          onAdminTap: widget.onAdminTap,
-          onCartTap: widget.onCartTap,
-          onSearchTap: widget.onSearchTap,
-          onMenuTap: null,
-          onCategoriesTap: widget.onCategoriesTap,
-          onOffersTap: widget.onOffersTap,
+        Row(
+          children: [
+            if (canPop) ...[
+              _GlassIconButton(
+                icon: Icons.arrow_back_ios_new_rounded,
+                onTap: () => Navigator.of(context).maybePop(),
+              ),
+              const SizedBox(width: 12),
+            ],
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: StorefrontSmartImage(
+                source: logoUrl,
+                fit: BoxFit.cover,
+                borderRadius: BorderRadius.circular(18),
+                placeholder: const Center(
+                  child: Icon(
+                    Icons.storefront_rounded,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    storeName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    'Marketplace premium de tecnologia y seguridad',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.78),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            _NavPill(label: 'Categorias', onTap: onCategoriesTap),
+            const SizedBox(width: 8),
+            _NavPill(label: 'Ofertas', onTap: onOffersTap),
+            const SizedBox(width: 8),
+            OutlinedButton(
+              onPressed: onAdminTap,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: BorderSide(color: Colors.white.withValues(alpha: 0.22)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              child: const Text('Iniciar sesion'),
+            ),
+            const SizedBox(width: 8),
+            _GlassIconButton(icon: Icons.search_rounded, onTap: onSearchTap),
+            const SizedBox(width: 8),
+            _GlassIconButton(
+              icon: Icons.shopping_cart_outlined,
+              onTap: onCartTap,
+            ),
+          ],
         ),
         const SizedBox(height: 28),
         Expanded(
@@ -258,123 +573,114 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
             children: [
               Expanded(
                 flex: 11,
-                child: _buildBody(context, includeSearchField: true),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    _HeroLabel(label: label),
+                    const SizedBox(height: 16),
+                    const Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        _TrustChip(
+                          icon: Icons.verified_outlined,
+                          label: 'Garantia',
+                        ),
+                        _TrustChip(
+                          icon: Icons.support_agent_outlined,
+                          label: 'Soporte',
+                        ),
+                        _TrustChip(
+                          icon: Icons.handyman_outlined,
+                          label: 'Instalacion',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 46,
+                        fontWeight: FontWeight.w900,
+                        height: 1.02,
+                        letterSpacing: -1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 560),
+                      child: Text(
+                        subtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.86),
+                          fontSize: 16,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        FilledButton.icon(
+                          onPressed: onSearchTap,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: primaryColor,
+                            minimumSize: const Size(0, 50),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 14,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                          ),
+                          icon: const Icon(Icons.search_rounded),
+                          label: const Text('Buscar productos'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: onOffersTap,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size(0, 50),
+                            side: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.28),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                          ),
+                          icon: const Icon(Icons.local_offer_outlined),
+                          label: const Text('Ver ofertas'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    _SliderIndicators(
+                      currentIndex: currentIndex,
+                      totalSlides: totalSlides,
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(width: 26),
+              const SizedBox(width: 28),
               Expanded(
                 flex: 9,
                 child: _DesktopVisualPanel(
-                  slide: _slides[_currentIndex],
-                  secondaryColor: widget.secondaryColor,
+                  slide: currentSlide,
+                  secondaryColor: secondaryColor,
                 ),
               ),
             ],
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBody(BuildContext context, {required bool includeSearchField}) {
-    final currentSlide = _slides[_currentIndex];
-    final slideTitle = currentSlide['titulo']?.toString().trim();
-    final slideSubtitle = currentSlide['subtitulo']?.toString().trim();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: const [
-            _TrustChip(icon: Icons.verified_outlined, label: 'Garantia'),
-            _TrustChip(icon: Icons.storefront_outlined, label: 'Tienda fisica'),
-            _TrustChip(icon: Icons.support_agent_outlined, label: 'Soporte'),
-            _TrustChip(icon: Icons.handyman_outlined, label: 'Instalacion'),
-          ],
-        ),
-        const SizedBox(height: 18),
-        Text(
-          slideTitle?.isNotEmpty == true ? slideTitle! : widget.heroTitle,
-          maxLines: widget.isDesktop ? 3 : 4,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: widget.isDesktop ? 46 : 34,
-            fontWeight: FontWeight.w900,
-            height: 1.02,
-            letterSpacing: -1.1,
-          ),
-        ),
-        const SizedBox(height: 12),
-        ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: widget.isDesktop ? 580 : 420),
-          child: Text(
-            slideSubtitle?.isNotEmpty == true
-                ? slideSubtitle!
-                : widget.heroSubtitle,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.88),
-              fontSize: widget.isDesktop ? 16 : 15,
-              height: 1.55,
-            ),
-          ),
-        ),
-        const SizedBox(height: 18),
-        if (includeSearchField)
-          _DesktopSearchField(onTap: widget.onSearchTap),
-        if (includeSearchField) const SizedBox(height: 18),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            FilledButton.icon(
-              onPressed: widget.onSearchTap,
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: widget.primaryColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
-                ),
-              ),
-              icon: const Icon(Icons.search_rounded),
-              label: const Text('Buscar productos'),
-            ),
-            OutlinedButton.icon(
-              onPressed: widget.onOffersTap,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white,
-                side: BorderSide(
-                  color: Colors.white.withValues(alpha: 0.32),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
-                ),
-              ),
-              icon: const Icon(Icons.local_offer_outlined),
-              label: const Text('Ver ofertas'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 18),
-        Row(
-          children: [
-            for (int index = 0; index < _slides.length; index++) ...[
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                width: _currentIndex == index ? 28 : 9,
-                height: 9,
-                decoration: BoxDecoration(
-                  color: _currentIndex == index
-                      ? Colors.white
-                      : Colors.white.withValues(alpha: 0.34),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-              if (index != _slides.length - 1) const SizedBox(width: 8),
-            ],
-          ],
         ),
       ],
     );
@@ -411,20 +717,20 @@ class _HeroSlideBackground extends StatelessWidget {
           children: [
             Positioned(
               right: 24,
-              top: 36,
+              top: 28,
               child: Icon(
                 Icons.shield_moon_outlined,
-                size: 180,
-                color: Colors.white.withValues(alpha: 0.08),
+                size: 160,
+                color: Colors.white.withValues(alpha: 0.10),
               ),
             ),
             Positioned(
-              left: 24,
-              bottom: 24,
+              left: 26,
+              bottom: 26,
               child: Icon(
                 Icons.videocam_outlined,
-                size: 130,
-                color: Colors.white.withValues(alpha: 0.08),
+                size: 120,
+                color: Colors.white.withValues(alpha: 0.10),
               ),
             ),
           ],
@@ -436,130 +742,6 @@ class _HeroSlideBackground extends StatelessWidget {
       source: image,
       fit: BoxFit.cover,
       borderRadius: BorderRadius.circular(34),
-    );
-  }
-}
-
-class _HeroTopBar extends StatelessWidget {
-  final String storeName;
-  final dynamic logoUrl;
-  final bool canPop;
-  final bool isDesktop;
-  final VoidCallback onSearchTap;
-  final VoidCallback onCartTap;
-  final VoidCallback onAdminTap;
-  final VoidCallback? onMenuTap;
-  final VoidCallback? onCategoriesTap;
-  final VoidCallback? onOffersTap;
-
-  const _HeroTopBar({
-    required this.storeName,
-    required this.logoUrl,
-    required this.canPop,
-    required this.isDesktop,
-    required this.onSearchTap,
-    required this.onCartTap,
-    required this.onAdminTap,
-    required this.onMenuTap,
-    this.onCategoriesTap,
-    this.onOffersTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        if (!isDesktop && onMenuTap != null)
-          _GlassIconButton(
-            icon: Icons.menu_rounded,
-            onTap: onMenuTap!,
-          ),
-        if (!isDesktop && onMenuTap != null) const SizedBox(width: 10),
-        if (canPop)
-          _GlassIconButton(
-            icon: Icons.arrow_back_ios_new_rounded,
-            onTap: () => Navigator.of(context).maybePop(),
-          ),
-        if (canPop) const SizedBox(width: 10),
-        Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.16),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: StorefrontSmartImage(
-            source: logoUrl,
-            fit: BoxFit.cover,
-            borderRadius: BorderRadius.circular(16),
-            placeholder: const Center(
-              child: Icon(
-                Icons.shield_moon_outlined,
-                color: Colors.white,
-                size: 24,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                storeName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.4,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'Tienda online premium',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.8),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (isDesktop) ...[
-          _NavPill(label: 'Categorias', onTap: onCategoriesTap),
-          const SizedBox(width: 8),
-          _NavPill(label: 'Ofertas', onTap: onOffersTap),
-          const SizedBox(width: 8),
-          OutlinedButton(
-            onPressed: onAdminTap,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.white,
-              side: BorderSide(color: Colors.white.withValues(alpha: 0.26)),
-            ),
-          child: const Text('Iniciar sesion'),
-          ),
-          const SizedBox(width: 8),
-        ],
-        if (!isDesktop) ...[
-          _GlassIconButton(
-            icon: Icons.person_outline_rounded,
-            onTap: onAdminTap,
-          ),
-          const SizedBox(width: 8),
-        ],
-        _GlassIconButton(
-          icon: Icons.search_rounded,
-          onTap: onSearchTap,
-        ),
-        const SizedBox(width: 8),
-        _GlassIconButton(
-          icon: Icons.shopping_cart_outlined,
-          onTap: onCartTap,
-        ),
-      ],
     );
   }
 }
@@ -578,37 +760,49 @@ class _DesktopVisualPanel extends StatelessWidget {
     final image = StorefrontHelpers.resolveMediaUrl(
       slide['imagen_url'] ?? slide['imagen'] ?? slide['imageUrl'],
     );
-    final label = slide['label']?.toString().trim().isNotEmpty == true
+    final label =
+        slide['label']?.toString().trim().isNotEmpty == true
         ? slide['label'].toString().trim()
-        : 'Portada comercial';
+        : 'Flyer principal';
 
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.88),
+              color: Colors.white.withValues(alpha: 0.90),
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Expanded(
             child: ClipRRect(
               borderRadius: BorderRadius.circular(24),
-              child: StorefrontSmartImage(
-                source: image,
-                fit: BoxFit.cover,
-                placeholder: Container(
-                  color: Colors.white.withValues(alpha: 0.06),
-                  child: Center(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.white.withValues(alpha: 0.16),
+                      Colors.white.withValues(alpha: 0.06),
+                    ],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
+                child: StorefrontSmartImage(
+                  source: image,
+                  fit: BoxFit.contain,
+                  placeholder: Center(
                     child: Icon(
                       Icons.storefront_outlined,
                       color: secondaryColor,
@@ -625,51 +819,10 @@ class _DesktopVisualPanel extends StatelessWidget {
   }
 }
 
-class _DesktopSearchField extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _DesktopSearchField({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(22),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(22),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: const Row(
-            children: [
-              Icon(Icons.search_rounded, color: Color(0xFF64748B)),
-              SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Buscar productos, categorias o palabras clave',
-                  style: TextStyle(
-                    color: Color(0xFF64748B),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              Icon(Icons.keyboard_arrow_right_rounded),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TrustChip extends StatelessWidget {
-  final IconData icon;
+class _HeroLabel extends StatelessWidget {
   final String label;
 
-  const _TrustChip({
-    required this.icon,
-    required this.label,
-  });
+  const _HeroLabel({required this.label});
 
   @override
   Widget build(BuildContext context) {
@@ -678,41 +831,74 @@ class _TrustChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: Colors.white),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.95),
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
 }
 
-class _NavPill extends StatelessWidget {
-  final String label;
-  final VoidCallback? onTap;
+class _SliderIndicators extends StatelessWidget {
+  final int currentIndex;
+  final int totalSlides;
 
-  const _NavPill({required this.label, required this.onTap});
+  const _SliderIndicators({
+    required this.currentIndex,
+    required this.totalSlides,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return TextButton(
-      onPressed: onTap,
-      style: TextButton.styleFrom(
-        foregroundColor: Colors.white,
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(fontWeight: FontWeight.w700),
+    if (totalSlides <= 1) {
+      return const SizedBox.shrink();
+    }
+
+    return Row(
+      children: List.generate(totalSlides, (index) {
+        final isActive = index == currentIndex;
+        return Padding(
+          padding: EdgeInsets.only(right: index == totalSlides - 1 ? 0 : 7),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            width: isActive ? 20 : 7,
+            height: 7,
+            decoration: BoxDecoration(
+              color: isActive
+                  ? Colors.white
+                  : Colors.white.withValues(alpha: 0.34),
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+}
+
+class _GlowOrb extends StatelessWidget {
+  final double size;
+  final double opacity;
+
+  const _GlowOrb({required this.size, required this.opacity});
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withValues(alpha: opacity),
+        ),
       ),
     );
   }
@@ -722,10 +908,7 @@ class _GlassIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
 
-  const _GlassIconButton({
-    required this.icon,
-    required this.onTap,
-  });
+  const _GlassIconButton({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -740,6 +923,69 @@ class _GlassIconButton extends StatelessWidget {
           height: 44,
           child: Icon(icon, color: Colors.white),
         ),
+      ),
+    );
+  }
+}
+
+class _NavPill extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _NavPill({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TrustChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _TrustChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: Colors.white),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.96),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }

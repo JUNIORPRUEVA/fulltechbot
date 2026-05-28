@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -80,33 +81,39 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
         return;
       }
 
-      final productsResponse = results[5];
-      final featuredProducts = List<dynamic>.from(
-        results[3]['items'] as List? ?? const [],
+      final featuredProducts = _dedupeProducts(
+        List<dynamic>.from(results[3]['items'] as List? ?? const []),
       );
-      final offerProducts = List<dynamic>.from(
-        results[4]['items'] as List? ?? const [],
-      ).where((item) {
-        final map = Map<String, dynamic>.from(item as Map);
-        return map['precio_oferta_web'] != null || map['precioOferta'] != null;
-      }).toList();
-      final catalogProducts = List<dynamic>.from(
-        productsResponse['items'] as List? ?? const [],
+      final offerProducts = _dedupeProducts(
+        List<dynamic>.from(results[4]['items'] as List? ?? const []).where((
+          item,
+        ) {
+          final map = Map<String, dynamic>.from(item as Map);
+          return map['precio_oferta_web'] != null ||
+              map['precioOferta'] != null;
+        }).toList(),
+      );
+      final offerIds = offerProducts
+          .map((item) => (item as Map)['id']?.toString() ?? '')
+          .where((id) => id.isNotEmpty)
+          .toSet();
+      final productsResponse = results[5];
+      final catalogProducts = _dedupeProducts(
+        List<dynamic>.from(productsResponse['items'] as List? ?? const []),
       );
       final categories = _buildDisplayCategories(
         List<dynamic>.from(results[2]['data'] as List? ?? const []),
-        [
-          ...featuredProducts,
-          ...offerProducts,
-          ...catalogProducts,
-        ],
+        [...featuredProducts, ...offerProducts, ...catalogProducts],
       );
 
       setState(() {
         _config = Map<String, dynamic>.from(configResponse['data'] as Map);
         _banners = List<dynamic>.from(results[1]['data'] as List? ?? const []);
         _categories = categories;
-        _featuredProducts = featuredProducts;
+        _featuredProducts = featuredProducts.where((item) {
+          final id = (item as Map)['id']?.toString() ?? '';
+          return id.isEmpty || !offerIds.contains(id);
+        }).toList();
         _offerProducts = offerProducts;
         _products = catalogProducts;
         _page = productsResponse['page'] as int? ?? 1;
@@ -115,14 +122,16 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
       });
     } catch (e) {
       setState(() {
-        _error = 'Error de conexión: $e';
+        _error = 'Error de conexiÃ³n: $e';
         _loading = false;
       });
     }
   }
 
   Future<void> _loadMore() async {
-    if (_loadingMore || _page >= _totalPages) return;
+    if (_loadingMore || _page >= _totalPages) {
+      return;
+    }
 
     setState(() => _loadingMore = true);
     try {
@@ -135,9 +144,10 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
 
       if (response['ok'] == true) {
         setState(() {
-          _products.addAll(
-            List<dynamic>.from(response['items'] as List? ?? const []),
-          );
+          _products = _dedupeProducts([
+            ..._products,
+            ...List<dynamic>.from(response['items'] as List? ?? const []),
+          ]);
           _page = response['page'] as int? ?? _page + 1;
           _totalPages = response['totalPages'] as int? ?? _totalPages;
         });
@@ -151,17 +161,15 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
 
   Color _getColor(String hex) {
     var normalized = hex.replaceAll('#', '');
-    if (normalized.length == 6) normalized = 'FF$normalized';
+    if (normalized.length == 6) {
+      normalized = 'FF$normalized';
+    }
     return Color(int.parse(normalized, radix: 16));
   }
 
   List<Map<String, dynamic>> get _searchCatalog {
     final unique = <String, Map<String, dynamic>>{};
-    for (final source in [
-      _products,
-      _featuredProducts,
-      _offerProducts,
-    ]) {
+    for (final source in [_products, _featuredProducts, _offerProducts]) {
       for (final item in source) {
         final map = Map<String, dynamic>.from(item as Map);
         final id = map['id']?.toString() ?? map['titulo']?.toString() ?? '';
@@ -183,7 +191,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
+      builder: (_) {
         return _StorefrontSearchSheet(
           slug: widget.slug,
           primaryColor: primaryColor,
@@ -226,6 +234,14 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     _openSearch();
   }
 
+  void _openWhatsapp(String whatsapp) {
+    final number = whatsapp.replaceAll(RegExp(r'[^\d]'), '');
+    if (number.isEmpty) {
+      return;
+    }
+    launchUrl(Uri.parse('https://wa.me/$number'));
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -240,6 +256,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     }
 
     final config = _config!;
+    final screenWidth = MediaQuery.sizeOf(context).width;
     final primaryColor = _getColor(
       config['color_principal']?.toString() ?? '#0F172A',
     );
@@ -247,20 +264,28 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
       config['color_secundario']?.toString() ?? '#2563EB',
     );
     final whatsapp = config['whatsapp_numero']?.toString() ?? '';
-    final logoUrl = config['logo_url'];
-    final heroTitle = config['mensaje_principal']?.toString().trim().isNotEmpty == true
+    final storeName = config['nombre_tienda']?.toString() ?? 'FULLTECH SRL';
+    final heroTitle =
+        config['mensaje_principal']?.toString().trim().isNotEmpty == true
         ? config['mensaje_principal'].toString().trim()
-        : 'Tecnología y seguridad para tu hogar y negocio';
+        : 'TecnologÃ­a y seguridad para tu hogar y negocio';
     final heroSubtitle =
         config['mensaje_secundario']?.toString().trim().isNotEmpty == true
         ? config['mensaje_secundario'].toString().trim()
-        : 'Compra cámaras, motores, automatización y accesorios con asesoría profesional de FULLTECH SRL.';
-    final isSmallDevice = MediaQuery.of(context).size.width < 370;
+        : 'Compra cÃ¡maras, motores, automatizaciÃ³n y accesorios con asesorÃ­a profesional de FULLTECH SRL.';
+    final isTablet = screenWidth >= 700 && screenWidth < 1100;
+    final isDesktop = screenWidth >= 1100;
+    final contentPadding = math.max(16.0, ((screenWidth - 1240) / 2) + 16);
+    final categoryCardWidth = isDesktop ? 176.0 : isTablet ? 156.0 : 136.0;
+    final featuredCardWidth = isDesktop ? 292.0 : isTablet ? 270.0 : 248.0;
+    final carouselHeight = isDesktop ? 382.0 : 352.0;
+    final catalogCrossAxisCount = isDesktop ? 4 : (isTablet ? 3 : 2);
+    final catalogAspectRatio = isDesktop ? 0.78 : (isTablet ? 0.74 : 0.66);
 
     return PublicStoreLayout(
       slug: widget.slug,
-      storeName: config['nombre_tienda']?.toString() ?? 'FULLTECH SRL',
-      logoUrl: logoUrl,
+      storeName: storeName,
+      logoUrl: config['logo_url'],
       primaryColor: primaryColor,
       secondaryColor: secondaryColor,
       heroTitle: heroTitle,
@@ -272,219 +297,231 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
       onSearchTap: _openSearch,
       onCategoriesTap: _openCategories,
       onOffersTap: _openOffers,
-      onAdminTap: () =>
-          Navigator.pushNamed(context, '/login?redirect=/admin'),
+      onAdminTap: () => Navigator.pushNamed(context, '/login?redirect=/admin'),
       onCartTap: () =>
           Navigator.pushNamed(context, '/tienda/${widget.slug}/carrito'),
+      onWhatsappTap: whatsapp.isEmpty ? null : () => _openWhatsapp(whatsapp),
       slivers: [
+        if (_categories.isNotEmpty) ...[
           SliverToBoxAdapter(
             child: _SectionHeader(
-              title: 'Categorías rápidas',
+              title: 'CategorÃ­as rÃ¡pidas',
               subtitle: 'Encuentra lo que necesitas en segundos.',
-              actionLabel: _categories.isEmpty ? null : 'Explorar',
-              onTap: _categories.isEmpty
-                  ? null
-                  : () {
-                      Navigator.pushNamed(
-                        context,
-                        '/tienda/${widget.slug}/categoria/${Uri.encodeComponent(_categories.first['nombre'].toString())}',
-                      );
-                    },
+              actionLabel: 'Explorar',
+              horizontalPadding: contentPadding,
+              onTap: _openCategories,
             ),
           ),
           SliverToBoxAdapter(
             child: SizedBox(
-              height: 156,
-              child: _categories.isEmpty
-                  ? const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: _InlineEmptyState(
-                        title: 'No hay categorías visibles todavía.',
-                      ),
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      scrollDirection: Axis.horizontal,
-                      itemBuilder: (context, index) {
-                        final category =
-                            _categories[index] as Map<String, dynamic>;
-                        return _CategoryCard(
-                          category: category,
-                          secondaryColor: secondaryColor,
-                          onTap: () => Navigator.pushNamed(
-                            context,
-                            '/tienda/${widget.slug}/categoria/${Uri.encodeComponent(category['nombre'].toString())}',
-                          ),
-                        );
-                      },
-                      separatorBuilder: (_, __) => const SizedBox(width: 12),
-                      itemCount: _categories.length,
-                    ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: _SectionHeader(
-              title: 'Ofertas del día',
-              subtitle: 'Promociones pensadas para vender hoy.',
-              actionLabel: _offerProducts.isEmpty ? null : 'Ver productos',
-              onTap: _offerProducts.isEmpty ? null : _openSearch,
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: SizedBox(
-              height: 348,
-              child: _offerProducts.isEmpty
-                  ? const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: _InlineEmptyState(
-                        title:
-                            'Las ofertas aparecerán aquí cuando existan precios especiales.',
-                      ),
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      scrollDirection: Axis.horizontal,
-                      itemBuilder: (context, index) => StorefrontProductCard(
-                        product: Map<String, dynamic>.from(
-                          _offerProducts[index] as Map,
-                        ),
-                        slug: widget.slug,
-                        primaryColor: primaryColor,
-                        secondaryColor: secondaryColor,
-                        whatsapp: whatsapp,
-                      ),
-                      separatorBuilder: (_, __) => const SizedBox(width: 14),
-                      itemCount: _offerProducts.length,
-                    ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: _SectionHeader(
-              title: 'Destacados',
-              subtitle: 'Lo más buscado por nuestros clientes.',
-              actionLabel: _featuredProducts.isEmpty ? null : 'Ver más',
-              onTap: _featuredProducts.isEmpty
-                  ? null
-                  : () => Navigator.pushNamed(
+              height: isDesktop ? 184 : 164,
+              child: ListView.separated(
+                padding: EdgeInsets.symmetric(horizontal: contentPadding),
+                scrollDirection: Axis.horizontal,
+                itemBuilder: (context, index) {
+                  final category = _categories[index] as Map<String, dynamic>;
+                  return _CategoryCard(
+                    width: categoryCardWidth,
+                    category: category,
+                    secondaryColor: secondaryColor,
+                    onTap: () => Navigator.pushNamed(
                       context,
-                      '/tienda/${widget.slug}/categoria/${Uri.encodeComponent(_featuredProducts.first['categoria'].toString())}',
+                      '/tienda/${widget.slug}/categoria/${Uri.encodeComponent(category['nombre'].toString())}',
                     ),
+                  );
+                },
+                separatorBuilder: (_, index) => const SizedBox(width: 12),
+                itemCount: _categories.length,
+              ),
+            ),
+          ),
+        ],
+        if (_offerProducts.isNotEmpty) ...[
+          SliverToBoxAdapter(
+            child: _SectionHeader(
+              title: 'Ofertas del dÃ­a',
+              subtitle: 'Promociones pensadas para vender hoy.',
+              actionLabel: 'Ver productos',
+              horizontalPadding: contentPadding,
+              onTap: _openOffers,
             ),
           ),
           SliverToBoxAdapter(
             child: SizedBox(
-              height: 348,
-              child: _featuredProducts.isEmpty
-                  ? const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: _InlineEmptyState(
-                        title: 'Los productos destacados aparecerán aquí.',
-                      ),
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      scrollDirection: Axis.horizontal,
-                      itemBuilder: (context, index) => StorefrontProductCard(
-                        product: Map<String, dynamic>.from(
-                          _featuredProducts[index] as Map,
-                        ),
-                        slug: widget.slug,
-                        primaryColor: primaryColor,
-                        secondaryColor: secondaryColor,
-                        whatsapp: whatsapp,
-                      ),
-                      separatorBuilder: (_, __) => const SizedBox(width: 14),
-                      itemCount: _featuredProducts.length,
+              height: carouselHeight,
+              child: ListView.separated(
+                padding: EdgeInsets.symmetric(horizontal: contentPadding),
+                scrollDirection: Axis.horizontal,
+                itemBuilder: (context, index) => SizedBox(
+                  width: featuredCardWidth,
+                  child: StorefrontProductCard(
+                    product: Map<String, dynamic>.from(
+                      _offerProducts[index] as Map,
                     ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: _SectionHeader(
-              title: 'Todo el catálogo',
-              subtitle: 'Explora la tienda completa de FULLTECH SRL.',
-            ),
-          ),
-          if (_products.isEmpty)
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: _InlineEmptyState(
-                  title: 'No hay productos visibles en la tienda.',
-                ),
-              ),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              sliver: SliverGrid(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  childAspectRatio: 0.61,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                ),
-                delegate: SliverChildBuilderDelegate((context, index) {
-                  return StorefrontProductCard(
-                    product: Map<String, dynamic>.from(_products[index] as Map),
                     slug: widget.slug,
                     primaryColor: primaryColor,
                     secondaryColor: secondaryColor,
-                    compact: true,
                     whatsapp: whatsapp,
-                  );
-                }, childCount: _products.length),
+                  ),
+                ),
+                separatorBuilder: (_, index) => const SizedBox(width: 14),
+                itemCount: _offerProducts.length,
               ),
             ),
+          ),
+        ],
+        if (_featuredProducts.isNotEmpty) ...[
+          SliverToBoxAdapter(
+            child: _SectionHeader(
+              title: 'Destacados',
+              subtitle: 'Lo mÃ¡s buscado por nuestros clientes.',
+              actionLabel: 'Ver mÃ¡s',
+              horizontalPadding: contentPadding,
+              onTap: () {
+                final category =
+                    _featuredProducts.first['categoria']?.toString() ?? '';
+                if (category.isNotEmpty) {
+                  Navigator.pushNamed(
+                    context,
+                    '/tienda/${widget.slug}/categoria/${Uri.encodeComponent(category)}',
+                  );
+                }
+              },
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: carouselHeight,
+              child: ListView.separated(
+                padding: EdgeInsets.symmetric(horizontal: contentPadding),
+                scrollDirection: Axis.horizontal,
+                itemBuilder: (context, index) => SizedBox(
+                  width: featuredCardWidth,
+                  child: StorefrontProductCard(
+                    product: Map<String, dynamic>.from(
+                      _featuredProducts[index] as Map,
+                    ),
+                    slug: widget.slug,
+                    primaryColor: primaryColor,
+                    secondaryColor: secondaryColor,
+                    whatsapp: whatsapp,
+                  ),
+                ),
+                separatorBuilder: (_, index) => const SizedBox(width: 14),
+                itemCount: _featuredProducts.length,
+              ),
+            ),
+          ),
+        ],
+        SliverToBoxAdapter(
+          child: _SectionHeader(
+            title: 'Todo el catÃ¡logo',
+            subtitle: 'Explora la tienda completa de $storeName.',
+            horizontalPadding: contentPadding,
+          ),
+        ),
+        if (_products.isEmpty)
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
-              child: _page < _totalPages
-                  ? FilledButton(
-                      onPressed: _loadingMore ? null : _loadMore,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: primaryColor,
-                        minimumSize: const Size(double.infinity, 54),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
-                        ),
+              padding: EdgeInsets.symmetric(horizontal: contentPadding),
+              child: const _InlineEmptyState(
+                title: 'No hay productos visibles en la tienda.',
+              ),
+            ),
+          )
+        else
+          SliverPadding(
+            padding: EdgeInsets.symmetric(horizontal: contentPadding),
+            sliver: SliverGrid(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: catalogCrossAxisCount,
+                childAspectRatio: catalogAspectRatio,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+              ),
+              delegate: SliverChildBuilderDelegate((context, index) {
+                return StorefrontProductCard(
+                  product: Map<String, dynamic>.from(_products[index] as Map),
+                  slug: widget.slug,
+                  primaryColor: primaryColor,
+                  secondaryColor: secondaryColor,
+                  compact: true,
+                  whatsapp: whatsapp,
+                );
+              }, childCount: _products.length),
+            ),
+          ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(contentPadding, 18, contentPadding, 8),
+            child: _page < _totalPages
+                ? FilledButton(
+                    onPressed: _loadingMore ? null : _loadMore,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      minimumSize: const Size(double.infinity, 54),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
                       ),
-                      child: _loadingMore
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text('Ver más productos'),
-                    )
-                  : const SizedBox.shrink(),
-            ),
+                    ),
+                    child: _loadingMore
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text('Ver mÃ¡s productos'),
+                  )
+                : const SizedBox.shrink(),
           ),
-          SliverToBoxAdapter(
-            child: StorefrontFooter(
-              config: config,
-              primaryColor: primaryColor,
-              secondaryColor: secondaryColor,
-            ),
+        ),
+        SliverToBoxAdapter(
+          child: StorefrontFooter(
+            config: config,
+            primaryColor: primaryColor,
+            secondaryColor: secondaryColor,
           ),
+        ),
       ],
       floatingActionButton: whatsapp.isEmpty
           ? null
           : Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: FloatingActionButton.extended(
-                onPressed: () {
-                  final number = whatsapp.replaceAll(RegExp(r'[^\d]'), '');
-                  launchUrl(Uri.parse('https://wa.me/$number'));
-                },
-                backgroundColor: StorefrontColors.whatsapp,
-                icon: const Icon(Icons.chat_rounded, color: Colors.white),
-                label: Text(isSmallDevice ? 'Chat' : 'WhatsApp'),
+              padding: EdgeInsets.only(
+                right: isDesktop ? 16 : 4,
+                bottom: MediaQuery.viewPaddingOf(context).bottom + 8,
               ),
+              child: isDesktop
+                  ? FloatingActionButton.extended(
+                      onPressed: () => _openWhatsapp(whatsapp),
+                      backgroundColor: StorefrontColors.whatsapp,
+                      icon: const Icon(Icons.chat_rounded, color: Colors.white),
+                      label: const Text('WhatsApp'),
+                    )
+                  : FloatingActionButton.small(
+                      onPressed: () => _openWhatsapp(whatsapp),
+                      backgroundColor: StorefrontColors.whatsapp,
+                      child: const Icon(Icons.chat_rounded, color: Colors.white),
+                    ),
             ),
     );
+  }
+
+  List<dynamic> _dedupeProducts(List<dynamic> products) {
+    final unique = <String, dynamic>{};
+    for (final item in products) {
+      if (item is! Map) {
+        continue;
+      }
+      final map = Map<String, dynamic>.from(item);
+      final id = map['id']?.toString() ?? map['titulo']?.toString() ?? '';
+      if (id.isNotEmpty) {
+        unique[id] = map;
+      }
+    }
+    return unique.values.toList();
   }
 
   List<Map<String, dynamic>> _buildDisplayCategories(
@@ -600,8 +637,8 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
   String _displayCategoryName(String value) {
     final normalized = value.trim().toLowerCase();
     return switch (normalized) {
-      'camaras' => 'Cámaras',
-      'camaras ip' => 'Cámaras IP',
+      'camaras' => 'CÃ¡maras',
+      'camaras ip' => 'CÃ¡maras IP',
       'dvr' => 'DVR',
       _ => value.trim(),
     };
@@ -610,376 +647,14 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
   String _normalizeCategoryKey(String value) {
     final lower = value.trim().toLowerCase();
     final decomposed = lower
-        .replaceAll('á', 'a')
-        .replaceAll('é', 'e')
-        .replaceAll('í', 'i')
-        .replaceAll('ó', 'o')
-        .replaceAll('ú', 'u')
-        .replaceAll('ü', 'u')
-        .replaceAll('ñ', 'n');
+        .replaceAll('Ã¡', 'a')
+        .replaceAll('Ã©', 'e')
+        .replaceAll('Ã­', 'i')
+        .replaceAll('Ã³', 'o')
+        .replaceAll('Ãº', 'u')
+        .replaceAll('Ã¼', 'u')
+        .replaceAll('Ã±', 'n');
     return decomposed.replaceAll(_combiningMarks, '');
-  }
-}
-
-class _PremiumHero extends StatelessWidget {
-  final String slug;
-  final String storeName;
-  final dynamic logoUrl;
-  final Color primaryColor;
-  final Color secondaryColor;
-  final String heroTitle;
-  final String heroSubtitle;
-  final VoidCallback onSearchTap;
-
-  const _PremiumHero({
-    required this.slug,
-    required this.storeName,
-    required this.logoUrl,
-    required this.primaryColor,
-    required this.secondaryColor,
-    required this.heroTitle,
-    required this.heroSubtitle,
-    required this.onSearchTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top;
-    final canPop = Navigator.of(context).canPop();
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-      padding: EdgeInsets.fromLTRB(18, topPadding + 10, 18, 24),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
-        gradient: LinearGradient(
-          colors: [primaryColor, secondaryColor],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: StorefrontShadows.strong,
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            right: -40,
-            top: -20,
-            child: Container(
-              width: 160,
-              height: 160,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.08),
-              ),
-            ),
-          ),
-          Positioned(
-            left: -30,
-            bottom: -55,
-            child: Container(
-              width: 150,
-              height: 150,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.08),
-              ),
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  if (canPop)
-                    _GlassIconButton(
-                      icon: Icons.arrow_back_ios_new_rounded,
-                      onTap: () => Navigator.of(context).maybePop(),
-                    ),
-                  if (canPop) const SizedBox(width: 10),
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.16),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: StorefrontSmartImage(
-                      source: logoUrl,
-                      fit: BoxFit.cover,
-                      borderRadius: BorderRadius.circular(16),
-                      placeholder: const Center(
-                        child: Icon(
-                          Icons.shield_moon_outlined,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          storeName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.4,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Tienda oficial FULLTECH',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.78),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  _GlassIconButton(
-                    icon: Icons.search_rounded,
-                    onTap: onSearchTap,
-                  ),
-                  const SizedBox(width: 8),
-                  _GlassIconButton(
-                    icon: Icons.shopping_cart_outlined,
-                    onTap: () =>
-                        Navigator.pushNamed(context, '/tienda/$slug/carrito'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 26),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  'Garantía, soporte e instalación profesional',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.94),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Text(
-                heroTitle,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 34,
-                  fontWeight: FontWeight.w900,
-                  height: 1.04,
-                  letterSpacing: -1,
-                ),
-              ),
-              const SizedBox(height: 10),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 620),
-                child: Text(
-                  heroSubtitle,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.84),
-                    fontSize: 15,
-                    height: 1.55,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  FilledButton.icon(
-                    onPressed: onSearchTap,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: primaryColor,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                    ),
-                    icon: const Icon(Icons.flash_on_rounded),
-                    label: const Text('Buscar productos'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () => Navigator.pushNamed(
-                      context,
-                      '/tienda/$slug/categoria/${Uri.encodeComponent('Cámaras')}',
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.3),
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                    ),
-                    icon: const Icon(Icons.play_circle_outline_rounded),
-                    label: const Text('Ver ofertas'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GlassIconButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _GlassIconButton({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white.withValues(alpha: 0.14),
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: SizedBox(
-          width: 44,
-          height: 44,
-          child: Icon(icon, color: Colors.white),
-        ),
-      ),
-    );
-  }
-}
-
-class _SearchShortcutCard extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _SearchShortcutCard({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(24),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(24),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: StorefrontShadows.card,
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEFF6FF),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(
-                  Icons.search_rounded,
-                  color: Color(0xFF2563EB),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      'Buscar productos',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Toca para ver sugerencias en vivo por nombre, categoría o descripción.',
-                      style: TextStyle(
-                        color: Color(0xFF64748B),
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: 16,
-                color: Color(0xFF94A3B8),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BenefitStrip extends StatelessWidget {
-  final Color secondaryColor;
-
-  const _BenefitStrip({required this.secondaryColor});
-
-  @override
-  Widget build(BuildContext context) {
-    final items = [
-      (Icons.verified_outlined, 'Garantía'),
-      (Icons.storefront_outlined, 'Tienda física'),
-      (Icons.support_agent_outlined, 'Soporte'),
-      (Icons.handyman_outlined, 'Instalación'),
-    ];
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (final item in items) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: StorefrontShadows.soft,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(item.$1, size: 18, color: secondaryColor),
-                  const SizedBox(width: 8),
-                  Text(
-                    item.$2,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF0F172A),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-          ],
-        ],
-      ),
-    );
   }
 }
 
@@ -988,18 +663,26 @@ class _SectionHeader extends StatelessWidget {
   final String? subtitle;
   final String? actionLabel;
   final VoidCallback? onTap;
+  final double horizontalPadding;
 
   const _SectionHeader({
     required this.title,
     this.subtitle,
     this.actionLabel,
     this.onTap,
+    this.horizontalPadding = 16,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isDesktop = MediaQuery.sizeOf(context).width >= 1100;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 14),
+      padding: EdgeInsets.fromLTRB(
+        horizontalPadding,
+        isDesktop ? 28 : 22,
+        horizontalPadding,
+        12,
+      ),
       child: Row(
         children: [
           Expanded(
@@ -1008,15 +691,15 @@ class _SectionHeader extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontSize: 22,
+                  style: TextStyle(
+                    fontSize: isDesktop ? 24 : 21,
                     fontWeight: FontWeight.w900,
-                    color: Color(0xFF0F172A),
+                    color: const Color(0xFF0F172A),
                     letterSpacing: -0.6,
                   ),
                 ),
                 if (subtitle != null) ...[
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 5),
                   Text(
                     subtitle!,
                     style: const TextStyle(
@@ -1037,11 +720,13 @@ class _SectionHeader extends StatelessWidget {
 }
 
 class _CategoryCard extends StatelessWidget {
+  final double width;
   final Map<String, dynamic> category;
   final Color secondaryColor;
   final VoidCallback onTap;
 
   const _CategoryCard({
+    required this.width,
     required this.category,
     required this.secondaryColor,
     required this.onTap,
@@ -1050,16 +735,12 @@ class _CategoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = category['nombre']?.toString() ?? '';
-    final normalizedName = switch (name.toLowerCase()) {
-      'camaras' => 'Cámaras',
-      _ => name,
-    };
     final count = category['cantidad']?.toString() ?? '0';
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 140,
+        width: width,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -1070,19 +751,18 @@ class _CategoryCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: Container(
-                width: double.infinity,
+              child: DecoratedBox(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(18),
                   gradient: const LinearGradient(
-                    colors: [Color(0xFFF7FAFE), Color(0xFFEFF6FF)],
+                    colors: [Color(0xFFF8FBFF), Color(0xFFEFF6FF)],
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                   ),
                 ),
                 child: StorefrontSmartImage(
                   source: category['imagen'],
-                  fit: BoxFit.cover,
+                  fit: BoxFit.contain,
                   borderRadius: BorderRadius.circular(18),
                   placeholder: Center(
                     child: Icon(
@@ -1096,18 +776,21 @@ class _CategoryCard extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              normalizedName,
-              maxLines: 1,
+              name,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
                 color: Color(0xFF0F172A),
+                height: 1.2,
               ),
             ),
             const SizedBox(height: 4),
             Text(
               '$count productos',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 11,
                 color: Color(0xFF64748B),
@@ -1115,80 +798,6 @@ class _CategoryCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _FallbackPromoCard extends StatelessWidget {
-  final Color primaryColor;
-  final Color secondaryColor;
-
-  const _FallbackPromoCard({
-    required this.primaryColor,
-    required this.secondaryColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(26),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [primaryColor, secondaryColor],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: StorefrontShadows.strong,
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            right: -30,
-            top: -20,
-            child: Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.08),
-              ),
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Tecnología lista para instalar',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  height: 1.05,
-                  letterSpacing: -0.8,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                'Compra cámaras, motores, accesorios y kits con soporte, garantía y acompañamiento comercial de FULLTECH.',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  height: 1.45,
-                ),
-              ),
-              const SizedBox(height: 18),
-              FilledButton(
-                onPressed: () {},
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: primaryColor,
-                ),
-                child: const Text('Ver catálogo'),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }
@@ -1260,7 +869,6 @@ class _StorefrontSearchSheetState extends State<_StorefrontSearchSheet> {
 
   void _onChanged() {
     final query = _controller.text.trim();
-
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 320), () {
       _runSearch(query);
@@ -1268,9 +876,11 @@ class _StorefrontSearchSheetState extends State<_StorefrontSearchSheet> {
   }
 
   Future<void> _runSearch(String query) async {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
-    if (query.length < 1) {
+    if (query.isEmpty) {
       setState(() {
         _loading = false;
         _results = widget.initialProducts.take(8).toList();
@@ -1320,13 +930,18 @@ class _StorefrontSearchSheetState extends State<_StorefrontSearchSheet> {
         }
       }
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
+
       setState(() {
         _results = merged.values.toList();
         _loading = false;
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() => _loading = false);
     }
   }
@@ -1335,7 +950,7 @@ class _StorefrontSearchSheetState extends State<_StorefrontSearchSheet> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Container(
-        height: MediaQuery.of(context).size.height * 0.88,
+        height: MediaQuery.sizeOf(context).height * 0.88,
         decoration: const BoxDecoration(
           color: Color(0xFFF8FAFC),
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
@@ -1358,10 +973,7 @@ class _StorefrontSearchSheetState extends State<_StorefrontSearchSheet> {
                   const Expanded(
                     child: Text(
                       'Buscar productos',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                      ),
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
                     ),
                   ),
                   IconButton(
@@ -1377,7 +989,7 @@ class _StorefrontSearchSheetState extends State<_StorefrontSearchSheet> {
                 controller: _controller,
                 autofocus: true,
                 decoration: InputDecoration(
-                  hintText: 'Busca cámaras, motores, routers y más',
+                  hintText: 'Busca cÃ¡maras, motores, routers y mÃ¡s',
                   prefixIcon: const Icon(Icons.search_rounded),
                   suffixIcon: _controller.text.trim().isNotEmpty
                       ? IconButton(
@@ -1495,7 +1107,7 @@ class _StorefrontSearchSheetState extends State<_StorefrontSearchSheet> {
                           ),
                         );
                       },
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
+                      separatorBuilder: (_, index) => const SizedBox(height: 10),
                       itemCount: _results.length,
                     ),
             ),
@@ -1511,12 +1123,12 @@ class _SearchEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    return const Center(
       child: Padding(
-        padding: const EdgeInsets.all(28),
+        padding: EdgeInsets.all(28),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: const [
+          children: [
             Icon(
               Icons.search_off_rounded,
               size: 40,
@@ -1524,7 +1136,7 @@ class _SearchEmptyState extends StatelessWidget {
             ),
             SizedBox(height: 12),
             Text(
-              'No encontramos productos con esa búsqueda.',
+              'No encontramos productos con esa bÃºsqueda.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Color(0xFF64748B),

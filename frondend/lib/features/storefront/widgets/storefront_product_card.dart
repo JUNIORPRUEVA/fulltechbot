@@ -42,6 +42,7 @@ class _StorefrontProductCardState extends State<StorefrontProductCard> {
         : product['descripcion']?.toString().trim().isNotEmpty == true
         ? product['descripcion'].toString().trim()
         : product['informacion']?.toString().trim() ?? '';
+    final categoria = product['categoria']?.toString().trim() ?? '';
     final tieneOferta = precioOriginal != null && precioOriginal > precio;
 
     return MouseRegion(
@@ -56,19 +57,19 @@ class _StorefrontProductCardState extends State<StorefrontProductCard> {
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeOutCubic,
           transform: _isHovered
-              ? (Matrix4.identity()..translate(0, -4))
+              ? (Matrix4.identity()..translateByDouble(0, -4, 0, 1))
               : Matrix4.identity(),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: const Color(0xFFE5E7EB)),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
             boxShadow: _isHovered
-                ? StorefrontShadows.soft
+                ? StorefrontShadows.medium
                 : const [
                     BoxShadow(
                       color: Color(0x0A0F172A),
-                      blurRadius: 18,
-                      offset: Offset(0, 8),
+                      blurRadius: 16,
+                      offset: Offset(0, 6),
                     ),
                   ],
           ),
@@ -84,22 +85,22 @@ class _StorefrontProductCardState extends State<StorefrontProductCard> {
                       child: Container(
                         decoration: const BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [Color(0xFFF7FAFE), Color(0xFFF1F5F9)],
+                            colors: [Color(0xFFF8FBFF), Color(0xFFF1F5F9)],
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                           ),
                         ),
                         child: StorefrontSmartImage(
                           source: imagen,
-                          fit: BoxFit.cover,
+                          fit: BoxFit.contain,
                           placeholder: _placeholderImage(),
                         ),
                       ),
                     ),
                     if (tieneOferta)
                       const Positioned(
-                        top: 10,
-                        left: 10,
+                        top: 12,
+                        left: 12,
                         child: _OfferBadge(),
                       ),
                   ],
@@ -115,6 +116,19 @@ class _StorefrontProductCardState extends State<StorefrontProductCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (categoria.isNotEmpty) ...[
+                      Text(
+                        categoria,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: widget.secondaryColor,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                    ],
                     Text(
                       product['titulo']?.toString() ?? '',
                       maxLines: 2,
@@ -126,11 +140,11 @@ class _StorefrontProductCardState extends State<StorefrontProductCard> {
                         height: 1.25,
                       ),
                     ),
-                    if (descripcion.isNotEmpty) ...[
+                    if (!widget.compact && descripcion.isNotEmpty) ...[
                       const SizedBox(height: 6),
                       Text(
                         descripcion,
-                        maxLines: widget.compact ? 2 : 3,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontSize: 12.5,
@@ -159,17 +173,29 @@ class _StorefrontProductCardState extends State<StorefrontProductCard> {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFFF8FAFC), Color(0xFFE2E8F0)],
+          colors: [Color(0xFFF8FAFC), Color(0xFFEAF1F9)],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
       ),
-      child: const Center(
-        child: Icon(
-          Icons.image_outlined,
-          size: 40,
-          color: Color(0xFFCBD5E1),
-        ),
+      child: const Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.image_outlined,
+            size: 36,
+            color: Color(0xFFCBD5E1),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Imagen no disponible',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF94A3B8),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -181,10 +207,21 @@ class _OfferBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFEF4444),
+        gradient: const LinearGradient(
+          colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(999),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x22DC2626),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: const Text(
         'Oferta',
