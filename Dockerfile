@@ -10,14 +10,19 @@ ENV DATABASE_URL=${DATABASE_URL}
 
 COPY package*.json ./
 
-RUN npm ci --omit=dev && npm cache clean --force
+# Instala dependencias completas para que Prisma tenga todos sus engines
+# disponibles durante el build de EasyPanel.
+RUN npm ci
 
 COPY --chown=node:node prisma ./prisma
 COPY --chown=node:node src ./src
 COPY --chown=node:node prisma.config.ts ./prisma.config.ts
 COPY --chown=node:node entrypoint.sh ./entrypoint.sh
 
-RUN npx prisma generate && chmod +x ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh \
+  && npx prisma generate \
+  && npm prune --omit=dev \
+  && npm cache clean --force
 
 ENV NODE_ENV=production
 ENV PORT=3000

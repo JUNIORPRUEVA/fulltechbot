@@ -11,7 +11,7 @@ if [ -z "${DATABASE_URL:-}" ]; then
   exit 1
 fi
 
-RUN_PRISMA_MIGRATIONS="${RUN_PRISMA_MIGRATIONS:-true}"
+RUN_PRISMA_MIGRATIONS="${RUN_PRISMA_MIGRATIONS:-false}"
 
 if [ "$RUN_PRISMA_MIGRATIONS" = "true" ]; then
   echo "Running Prisma migrations..."
