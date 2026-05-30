@@ -1,19 +1,6 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
@@ -42,16 +29,12 @@
 
   <!-- 
     ============================================================
-    FULLTECH STORE - FIX: DESREGISTRAR SERVICE WORKER ANTERIOR
+    FIX DEFINITIVO: REDIRECT INMEDIATO A LA TIENDA
     ============================================================
-    El Service Worker anterior estaba cacheando la versión vieja
-    de la app (FullTech Bot admin) y sirviéndola en lugar de la
-    nueva versión con la tienda.
+    Cuando el usuario entra a https://fulltechrd.com, esto se ejecuta
+    ANTES de que Flutter cargue, redirigiendo inmediatamente a la tienda.
     
-    SOLUCIÓN: Desregistramos el SW anterior, limpiamos todos los
-    caches, y NO registramos un nuevo SW para evitar este problema.
-    
-    La app funciona perfectamente sin Service Worker.
+    También desregistra cualquier Service Worker viejo y limpia caches.
     ============================================================
   -->
   <script>
@@ -59,51 +42,48 @@
       'use strict';
       
       // ==========================================
-      // 1. DESREGISTRAR cualquier Service Worker existente
+      // 1. REDIRECT INMEDIATO A LA TIENDA
+      //    Esto se ejecuta antes de que Flutter cargue
+      // ==========================================
+      var path = window.location.pathname || "/";
+      var hash = window.location.hash || "";
+      var isRootPath = path === "/" || path === "";
+      var isEmptyHash = hash === "" || hash === "#" || hash === "#/";
+      
+      // Si estamos en la raíz sin hash, redirigir a la tienda
+      if (isRootPath && isEmptyHash) {
+        console.log('[FIX] Redirigiendo a la tienda principal...');
+        window.location.replace("/#/tienda/fulltech-seguridad");
+        return; // Detener ejecución, la página se recargará
+      }
+      
+      // ==========================================
+      // 2. DESREGISTRAR Service Workers viejos
       // ==========================================
       if ('serviceWorker' in navigator) {
-        // Obtener todos los registros de SW y desregistrarlos
         navigator.serviceWorker.getRegistrations().then(function(registrations) {
-          console.log('[FIX] Service Workers encontrados:', registrations.length);
           for (var i = 0; i < registrations.length; i++) {
-            var registration = registrations[i];
-            console.log('[FIX] Desregistrando SW:', registration.active ? registration.active.scriptURL : 'unknown');
-            registration.unregister().then(function(success) {
-              console.log('[FIX] SW desregistrado:', success);
-            });
+            registrations[i].unregister();
           }
-        }).catch(function(err) {
-          console.warn('[FIX] Error obteniendo registros SW:', err);
         });
         
-        // Escuchar cuando el SW se desconecte para recargar
         navigator.serviceWorker.addEventListener('controllerchange', function() {
-          console.log('[FIX] SW cambiado, recargando página...');
           window.location.reload();
         });
       }
       
       // ==========================================
-      // 2. LIMPIAR TODOS LOS CACHES
+      // 3. LIMPIAR CACHES
       // ==========================================
       if (window.caches) {
         caches.keys().then(function(cacheNames) {
-          console.log('[FIX] Caches encontrados:', cacheNames);
           return Promise.all(
             cacheNames.map(function(cacheName) {
-              console.log('[FIX] Eliminando cache:', cacheName);
               return caches.delete(cacheName);
             })
           );
-        }).then(function() {
-          console.log('[FIX] Todos los caches eliminados correctamente');
-        }).catch(function(err) {
-          console.warn('[FIX] Error limpiando caches:', err);
         });
       }
-      
-      console.log('[FIX] Service Worker desregistrado y caches limpiados');
-      console.log('[FIX] La app cargará FRESCA desde el servidor');
     })();
   </script>
 </head>

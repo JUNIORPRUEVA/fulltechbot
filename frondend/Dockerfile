@@ -17,11 +17,12 @@ RUN flutter pub get
 COPY . .
 
 # Build the web app with optional dart-defines from EasyPanel.
-RUN if [ -n "$API_BASE_URL" ]; then \
-      flutter build web --release --no-wasm-dry-run --dart-define=API_BASE_URL="$API_BASE_URL" --dart-define=STORAGE_PUBLIC_URL="$STORAGE_PUBLIC_URL" $FLUTTER_BUILD_ARGS; \
-    else \
-      flutter build web --release --no-wasm-dry-run --dart-define=STORAGE_PUBLIC_URL="$STORAGE_PUBLIC_URL" $FLUTTER_BUILD_ARGS; \
-    fi
+# --pwa-strategy=none: No generar service worker automático de Flutter
+  RUN if [ -n "$API_BASE_URL" ]; then \
+        flutter build web --release --no-wasm-dry-run --pwa-strategy=none --dart-define=API_BASE_URL="$API_BASE_URL" --dart-define=STORAGE_PUBLIC_URL="$STORAGE_PUBLIC_URL" $FLUTTER_BUILD_ARGS; \
+      else \
+        flutter build web --release --no-wasm-dry-run --pwa-strategy=none --dart-define=STORAGE_PUBLIC_URL="$STORAGE_PUBLIC_URL" $FLUTTER_BUILD_ARGS; \
+      fi
 
 FROM nginx:alpine
 

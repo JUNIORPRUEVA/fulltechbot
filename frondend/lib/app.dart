@@ -34,7 +34,18 @@ class MyApp extends StatelessWidget {
   Route<dynamic> _onGenerateRoute(RouteSettings settings) {
     final uri = Uri.parse(settings.name ?? '/');
 
-    if (uri.path == '/' || uri.path == '/tienda') {
+    // ==========================================
+    // FIX: Ruta raíz "/" redirige DIRECTAMENTE a la tienda
+    // Sin depender de API, sin esperar resolución
+    // ==========================================
+    if (uri.path == '/') {
+      return _route(
+        settings,
+        const StorefrontHomeScreen(slug: 'fulltech-seguridad'),
+      );
+    }
+
+    if (uri.path == '/tienda') {
       return _route(
         settings,
         PublicEntryScreen(
