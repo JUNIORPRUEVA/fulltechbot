@@ -35,7 +35,39 @@ async function obtenerProductoPorId(id) {
   });
 }
 
+async function productoDuplicado(titulo, categoria, botId, excluirId = null) {
+  if (!titulo || !categoria) return false;
+
+  const where = {
+    titulo: {
+      equals: titulo,
+      mode: 'insensitive',
+    },
+    categoria: {
+      equals: categoria,
+      mode: 'insensitive',
+    },
+  };
+
+  if (botId) {
+    where.botId = botId;
+  }
+
+  if (excluirId) {
+    where.id = { not: excluirId };
+  }
+
+  const existente = await prisma.catalogo.findFirst({ where });
+  return existente !== null;
+}
+
 async function crearProducto(data) {
+  // Verificar duplicado antes de crear
+  const duplicado = await productoDuplicado(data.titulo, data.categoria, data.botId);
+  if (duplicado) {
+    throw new Error(`Ya existe un producto con el título "${data.titulo}" en la categoría "${data.categoria}"${data.botId ? ' para este bot' : ''}`);
+  }
+
   return prisma.catalogo.create({
     data: {
       titulo: data.titulo,
@@ -115,6 +147,12 @@ async function crearProducto(data) {
 
 
 async function actualizarProducto(id, data) {
+  // Verificar duplicado antes de actualizar (excluyendo el propio producto)
+  const duplicado = await productoDuplicado(data.titulo, data.categoria, data.botId, id);
+  if (duplicado) {
+    throw new Error(`Ya existe otro producto con el título "${data.titulo}" en la categoría "${data.categoria}"${data.botId ? ' para este bot' : ''}`);
+  }
+
   return prisma.catalogo.update({
     where: { id },
     data: {
@@ -211,6 +249,7 @@ module.exports = {
   listarCatalogo,
   listarCatalogoActivo,
   obtenerProductoPorId,
+  productoDuplicado,
   crearProducto,
   actualizarProducto,
   cambiarEstadoProducto,

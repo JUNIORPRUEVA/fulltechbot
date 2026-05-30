@@ -15,6 +15,16 @@ class StorefrontHelpers {
     return StorefrontImageResolver.resolve(value, version: version)?.value;
   }
 
+  static String? normalizeImageUrl(dynamic value, {String? version}) {
+    final resolved = StorefrontImageResolver.resolveUrl(value, version: version);
+    if (resolved == null) {
+      return null;
+    }
+
+    final clean = resolved.trim();
+    return clean.isEmpty ? null : clean;
+  }
+
   static Future<String> ensureSessionId(String slug) async {
     final prefs = await SharedPreferences.getInstance();
     final key = 'storefront_session_$slug';
@@ -29,19 +39,50 @@ class StorefrontHelpers {
   }
 
   static num getEffectivePrice(Map<String, dynamic> product) {
-    return _toNum(
-          product['precio_oferta_web'] ??
-              product['precioOferta'] ??
-              product['precio'],
-        ) ??
-        0;
+    return getDisplayPrice(product) ?? 0;
+  }
+
+  static num? getDisplayPrice(Map<String, dynamic> product) {
+    final offerPrice = _toNum(product['precio_oferta_web'] ?? product['precioOferta']);
+    if (offerPrice != null && offerPrice > 0) {
+      return offerPrice;
+    }
+
+    final regularPrice = _toNum(product['precio']);
+    if (regularPrice != null && regularPrice > 0) {
+      return regularPrice;
+    }
+
+    return null;
   }
 
   static num? getOriginalPrice(Map<String, dynamic> product) {
     final original = _toNum(product['precio']);
-    final actual = getEffectivePrice(product);
-    if (original == null || original <= actual) return null;
+    final actual = getDisplayPrice(product);
+    if (original == null || actual == null || original <= actual) return null;
     return original;
+  }
+
+  static String getShortDescription(
+    Map<String, dynamic> product, {
+    String fallback = 'Producto disponible en tienda',
+  }) {
+    final candidates = [
+      product['descripcion_corta'],
+      product['descripcion_web'],
+      product['descripcion'],
+      product['informacion'],
+      product['detalle'],
+    ];
+
+    for (final candidate in candidates) {
+      final clean = candidate?.toString().trim() ?? '';
+      if (clean.isNotEmpty && clean.toLowerCase() != 'null') {
+        return clean;
+      }
+    }
+
+    return fallback;
   }
 
   /// Obtiene la imagen principal con versionado automático.
@@ -90,4 +131,3 @@ class StorefrontHelpers {
     return num.tryParse(value?.toString() ?? '');
   }
 }
-

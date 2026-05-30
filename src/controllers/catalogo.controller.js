@@ -227,10 +227,18 @@ async function crear(req, res) {
       data: normalizarProducto(req, producto),
     });
   } catch (error) {
+    const mensaje = error.message || '';
+    // Si es error de producto duplicado, devolver 409 Conflict
+    if (mensaje.includes('Ya existe un producto')) {
+      return res.status(409).json({
+        ok: false,
+        message: mensaje,
+      });
+    }
     res.status(500).json({
       ok: false,
       message: 'Error al crear producto',
-      error: error.message,
+      error: mensaje,
     });
   }
 }
@@ -266,10 +274,18 @@ async function actualizar(req, res) {
       data: normalizarProducto(req, producto),
     });
   } catch (error) {
+    const mensaje = error.message || '';
+    // Si es error de producto duplicado, devolver 409 Conflict
+    if (mensaje.includes('Ya existe otro producto')) {
+      return res.status(409).json({
+        ok: false,
+        message: mensaje,
+      });
+    }
     res.status(500).json({
       ok: false,
       message: 'Error al actualizar producto',
-      error: error.message,
+      error: mensaje,
     });
   }
 }

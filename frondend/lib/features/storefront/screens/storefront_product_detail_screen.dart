@@ -148,7 +148,17 @@ class _StorefrontProductDetailScreenState
     }
 
     final product = _product!;
-    final price = StorefrontHelpers.getEffectivePrice(product);
+    final price = StorefrontHelpers.getDisplayPrice(product);
+    if (price == null || price <= 0) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Este producto requiere cotizacion'),
+          ),
+        );
+      }
+      return;
+    }
     final sessionId = await StorefrontHelpers.ensureSessionId(widget.slug);
     await StorefrontApiService.createCart(widget.slug, sessionId);
 
@@ -191,14 +201,17 @@ class _StorefrontProductDetailScreenState
     }
 
     final product = _product!;
-    final price = StorefrontHelpers.getEffectivePrice(product);
+    final price = StorefrontHelpers.getDisplayPrice(product);
     final number = whatsapp.replaceAll(RegExp(r'[^\d]'), '');
     final productUrl = Uri.base
         .resolve('/tienda/${widget.slug}/producto/${product['id']}')
         .toString();
+    final priceText = price == null
+        ? 'Consultar precio'
+        : 'RD\$${price.toStringAsFixed(0)}';
     final message =
         'Hola FULLTECH, estoy interesado en este producto: '
-        '${product['titulo']}. Precio: RD\$${price.toStringAsFixed(0)}. '
+        '${product['titulo']}. Precio: $priceText. '
         'Esta disponible? $productUrl';
 
     await launchUrl(
@@ -232,10 +245,10 @@ class _StorefrontProductDetailScreenState
     );
     final whatsapp = config['whatsapp_numero']?.toString() ?? '';
     final gallery = StorefrontHelpers.getProductImages(product);
-    final price = StorefrontHelpers.getEffectivePrice(product);
+    final price = StorefrontHelpers.getDisplayPrice(product);
     final originalPrice = StorefrontHelpers.getOriginalPrice(product);
     final stock = int.tryParse(product['stock']?.toString() ?? '0') ?? 0;
-    final canBuy = stock > 0;
+    final canBuy = stock > 0 && price != null && price > 0;
     final isDesktop = MediaQuery.sizeOf(context).width >= 1000;
 
     return Scaffold(
@@ -437,11 +450,10 @@ class _StorefrontProductDetailScreenState
   ) {
     final sections = <Widget>[];
     final description =
-        product['descripcion_web']?.toString().trim().isNotEmpty == true
-        ? product['descripcion_web'].toString().trim()
-        : product['descripcion']?.toString().trim().isNotEmpty == true
-        ? product['descripcion'].toString().trim()
-        : product['informacion']?.toString().trim() ?? '';
+        StorefrontHelpers.getShortDescription(
+          product,
+          fallback: 'Producto disponible en tienda',
+        );
     final video = product['video']?.toString().trim() ?? '';
 
     if (description.isNotEmpty) {
@@ -479,7 +491,7 @@ class _StorefrontProductDetailScreenState
 
 class _ProductSummarySection extends StatelessWidget {
   final Map<String, dynamic> product;
-  final num price;
+  final num? price;
   final num? originalPrice;
   final bool canBuy;
   final bool isDesktop;
@@ -513,11 +525,10 @@ class _ProductSummarySection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final description =
-        product['descripcion_web']?.toString().trim().isNotEmpty == true
-        ? product['descripcion_web'].toString().trim()
-        : product['descripcion']?.toString().trim().isNotEmpty == true
-        ? product['descripcion'].toString().trim()
-        : product['informacion']?.toString().trim() ?? '';
+        StorefrontHelpers.getShortDescription(
+          product,
+          fallback: 'Producto disponible en tienda',
+        );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

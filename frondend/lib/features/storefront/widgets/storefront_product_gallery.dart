@@ -8,8 +8,6 @@ class StorefrontProductGallery extends StatefulWidget {
   final String title;
   final bool isDesktop;
   final Color accentColor;
-  
-  /// Versión del producto (updatedAt) para versionado de imágenes
   final String? version;
 
   const StorefrontProductGallery({
@@ -21,22 +19,36 @@ class StorefrontProductGallery extends StatefulWidget {
     this.version,
   });
 
-
   @override
   State<StorefrontProductGallery> createState() =>
       _StorefrontProductGalleryState();
 }
 
 class _StorefrontProductGalleryState extends State<StorefrontProductGallery> {
+  late final PageController _pageController;
   int _selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   @override
   void didUpdateWidget(covariant StorefrontProductGallery oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (_selectedIndex >= widget.images.length) {
-      _selectedIndex = 0;
-    }
     if (oldWidget.images != widget.images) {
+      _selectedIndex = 0;
+      if (_pageController.hasClients) {
+        _pageController.jumpToPage(0);
+      }
+    } else if (_selectedIndex >= widget.images.length) {
       _selectedIndex = 0;
     }
   }
@@ -44,7 +56,7 @@ class _StorefrontProductGalleryState extends State<StorefrontProductGallery> {
   @override
   Widget build(BuildContext context) {
     final hasImages = widget.images.isNotEmpty;
-    final selectedImage = hasImages ? widget.images[_selectedIndex] : null;
+    final radius = widget.isDesktop ? 28.0 : 22.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -53,116 +65,156 @@ class _StorefrontProductGalleryState extends State<StorefrontProductGallery> {
           width: double.infinity,
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(widget.isDesktop ? 28 : 22),
+            borderRadius: BorderRadius.circular(radius),
             border: Border.all(color: const Color(0xFFE5E7EB)),
+            boxShadow: StorefrontShadows.soft,
           ),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: widget.isDesktop ? 560 : 360,
-            ),
-            child: AspectRatio(
-              aspectRatio: 1,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(widget.isDesktop ? 28 : 22),
-                onTap: hasImages ? () => _openImageViewer(context) : null,
-                child: Stack(
-                  children: [
-                    Positioned.fill(
-                      child: Padding(
-                        padding: EdgeInsets.all(widget.isDesktop ? 28 : 14),
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 220),
-                          child: hasImages
-                              ? Hero(
-                                  key: ValueKey(selectedImage),
-                                  tag:
-                                      'product-image-${widget.title}-$_selectedIndex',
-                                  child: StorefrontSmartImage(
-                                    source: selectedImage,
-                                    fit: BoxFit.contain,
-                                    placeholder: _GalleryPlaceholder(
-                                      isDesktop: widget.isDesktop,
-                                    ),
-                                  ),
-                                )
-                              : _GalleryPlaceholder(
-                                  key: const ValueKey('placeholder'),
+          child: AspectRatio(
+            aspectRatio: widget.isDesktop ? 1 : 0.96,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(radius),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (hasImages)
+                    PageView.builder(
+                      controller: _pageController,
+                      itemCount: widget.images.length,
+                      onPageChanged: (index) =>
+                          setState(() => _selectedIndex = index),
+                      itemBuilder: (context, index) {
+                        final image = widget.images[index];
+                        return GestureDetector(
+                          onTap: () => _openImageViewer(context),
+                          child: Padding(
+                            padding: EdgeInsets.all(widget.isDesktop ? 26 : 16),
+                            child: Hero(
+                              tag: 'product-image-${widget.title}-$index',
+                              child: StorefrontSmartImage(
+                                source: image,
+                                fit: BoxFit.contain,
+                                placeholder: _GalleryPlaceholder(
                                   isDesktop: widget.isDesktop,
                                 ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    )
+                  else
+                    const _GalleryPlaceholder(isDesktop: false),
+                  if (hasImages && widget.images.length > 1)
+                    Positioned(
+                      right: 12,
+                      bottom: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.60),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          '${_selectedIndex + 1}/${widget.images.length}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),
-                    if (hasImages)
-                      Positioned(
-                        top: 12,
-                        right: 12,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.92),
-                            borderRadius: BorderRadius.circular(999),
-                            boxShadow: StorefrontShadows.soft,
-                          ),
-                          child: IconButton(
-                            onPressed: () => _openImageViewer(context),
-                            icon: const Icon(Icons.zoom_out_map_rounded),
-                            tooltip: 'Ver imagen grande',
-                            visualDensity: VisualDensity.compact,
-                          ),
+                  if (hasImages)
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: IconButton.filled(
+                        onPressed: () => _openImageViewer(context),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.white.withValues(alpha: 0.88),
+                          foregroundColor: const Color(0xFF0F172A),
                         ),
+                        icon: const Icon(Icons.zoom_out_map_rounded),
+                        tooltip: 'Ver imagen grande',
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
             ),
           ),
         ),
         const SizedBox(height: 12),
-        if (hasImages)
-          SizedBox(
-            height: widget.isDesktop ? 92 : 80,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemBuilder: (context, index) {
-                final isActive = index == _selectedIndex;
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedIndex = index),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    width: widget.isDesktop ? 92 : 76,
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isActive
-                            ? widget.accentColor
-                            : const Color(0xFFE5E7EB),
-                        width: isActive ? 2 : 1,
-                      ),
-                      boxShadow: isActive ? StorefrontShadows.soft : null,
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: StorefrontSmartImage(
-                        source: widget.images[index],
-                        fit: BoxFit.contain,
-                        placeholder: Container(
-                          color: const Color(0xFFF8FAFC),
-                          child: const Icon(
-                            Icons.image_not_supported_outlined,
-                            color: Color(0xFF94A3B8),
+        if (hasImages && widget.images.length > 1)
+          Column(
+            children: [
+              SizedBox(
+                height: widget.isDesktop ? 92 : 78,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: widget.images.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
+                    final active = index == _selectedIndex;
+                    return GestureDetector(
+                      onTap: () {
+                        _pageController.animateToPage(
+                          index,
+                          duration: const Duration(milliseconds: 240),
+                          curve: Curves.easeOutCubic,
+                        );
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: widget.isDesktop ? 92 : 76,
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: active
+                                ? widget.accentColor
+                                : const Color(0xFFE5E7EB),
+                            width: active ? 2 : 1,
+                          ),
+                          boxShadow: active ? StorefrontShadows.soft : null,
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: StorefrontSmartImage(
+                            source: widget.images[index],
+                            fit: BoxFit.contain,
                           ),
                         ),
                       ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(widget.images.length, (index) {
+                  final active = index == _selectedIndex;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    width: active ? 18 : 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: active
+                          ? widget.accentColor
+                          : widget.accentColor.withValues(alpha: 0.24),
+                      borderRadius: BorderRadius.circular(999),
                     ),
-                  ),
-                );
-              },
-              separatorBuilder: (context, index) => const SizedBox(width: 8),
-              itemCount: widget.images.length,
-            ),
+                  );
+                }),
+              ),
+            ],
           )
-        else
+        else if (!hasImages)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
@@ -181,7 +233,7 @@ class _StorefrontProductGalleryState extends State<StorefrontProductGallery> {
                 SizedBox(width: 8),
                 Flexible(
                   child: Text(
-                    'No hay más imágenes disponibles',
+                    'No hay mas imagenes disponibles',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -198,6 +250,8 @@ class _StorefrontProductGalleryState extends State<StorefrontProductGallery> {
   }
 
   Future<void> _openImageViewer(BuildContext context) async {
+    if (widget.images.isEmpty) return;
+
     await showGeneralDialog<void>(
       context: context,
       barrierLabel: 'Imagen del producto',
@@ -220,10 +274,8 @@ class _StorefrontProductGalleryState extends State<StorefrontProductGallery> {
                         child: StorefrontSmartImage(
                           source: widget.images[_selectedIndex],
                           fit: BoxFit.contain,
-                          placeholder: const _GalleryPlaceholder(
-                            isDesktop: true,
-                            compact: false,
-                          ),
+                          placeholder:
+                              const _GalleryPlaceholder(isDesktop: true, compact: false),
                         ),
                       ),
                     ),
@@ -257,7 +309,6 @@ class _GalleryPlaceholder extends StatelessWidget {
   final bool compact;
 
   const _GalleryPlaceholder({
-    super.key,
     required this.isDesktop,
     this.compact = true,
   });
@@ -266,7 +317,11 @@ class _GalleryPlaceholder extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        gradient: const LinearGradient(
+          colors: [Color(0xFFF8FAFC), Color(0xFFEAF1F9)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(22),
       ),
       child: Center(

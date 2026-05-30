@@ -1399,11 +1399,16 @@ class _CatalogoFormPageState extends State<CatalogoFormPage> {
       );
 
       Navigator.pop(context);
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
 
+      final mensaje = e.toString().replaceAll('Exception: ', '');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se pudo guardar el producto')),
+        SnackBar(
+          content: Text(mensaje),
+          backgroundColor: Colors.red.shade700,
+          duration: const Duration(seconds: 4),
+        ),
       );
     }
   }

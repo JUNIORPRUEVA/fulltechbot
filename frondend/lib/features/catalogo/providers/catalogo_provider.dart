@@ -40,6 +40,7 @@ class CatalogoProvider extends ChangeNotifier {
       debugPrint('[CatalogoProvider] Error creando producto: $e');
       debugPrint('$st');
       _setLoading(false);
+      rethrow; // Relanzar para que el formulario pueda mostrar el error
     }
   }
 
@@ -55,6 +56,7 @@ class CatalogoProvider extends ChangeNotifier {
       debugPrint('[CatalogoProvider] Error actualizando producto: $e');
       debugPrint('$st');
       _setLoading(false);
+      rethrow; // Relanzar para que el formulario pueda mostrar el error
     }
   }
 

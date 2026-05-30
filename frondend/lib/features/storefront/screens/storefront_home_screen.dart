@@ -137,7 +137,12 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
 
     for (final banner in _banners) {
       final map = Map<String, dynamic>.from(banner as Map);
-      final imageUrl = map['imagen_url']?.toString();
+      final version =
+          map['actualizadoEn']?.toString() ?? map['updatedAt']?.toString();
+      final imageUrl = StorefrontHelpers.normalizeImageUrl(
+        map['imagen_url'] ?? map['imagen'] ?? map['imageUrl'],
+        version: version,
+      );
       if (imageUrl != null && imageUrl.isNotEmpty) {
         imagesToPrecache.add(imageUrl);
       }
@@ -300,7 +305,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     final catalogCrossAxisCount = isDesktop ? 4 : (isTablet ? 3 : 2);
     // Aspect ratio optimizado para cards compactas estilo Temu/Shopee
     // Imagen 65% + Info 35% = card completa
-    final catalogAspectRatio = isDesktop ? 0.78 : (isTablet ? 0.72 : 0.72);
+    final catalogAspectRatio = isDesktop ? 0.82 : (isTablet ? 0.72 : 0.61);
 
     return PublicStoreLayout(
       slug: widget.slug,
@@ -1133,15 +1138,18 @@ class _StorefrontSearchSheetState extends State<_StorefrontSearchSheet> {
                         ),
                         itemBuilder: (context, index) {
                           final product = _results[index];
-                          return StorefrontProductCard(
-                            product: product,
-                            slug: widget.slug,
-                            primaryColor: widget.primaryColor,
-                            secondaryColor: widget.primaryColor,
-                            compact: true,
+                          return SizedBox(
+                            height: isDesktop ? 148 : 136,
+                            child: StorefrontProductCard(
+                              product: product,
+                              slug: widget.slug,
+                              primaryColor: widget.primaryColor,
+                              secondaryColor: widget.primaryColor,
+                              compact: true,
+                            ),
                           );
                         },
-                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        separatorBuilder: (_, _) => const SizedBox(height: 10),
                         itemCount: _results.length,
                       ),
           ),

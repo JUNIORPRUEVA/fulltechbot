@@ -27,211 +27,197 @@ class StorefrontProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final isDesktop = screenWidth >= 1024;
-    final isTablet = screenWidth >= 700 && screenWidth < 1024;
+    final isDesktop = MediaQuery.sizeOf(context).width >= 1024;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isListCompact = compact && !constraints.hasBoundedHeight;
 
-    // En móvil: diseño compacto estilo Temu/Shopee
-    if (!isDesktop && !isTablet) {
-      return _MobileProductCard(
-        product: product,
-        slug: slug,
-        primaryColor: primaryColor,
-        secondaryColor: secondaryColor,
-        whatsapp: whatsapp,
-      );
-    }
+        if (isListCompact) {
+          return _ListProductCard(
+            product: product,
+            slug: slug,
+            primaryColor: primaryColor,
+            secondaryColor: secondaryColor,
+            whatsapp: whatsapp,
+          );
+        }
 
-    return _DesktopProductCard(
-      product: product,
-      slug: slug,
-      primaryColor: primaryColor,
-      secondaryColor: secondaryColor,
-      whatsapp: whatsapp,
+        return _GridProductCard(
+          product: product,
+          slug: slug,
+          primaryColor: primaryColor,
+          secondaryColor: secondaryColor,
+          whatsapp: whatsapp,
+          isDesktop: isDesktop,
+        );
+      },
     );
   }
 }
 
-// ==========================================
-// MOBILE PRODUCT CARD (estilo Temu/Shopee)
-// ==========================================
-class _MobileProductCard extends StatelessWidget {
+class _GridProductCard extends StatefulWidget {
   final Map<String, dynamic> product;
   final String slug;
   final Color primaryColor;
   final Color secondaryColor;
   final String? whatsapp;
+  final bool isDesktop;
 
-  const _MobileProductCard({
+  const _GridProductCard({
     required this.product,
     required this.slug,
     required this.primaryColor,
     required this.secondaryColor,
-    this.whatsapp,
+    required this.whatsapp,
+    required this.isDesktop,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final title = product['titulo']?.toString() ?? '';
-    final price = StorefrontHelpers.getEffectivePrice(product);
-    final originalPrice = StorefrontHelpers.getOriginalPrice(product);
-    final image = StorefrontHelpers.getPrimaryImage(product);
-    final stock = int.tryParse(product['stock']?.toString() ?? '0') ?? 0;
-    final hasStock = stock > 0;
-    final productId = product['id']?.toString() ?? '';
+  State<_GridProductCard> createState() => _GridProductCardState();
+}
 
-    return GestureDetector(
-      onTap: () => Navigator.pushNamed(
-        context,
-        '/tienda/$slug/producto/$productId',
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+class _GridProductCardState extends State<_GridProductCard> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = widget.product['titulo']?.toString().trim() ?? '';
+    final description = StorefrontHelpers.getShortDescription(widget.product);
+    final price = StorefrontHelpers.getDisplayPrice(widget.product);
+    final originalPrice = StorefrontHelpers.getOriginalPrice(widget.product);
+    final image = StorefrontHelpers.getPrimaryImage(widget.product);
+    final productId = widget.product['id']?.toString() ?? '';
+    final stock = int.tryParse(widget.product['stock']?.toString() ?? '0') ?? 0;
+    final hasStock = stock > 0;
+    final hasPrice = price != null && price > 0;
+
+    return AnimatedScale(
+      scale: _pressed ? 0.985 : 1,
+      duration: const Duration(milliseconds: 140),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(widget.isDesktop ? 20 : 16),
+        child: InkWell(
+          onTap: () => _openProduct(context, productId),
+          onHighlightChanged: (value) => setState(() => _pressed = value),
+          borderRadius: BorderRadius.circular(widget.isDesktop ? 20 : 16),
+          child: Ink(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(widget.isDesktop ? 20 : 16),
+              boxShadow: StorefrontShadows.soft,
+              border: Border.all(color: const Color(0xFFE8EEF4)),
             ),
-          ],
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // IMAGEN - 65% de la card
-            Expanded(
-              flex: 65,
-              child: Stack(
-                children: [
-                  // Imagen principal
-                  Positioned.fill(
-                    child: StorefrontSmartImage(
-                      source: image,
-                      fit: BoxFit.cover,
-                      placeholder: Container(
-                        color: const Color(0xFFF8FAFC),
-                        child: const Center(
-                          child: Icon(
-                            Icons.image_outlined,
-                            size: 32,
-                            color: Color(0xFFCBD5E1),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: widget.isDesktop ? 60 : 58,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(widget.isDesktop ? 20 : 16),
+                        ),
+                        child: DecoratedBox(
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9)],
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                            ),
+                          ),
+                          child: StorefrontSmartImage(
+                            source: image,
+                            fit: BoxFit.cover,
                           ),
                         ),
                       ),
-                    ),
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: _StatusBadge(
+                          label: hasStock ? 'Disponible' : 'Agotado',
+                          color: hasStock
+                              ? const Color(0xFF16A34A)
+                              : const Color(0xFFDC2626),
+                        ),
+                      ),
+                      if (originalPrice != null && hasPrice)
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: _StatusBadge(
+                            label: 'Oferta',
+                            color: const Color(0xFFEA580C),
+                          ),
+                        ),
+                      Positioned(
+                        right: 8,
+                        bottom: 8,
+                        child: _CardActionButton(
+                          primaryColor: widget.primaryColor,
+                          icon: hasPrice
+                              ? Icons.add_shopping_cart_rounded
+                              : Icons.chat_bubble_outline_rounded,
+                          onTap: () => hasPrice
+                              ? _addToCart(context)
+                              : _quoteProduct(context, title),
+                        ),
+                      ),
+                    ],
                   ),
-                  // Badge de disponibilidad
-                  if (hasStock)
-                    Positioned(
-                      top: 6,
-                      left: 6,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF22C55E).withValues(alpha: 0.90),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Text(
-                          'Disponible',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800,
-                            height: 1.2,
-                          ),
-                        ),
-                      ),
-                    )
-                  else
-                    Positioned(
-                      top: 6,
-                      left: 6,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEF4444).withValues(alpha: 0.90),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Text(
-                          'Agotado',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800,
-                            height: 1.2,
-                          ),
-                        ),
-                      ),
-                    ),
-                  // Botón carrito flotante
-                  Positioned(
-                    bottom: 6,
-                    right: 6,
-                    child: Material(
-                      color: primaryColor,
-                      borderRadius: BorderRadius.circular(8),
-                      child: InkWell(
-                        onTap: () => _addToCart(context),
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          width: 30,
-                          height: 30,
-                          alignment: Alignment.center,
-                          child: const Icon(
-                            Icons.add_shopping_cart_rounded,
-                            color: Colors.white,
-                            size: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // INFORMACIÓN - 35% de la card
-            Expanded(
-              flex: 35,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Título - compacto
-                    Text(
-                      title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF0F172A),
-                        height: 1.25,
-                      ),
-                    ),
-                    const Spacer(),
-                    // Precio - siempre visible
-                    StorefrontPriceWidget(
-                      precio: price,
-                      precioOriginal: originalPrice,
-                      primaryColor: primaryColor,
-                      large: false,
-                    ),
-                  ],
                 ),
-              ),
+                Expanded(
+                  flex: widget.isDesktop ? 40 : 42,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      widget.isDesktop ? 12 : 8,
+                      widget.isDesktop ? 10 : 8,
+                      widget.isDesktop ? 12 : 8,
+                      widget.isDesktop ? 12 : 8,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title.isEmpty ? 'Producto sin nombre' : title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: widget.isDesktop ? 13.5 : 12,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF0F172A),
+                            height: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          description,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: widget.isDesktop ? 11.5 : 10.5,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFF64748B),
+                            height: 1.28,
+                          ),
+                        ),
+                        const Spacer(),
+                        StorefrontPriceWidget(
+                          precio: price,
+                          precioOriginal: originalPrice,
+                          primaryColor: widget.primaryColor,
+                          large: false,
+                          currencyPrefix: 'RD\$',
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -239,189 +225,208 @@ class _MobileProductCard extends StatelessWidget {
 
   Future<void> _addToCart(BuildContext context) async {
     try {
-      final sessionId = await StorefrontHelpers.ensureSessionId(slug);
-      final image = StorefrontHelpers.getPrimaryImage(product);
-      final price = StorefrontHelpers.getEffectivePrice(product).toDouble();
-      final title = product['titulo']?.toString() ?? '';
-      final productId = product['id']?.toString() ?? '';
+      final sessionId = await StorefrontHelpers.ensureSessionId(widget.slug);
+      final image = StorefrontHelpers.getPrimaryImage(widget.product);
+      final price = StorefrontHelpers.getDisplayPrice(widget.product) ?? 0;
+      final title = widget.product['titulo']?.toString() ?? 'Producto';
+      final productId = widget.product['id']?.toString() ?? '';
 
       await StorefrontApiService.addCartItem(
-        slug,
+        widget.slug,
         sessionId,
         productoId: productId,
         nombreProducto: title,
         cantidad: 1,
-        precioUnitario: price,
+        precioUnitario: price.toDouble(),
         imagenUrl: image,
       );
 
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$title agregado al carrito'),
-            duration: const Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
-      }
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$title agregado al carrito'),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
     } catch (_) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error al agregar al carrito'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error al agregar al carrito'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
+  }
+
+  Future<void> _quoteProduct(BuildContext context, String title) async {
+    final phone = widget.whatsapp?.replaceAll(RegExp(r'[^\d]'), '') ?? '';
+    if (phone.isEmpty) {
+      _openProduct(context, widget.product['id']?.toString() ?? '');
+      return;
+    }
+
+    final url =
+        'https://wa.me/$phone?text=${Uri.encodeComponent('Hola FULLTECH, quiero cotizar: $title')}';
+    await launchUrl(Uri.parse(url));
+  }
+
+  void _openProduct(BuildContext context, String productId) {
+    if (productId.isEmpty) return;
+    Navigator.pushNamed(context, '/tienda/${widget.slug}/producto/$productId');
   }
 }
 
-// ==========================================
-// DESKTOP PRODUCT CARD
-// ==========================================
-class _DesktopProductCard extends StatelessWidget {
+class _ListProductCard extends StatelessWidget {
   final Map<String, dynamic> product;
   final String slug;
   final Color primaryColor;
   final Color secondaryColor;
   final String? whatsapp;
 
-  const _DesktopProductCard({
+  const _ListProductCard({
     required this.product,
     required this.slug,
     required this.primaryColor,
     required this.secondaryColor,
-    this.whatsapp,
+    required this.whatsapp,
   });
 
   @override
   Widget build(BuildContext context) {
-    final title = product['titulo']?.toString() ?? '';
-    final price = StorefrontHelpers.getEffectivePrice(product);
-    final originalPrice = StorefrontHelpers.getOriginalPrice(product);
+    final title = product['titulo']?.toString().trim() ?? '';
+    final description = StorefrontHelpers.getShortDescription(product);
     final image = StorefrontHelpers.getPrimaryImage(product);
-    final stock = int.tryParse(product['stock']?.toString() ?? '0') ?? 0;
-    final hasStock = stock > 0;
+    final price = StorefrontHelpers.getDisplayPrice(product);
+    final originalPrice = StorefrontHelpers.getOriginalPrice(product);
     final productId = product['id']?.toString() ?? '';
 
-    return GestureDetector(
-      onTap: () => Navigator.pushNamed(
-        context,
-        '/tienda/$slug/producto/$productId',
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: StorefrontShadows.soft,
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: () => Navigator.pushNamed(
+          context,
+          '/tienda/$slug/producto/$productId',
         ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 60,
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: StorefrontSmartImage(
-                      source: image,
-                      fit: BoxFit.cover,
-                      placeholder: Container(
-                        color: const Color(0xFFF8FAFC),
-                        child: const Center(
-                          child: Icon(
-                            Icons.image_outlined,
-                            size: 40,
-                            color: Color(0xFFCBD5E1),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  if (hasStock)
-                    Positioned(
-                      top: 8,
-                      left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF22C55E).withValues(alpha: 0.90),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Text(
-                          'Disponible',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    )
-                  else
-                    Positioned(
-                      top: 8,
-                      left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEF4444).withValues(alpha: 0.90),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Text(
-                          'Agotado',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
+        borderRadius: BorderRadius.circular(18),
+        child: Ink(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFE5EAF1)),
+            boxShadow: StorefrontShadows.soft,
+          ),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 92,
+                height: 92,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: StorefrontSmartImage(source: image, fit: BoxFit.cover),
+                ),
               ),
-            ),
-            Expanded(
-              flex: 40,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+              const SizedBox(width: 10),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      title,
+                      title.isEmpty ? 'Producto sin nombre' : title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
                         color: Color(0xFF0F172A),
+                        height: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      description,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF64748B),
                         height: 1.25,
                       ),
                     ),
-                    const Spacer(),
+                    const SizedBox(height: 10),
                     StorefrontPriceWidget(
                       precio: price,
                       precioOriginal: originalPrice,
                       primaryColor: primaryColor,
-                      large: false,
+                      currencyPrefix: 'RD\$',
                     ),
                   ],
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _StatusBadge({
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 9.5,
+          fontWeight: FontWeight.w800,
+          height: 1,
+        ),
+      ),
+    );
+  }
+}
+
+class _CardActionButton extends StatelessWidget {
+  final Color primaryColor;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _CardActionButton({
+    required this.primaryColor,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: primaryColor,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: SizedBox(
+          width: 34,
+          height: 34,
+          child: Icon(icon, size: 18, color: Colors.white),
         ),
       ),
     );
