@@ -1,78 +1,51 @@
 import 'dart:async';
-import 'dart:html' as html;
-import 'dart:js_interop';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'app.dart';
-import 'features/catalogo/providers/catalogo_provider.dart';
-import 'features/campaigns/providers/bot_campaign_provider.dart';
-import 'features/conversaciones/providers/conversaciones_provider.dart';
-import 'features/clientes/providers/clientes_provider.dart';
 import 'features/bots/providers/bot_provider.dart';
-import 'features/orders/providers/bot_order_provider.dart';
-import 'features/quotations/providers/bot_quotation_provider.dart';
-import 'features/orders/providers/order_provider.dart';
-import 'features/quotations/providers/quotation_provider.dart';
+import 'features/campaigns/providers/bot_campaign_provider.dart';
+import 'features/catalogo/providers/catalogo_provider.dart';
+import 'features/clientes/providers/clientes_provider.dart';
+import 'features/conversaciones/providers/conversaciones_provider.dart';
 import 'features/followups/providers/followups_provider.dart';
+import 'features/orders/providers/bot_order_provider.dart';
+import 'features/orders/providers/order_provider.dart';
+import 'features/quotations/providers/bot_quotation_provider.dart';
+import 'features/quotations/providers/quotation_provider.dart';
 
-/// Escucha cambios en el Service Worker para detectar nuevas versiones.
-/// Cuando se detecta una nueva versión, recarga la página automáticamente.
-void _setupServiceWorkerUpdateDetection() {
-  if (html.window.navigator.serviceWorker != null) {
-    final navigator = html.window.navigator;
-    
-    // Escuchar cuando un nuevo service worker toma el control
-    navigator.serviceWorker!.onControllerChange!.listen((_) {
-      debugPrint('[PWA] Service Worker actualizado - recargando para aplicar cambios');
-      html.window.location.reload();
-    });
-    
-    // Registrar el service worker y detectar actualizaciones
-    navigator.serviceWorker!.register('/service_worker.js').then((registration) {
-      debugPrint('[PWA] Service Worker registrado correctamente');
-      
-      // Detectar cuando hay una nueva versión disponible
-      registration.onUpdateFound!.listen((_) {
-        final installing = registration.installing;
-        if (installing != null) {
-          installing.onStateChange!.listen((_) {
-            if (installing.state == 'installed' && navigator.serviceWorker!.controller != null) {
-              debugPrint('[PWA] Nueva versión detectada - activando...');
-              // Enviar mensaje para activar el nuevo SW inmediatamente
-              installing.postMessage('SKIP_WAITING'.toJS);
-            }
-          });
-        }
-      });
-    }).catchError((error) {
-      debugPrint('[PWA] Error registrando Service Worker: $error');
-    });
-  }
-}
+/// La actualizacion de la PWA se controla desde el bootstrap web desplegado.
+void _setupServiceWorkerUpdateDetection() {}
 
 void main() {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
 
-    // Configurar detección de nuevas versiones PWA
     _setupServiceWorkerUpdateDetection();
 
     FlutterError.onError = (FlutterErrorDetails details) {
       FlutterError.presentError(details);
-      debugPrint('══════════════════════════════════════════════');
-      debugPrint('🔥 FLUTTER ERROR: ${details.exception}');
-      debugPrint('📋 STACKTRACE: ${details.stack}');
-      debugPrint('══════════════════════════════════════════════');
+      debugPrint(
+        '==============================================',
+      );
+      debugPrint('FLUTTER ERROR: ${details.exception}');
+      debugPrint('STACKTRACE: ${details.stack}');
+      debugPrint(
+        '==============================================',
+      );
     };
 
     ui.PlatformDispatcher.instance.onError = (error, stack) {
-      debugPrint('══════════════════════════════════════════════');
-      debugPrint('💥 PLATFORM ERROR: $error');
-      debugPrint('📋 STACKTRACE: $stack');
-      debugPrint('══════════════════════════════════════════════');
+      debugPrint(
+        '==============================================',
+      );
+      debugPrint('PLATFORM ERROR: $error');
+      debugPrint('STACKTRACE: $stack');
+      debugPrint(
+        '==============================================',
+      );
       return true;
     };
 
@@ -100,7 +73,7 @@ void main() {
                 ),
                 const SizedBox(height: 20),
                 const Text(
-                  'Ocurrió un error en la interfaz',
+                  'Ocurrio un error en la interfaz',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
@@ -191,9 +164,13 @@ void main() {
       ),
     );
   }, (error, stack) {
-    debugPrint('══════════════════════════════════════════════');
-    debugPrint('🌍 ZONED ERROR: $error');
-    debugPrint('📋 STACKTRACE: $stack');
-    debugPrint('══════════════════════════════════════════════');
+    debugPrint(
+      '==============================================',
+    );
+    debugPrint('ZONED ERROR: $error');
+    debugPrint('STACKTRACE: $stack');
+    debugPrint(
+      '==============================================',
+    );
   });
 }
