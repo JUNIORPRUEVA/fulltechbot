@@ -580,38 +580,46 @@ async function getStorefrontProducts(botId, options = {}) {
   const safePage = Math.max(Number(page) || 1, 1);
   const safeLimit = Math.min(Math.max(Number(limit) || 20, 1), 48);
   const offset = (safePage - 1) * safeLimit;
-  const conditions = [
+
+  // ==========================================
+  // ESTRATEGIA: Intentar primero con storefront_product_settings
+  // Si no hay resultados, hacer fallback al catálogo directamente
+  // ==========================================
+
+  // --- INTENTO 1: Con storefront_product_settings ---
+  const settingsConditions = [
     `ps.visible_en_tienda = true`,
     `ps.activo = true`,
     `(c.estado = 'activo' OR c.estado IS NULL)`,
     `(c.bot_id = $1 OR c.bot_id IS NULL)`,
   ];
-  const params = [botId];
-  let paramIndex = 2;
+  const settingsParams = [botId];
+  let settingsParamIndex = 2;
 
   if (categoria) {
-    params.push(categoria);
-    conditions.push(`c.categoria = $${paramIndex++}`);
+    settingsParams.push(categoria);
+    settingsConditions.push(`c.categoria = $${settingsParamIndex++}`);
   }
 
   if (destacado) {
-    conditions.push(`ps.destacado = true`);
+    settingsConditions.push(`ps.destacado = true`);
   }
 
   if (searchTerm) {
-    params.push(`%${searchTerm}%`);
-    conditions.push(`(
-      c.titulo ILIKE $${paramIndex}
-      OR c.categoria ILIKE $${paramIndex}
-      OR COALESCE(c.descripcion, '') ILIKE $${paramIndex}
-      OR COALESCE(c."palabrasClave", '') ILIKE $${paramIndex}
-      OR COALESCE(ps.descripcion_web, '') ILIKE $${paramIndex}
+    settingsParams.push(`%${searchTerm}%`);
+    settingsConditions.push(`(
+      c.titulo ILIKE $${settingsParamIndex}
+      OR c.categoria ILIKE $${settingsParamIndex}
+      OR COALESCE(c.descripcion, '') ILIKE $${settingsParamIndex}
+      OR COALESCE(c."palabrasClave", '') ILIKE $${settingsParamIndex}
+      OR COALESCE(ps.descripcion_web, '') ILIKE $${settingsParamIndex}
     )`);
-    paramIndex++;
+    settingsParamIndex++;
   }
 
-  const whereClause = conditions.join(' AND ');
-  const sortClause = (() => {
+  const settingsWhereClause = settingsConditions.join(' AND ');
+
+  const settingsSortClause = (() => {
     switch (sort) {
       case 'price_asc':
         return `COALESCE(ps.precio_oferta_web, c."precioOferta", c.precio) ASC NULLS LAST`;
@@ -635,13 +643,104 @@ async function getStorefrontProducts(botId, options = {}) {
   const countRows = await prisma.$queryRawUnsafe(
     `SELECT COUNT(*) as total FROM catalogo c
      INNER JOIN storefront_product_settings ps ON c.id::text = ps.producto_id AND ps.bot_id = $1
-     WHERE ${whereClause}`,
-    ...params
+     WHERE ${settingsWhereClause}`,
+    ...settingsParams
   );
   const total = Number(countRows[0]?.total || 0);
 
-  params.push(safeLimit, offset);
-  const rows = await prisma.$queryRawUnsafe(
+  // Si hay productos con settings, usarlos
+  if (total > 0) {
+    settingsParams.push(safeLimit, offset);
+    const rows = await prisma.$queryRawUnsafe(
+      `SELECT
+         c.id::text as id,
+         c.titulo, c.categoria, c.descripcion, c.informacion,
+         c.precio, c."precioMinimo" as "precioMinimo", c."precioOferta" as "precioOferta", COALESCE(c.stock, 0) as stock,
+         c.imagen1, c.imagen2, c.imagen3, c.video,
+         c."palabrasClave" as "palabrasClave", c.estado, c.tipo_producto, c.incluye,
+         c.permite_adicionales, c.es_cotizable, c.orden,
+         c.cantidad_base, c.instalacion_incluida, c."reglasNegociacion" as "reglasNegociacion",
+         c."creadoEn" as "creadoEn", c."actualizadoEn" as "actualizadoEn",
+         ps.visible_en_tienda, ps.destacado,
+         ps.etiqueta, ps.precio_oferta_web, ps.descripcion_web,
+         ps.imagen_destacada_url, ps.permitir_compra_online,
+         ps.permitir_whatsapp, ps.requiere_instalacion
+       FROM catalogo c
+       INNER JOIN storefront_product_settings ps ON c.id::text = ps.producto_id AND ps.bot_id = $1
+       WHERE ${settingsWhereClause}
+       ORDER BY ${settingsSortClause}
+       LIMIT $${settingsParamIndex++} OFFSET $${settingsParamIndex}`,
+      ...settingsParams
+    );
+
+    return {
+      items: rows.map(mapStorefrontProduct),
+      page: safePage,
+      limit: safeLimit,
+      total,
+      totalPages: Math.ceil(total / safeLimit),
+    };
+  }
+
+  // ==========================================
+  // INTENTO 2: Fallback al catálogo directamente (sin storefront_product_settings)
+  // Esto permite que productos sin configuración de tienda se muestren igual
+  // ==========================================
+  const catalogConditions = [
+    `(c.estado = 'activo' OR c.estado IS NULL)`,
+    `(c.bot_id = $1 OR c.bot_id IS NULL)`,
+  ];
+  const catalogParams = [botId];
+  let catalogParamIndex = 2;
+
+  if (categoria) {
+    catalogParams.push(categoria);
+    catalogConditions.push(`c.categoria = $${catalogParamIndex++}`);
+  }
+
+  if (searchTerm) {
+    catalogParams.push(`%${searchTerm}%`);
+    catalogConditions.push(`(
+      c.titulo ILIKE $${catalogParamIndex}
+      OR c.categoria ILIKE $${catalogParamIndex}
+      OR COALESCE(c.descripcion, '') ILIKE $${catalogParamIndex}
+      OR COALESCE(c."palabrasClave", '') ILIKE $${catalogParamIndex}
+    )`);
+    catalogParamIndex++;
+  }
+
+  const catalogWhereClause = catalogConditions.join(' AND ');
+
+  const catalogSortClause = (() => {
+    switch (sort) {
+      case 'price_asc':
+        return `COALESCE(c."precioOferta", c.precio) ASC NULLS LAST`;
+      case 'price_desc':
+        return `COALESCE(c."precioOferta", c.precio) DESC NULLS LAST`;
+      case 'name_asc':
+        return `c.titulo ASC`;
+      case 'name_desc':
+        return `c.titulo DESC`;
+      case 'newest':
+        return `c."creadoEn" DESC NULLS LAST`;
+      case 'oldest':
+        return `c."creadoEn" ASC NULLS LAST`;
+      case 'offers':
+        return `CASE WHEN c."precioOferta" IS NOT NULL THEN 0 ELSE 1 END, COALESCE(c."precioOferta", c.precio) ASC NULLS LAST`;
+      default:
+        return `c.orden ASC NULLS LAST, c."creadoEn" DESC NULLS LAST`;
+    }
+  })();
+
+  const catalogCountRows = await prisma.$queryRawUnsafe(
+    `SELECT COUNT(*) as total FROM catalogo c
+     WHERE ${catalogWhereClause}`,
+    ...catalogParams
+  );
+  const catalogTotal = Number(catalogCountRows[0]?.total || 0);
+
+  catalogParams.push(safeLimit, offset);
+  const catalogRows = await prisma.$queryRawUnsafe(
     `SELECT
        c.id::text as id,
        c.titulo, c.categoria, c.descripcion, c.informacion,
@@ -651,24 +750,27 @@ async function getStorefrontProducts(botId, options = {}) {
        c.permite_adicionales, c.es_cotizable, c.orden,
        c.cantidad_base, c.instalacion_incluida, c."reglasNegociacion" as "reglasNegociacion",
        c."creadoEn" as "creadoEn", c."actualizadoEn" as "actualizadoEn",
-       ps.visible_en_tienda, ps.destacado,
-       ps.etiqueta, ps.precio_oferta_web, ps.descripcion_web,
-       ps.imagen_destacada_url, ps.permitir_compra_online,
-       ps.permitir_whatsapp, ps.requiere_instalacion
+       true as visible_en_tienda,
+       CASE WHEN c."precioOferta" IS NOT NULL THEN true ELSE false END as destacado,
+       null as etiqueta, null as precio_oferta_web, c.descripcion as descripcion_web,
+       COALESCE(c.imagen1, c.imagen2, c.imagen3) as imagen_destacada_url,
+       true as permitir_compra_online,
+       true as permitir_whatsapp,
+       c.instalacion_incluida as requiere_instalacion
      FROM catalogo c
-     INNER JOIN storefront_product_settings ps ON c.id::text = ps.producto_id AND ps.bot_id = $1
-     WHERE ${whereClause}
-     ORDER BY ${sortClause}
-     LIMIT $${paramIndex++} OFFSET $${paramIndex}`,
-    ...params
+     WHERE ${catalogWhereClause}
+     ORDER BY ${catalogSortClause}
+     LIMIT $${catalogParamIndex++} OFFSET $${catalogParamIndex}`,
+    ...catalogParams
   );
 
   return {
-    items: rows.map(mapStorefrontProduct),
+    items: catalogRows.map(mapStorefrontProduct),
     page: safePage,
     limit: safeLimit,
-    total,
-    totalPages: Math.ceil(total / safeLimit),
+    total: catalogTotal,
+    totalPages: Math.ceil(catalogTotal / safeLimit),
+    source: 'catalog-fallback',
   };
 }
 
@@ -733,6 +835,7 @@ async function getStorefrontProductById(botId, productId) {
 }
 
 async function getStorefrontCategories(botId) {
+  // INTENTO 1: Con storefront_product_settings
   const rows = await prisma.$queryRawUnsafe(
     `SELECT
        c.categoria as nombre,
@@ -753,7 +856,34 @@ async function getStorefrontCategories(botId) {
      ORDER BY c.categoria ASC`,
     botId
   );
-  return rows.map((row) => ({
+
+  if (rows.length > 0) {
+    return rows.map((row) => ({
+      nombre: row.nombre ?? '',
+      cantidad: Number(row.cantidad ?? 0),
+      imagen: row.imagen ?? null,
+    }));
+  }
+
+  // INTENTO 2: Fallback al catálogo directamente
+  const catalogRows = await prisma.$queryRawUnsafe(
+    `SELECT
+       c.categoria as nombre,
+       COUNT(*)::int as cantidad,
+       COALESCE(
+         MAX(NULLIF(c.imagen1, '')),
+         MAX(NULLIF(c.imagen2, '')),
+         MAX(NULLIF(c.imagen3, ''))
+       ) as imagen
+     FROM catalogo c
+     WHERE (c.estado = 'activo' OR c.estado IS NULL)
+       AND (c.bot_id = $1 OR c.bot_id IS NULL)
+     GROUP BY c.categoria
+     ORDER BY c.categoria ASC`,
+    botId
+  );
+
+  return catalogRows.map((row) => ({
     nombre: row.nombre ?? '',
     cantidad: Number(row.cantidad ?? 0),
     imagen: row.imagen ?? null,
