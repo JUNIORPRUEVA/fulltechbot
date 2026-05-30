@@ -46,9 +46,6 @@ FROM nginx:alpine
 
 LABEL org.opencontainers.image.source="FULLTECH_BOT/frondend"
 
-# Instalar brotli para compresión
-RUN apk add --no-cache nginx-mod-http-brotli
-
 # Copiar build de Flutter
 COPY --from=build /app/build/web /usr/share/nginx/html
 
