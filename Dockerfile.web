@@ -13,10 +13,13 @@ RUN flutter pub get
 COPY frondend/ ./
 
 RUN if [ -n "$API_BASE_URL" ]; then \
-      flutter build web --release --dart-define=API_BASE_URL="$API_BASE_URL" --dart-define=STORAGE_PUBLIC_URL="$STORAGE_PUBLIC_URL" $FLUTTER_BUILD_ARGS; \
+      flutter build web --release --no-wasm-dry-run --pwa-strategy=none --dart-define=API_BASE_URL="$API_BASE_URL" --dart-define=STORAGE_PUBLIC_URL="$STORAGE_PUBLIC_URL" $FLUTTER_BUILD_ARGS; \
     else \
-      flutter build web --release --dart-define=STORAGE_PUBLIC_URL="$STORAGE_PUBLIC_URL" $FLUTTER_BUILD_ARGS; \
+      flutter build web --release --no-wasm-dry-run --pwa-strategy=none --dart-define=STORAGE_PUBLIC_URL="$STORAGE_PUBLIC_URL" $FLUTTER_BUILD_ARGS; \
     fi
+
+RUN sed -i "s/__FULLTECH_BUILD_VERSION__/${GIT_SHA}/g" /app/build/web/index.html
+RUN sed -i "s/__FULLTECH_BUILD_VERSION__/${GIT_SHA}/g" /app/build/web/version.json
 
 FROM nginx:alpine
 

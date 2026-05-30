@@ -8,6 +8,7 @@ COPY deploy_web /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 RUN sed -i "s/__FULLTECH_BUILD_VERSION__/${GIT_SHA}/g" /usr/share/nginx/html/index.html
+RUN sed -i "s/__FULLTECH_BUILD_VERSION__/${GIT_SHA}/g" /usr/share/nginx/html/version.json
 
 EXPOSE 80
 

@@ -25,6 +25,7 @@ COPY . .
       fi
 
 RUN sed -i "s/__FULLTECH_BUILD_VERSION__/${GIT_SHA}/g" /app/build/web/index.html
+RUN sed -i "s/__FULLTECH_BUILD_VERSION__/${GIT_SHA}/g" /app/build/web/version.json
 
 FROM nginx:alpine
 
