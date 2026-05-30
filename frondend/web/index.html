@@ -191,10 +191,11 @@
       // ==========================================
       // 3. DETECCIÓN AUTOMÁTICA DE FLUTTER
       //    Observa el DOM hasta que aparezca el canvas de Flutter
+      //    REDUCIDO: máximo 1 segundo para ocultar splash rápido
       // ==========================================
       function startFlutterDetection() {
         var checkCount = 0;
-        var maxChecks = 100; // ~10 segundos máximo
+        var maxChecks = 10; // ~1 segundo máximo
         
         var checkInterval = setInterval(function() {
           checkCount++;
@@ -211,12 +212,10 @@
             return;
           }
           
-          if (fltCanvas || checkCount > maxChecks) {
+          if (fltCanvas || checkCount >= maxChecks) {
             clearInterval(checkInterval);
-            // Ocultar splash después de un breve delay para transición suave
-            setTimeout(function() {
-              window.fulltechHideSplash();
-            }, 300);
+            // Ocultar splash inmediatamente (sin delay)
+            window.fulltechHideSplash();
           }
         }, 100);
       }

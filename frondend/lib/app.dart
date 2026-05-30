@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import 'features/auth/screens/admin_login_screen.dart';
@@ -260,7 +259,25 @@ class MyApp extends StatelessWidget {
 
     return ThemeData(
       useMaterial3: true,
-      textTheme: GoogleFonts.manropeTextTheme(),
+      // Sin Google Fonts - usa system fonts para carga instantánea
+      // Google Fonts descarga fuentes remotas y bloquea el primer frame
+      textTheme: const TextTheme(
+        displayLarge: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+        displayMedium: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+        displaySmall: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+        headlineLarge: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+        headlineMedium: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+        headlineSmall: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+        titleLarge: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+        titleMedium: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+        titleSmall: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+        bodyLarge: TextStyle(fontWeight: FontWeight.w400, color: Color(0xFF111827)),
+        bodyMedium: TextStyle(fontWeight: FontWeight.w400, color: Color(0xFF111827)),
+        bodySmall: TextStyle(fontWeight: FontWeight.w400, color: Color(0xFF6B7280)),
+        labelLarge: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+        labelMedium: TextStyle(fontWeight: FontWeight.w500, color: Color(0xFF111827)),
+        labelSmall: TextStyle(fontWeight: FontWeight.w500, color: Color(0xFF6B7280)),
+      ),
       colorScheme: ColorScheme.light(
         primary: primaryColor,
         secondary: secondaryColor,

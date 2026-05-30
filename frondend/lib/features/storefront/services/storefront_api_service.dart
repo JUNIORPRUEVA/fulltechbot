@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -804,15 +805,28 @@ class StorefrontApiService {
   static Future<Map<String, dynamic>> _getStorefront(
     String path, {
     Map<String, String>? queryParameters,
+    Duration timeout = const Duration(seconds: 10),
   }) async {
     final uri = Uri.parse('$_baseUrl$path').replace(queryParameters: queryParameters);
-    final res = await http.get(uri, headers: _noCacheHeaders);
-    return _decodeResponse(res);
+    try {
+      final res = await http.get(uri, headers: _noCacheHeaders).timeout(timeout);
+      return _decodeResponse(res);
+    } on TimeoutException {
+      return {'ok': false, 'message': 'La solicitud tardó demasiado. Intente de nuevo.', 'statusCode': 408};
+    } catch (e) {
+      return {'ok': false, 'message': 'Error de conexión: $e', 'statusCode': 0};
+    }
   }
 
   static Future<Map<String, dynamic>> _getJson(Uri uri) async {
-    final res = await http.get(uri, headers: _noCacheHeaders);
-    return _decodeResponse(res);
+    try {
+      final res = await http.get(uri, headers: _noCacheHeaders).timeout(const Duration(seconds: 10));
+      return _decodeResponse(res);
+    } on TimeoutException {
+      return {'ok': false, 'message': 'La solicitud tardó demasiado. Intente de nuevo.', 'statusCode': 408};
+    } catch (e) {
+      return {'ok': false, 'message': 'Error de conexión: $e', 'statusCode': 0};
+    }
   }
 
   static Map<String, dynamic> _decodeResponse(http.Response res) {

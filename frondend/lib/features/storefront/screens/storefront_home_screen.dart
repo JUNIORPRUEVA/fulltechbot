@@ -27,6 +27,15 @@ class StorefrontHomeScreen extends StatefulWidget {
 }
 
 class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
+  // ==========================================
+  // PERF LOGGING
+  // ==========================================
+  static final DateTime _appStart = DateTime.now();
+  void _perfLog(String message) {
+    final elapsed = DateTime.now().difference(_appStart).inMilliseconds;
+    debugPrint('[PERF] ${elapsed}ms - $message');
+  }
+
   Map<String, dynamic>? _config;
   List<dynamic> _banners = [];
   List<dynamic> _categories = [];
@@ -36,163 +45,200 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
   bool _loading = true;
   String? _error;
 
+  // Control de carga progresiva
+  bool _configLoaded = false;
+  bool _bannersLoaded = false;
+  bool _categoriesLoaded = false;
+  bool _productsLoaded = false;
 
   static final RegExp _combiningMarks = RegExp(r'[\u0300-\u036f]');
 
   @override
   void initState() {
     super.initState();
-    // Carga progresiva: primero mostrar skeleton, luego cargar datos
+    _perfLog('StorefrontHomeScreen.initState');
+    
+    // ==========================================
+    // PASO 1: Mostrar Home INMEDIATAMENTE con skeleton
+    // Sin esperar NADA de API
+    // El skeleton se muestra en el primer frame porque _loading=true
+    // ==========================================
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadInitialData();
+      _perfLog('StorefrontHomeScreen.firstFrame - Home visible con skeleton');
+      // Liberar el skeleton inmediatamente para que se vea el layout base
+      setState(() {
+        _loading = false;
+      });
+      // Iniciar carga en segundo plano
+      _loadHomeDataInBackground();
     });
   }
 
-  Future<void> _loadInitialData() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  /// Carga progresiva en segundo plano sin bloquear la UI
+  Future<void> _loadHomeDataInBackground() async {
+    _perfLog('_loadHomeDataInBackground started');
 
+    // ==========================================
+    // PASO 2: Cargar config (esencial pero no bloquea el frame)
+    // ==========================================
     try {
-      // Carga progresiva: primero config (esencial), luego el resto
-      final configResponse = await StorefrontApiService.getConfig(widget.slug);
+      final configResponse = await StorefrontApiService.getConfig(widget.slug)
+          .timeout(const Duration(seconds: 10));
       
-      if (configResponse['ok'] != true) {
+      if (configResponse['ok'] == true && mounted) {
         setState(() {
-          _error =
-              configResponse['message']?.toString() ??
-              'No se pudo cargar la tienda.';
-          _loading = false;
+          _config = Map<String, dynamic>.from(configResponse['data'] as Map);
+          _configLoaded = true;
         });
-        return;
+        _perfLog('config loaded');
       }
-
-      setState(() {
-        _config = Map<String, dynamic>.from(configResponse['data'] as Map);
-      });
-
-      // Cargar banners y categorías en paralelo (más rápidos)
-      final secondaryResults = await Future.wait([
-        StorefrontApiService.getBanners(widget.slug),
-        StorefrontApiService.getCategories(widget.slug),
-      ]);
-
-      setState(() {
-        _banners = List<dynamic>.from(secondaryResults[0]['data'] as List? ?? const []);
-        final rawCategories = List<dynamic>.from(secondaryResults[1]['data'] as List? ?? const []);
-        _categories = _buildDisplayCategories(rawCategories, []);
-      });
-
-      // Cargar productos en paralelo (lo más pesado)
-      final productResults = await Future.wait([
-        StorefrontApiService.getProducts(
-          widget.slug,
-          destacado: true,
-          sort: 'featured',
-          limit: 8,
-        ),
-        StorefrontApiService.getProducts(widget.slug, sort: 'offers', limit: 8),
-        StorefrontApiService.getProducts(
-          widget.slug,
-          page: 1,
-          limit: 16,
-          sort: 'featured',
-        ),
-      ]);
-
-      final featuredProducts = _dedupeProducts(
-        List<dynamic>.from(productResults[0]['items'] as List? ?? const []),
-      );
-      final offerProducts = _dedupeProducts(
-        List<dynamic>.from(productResults[1]['items'] as List? ?? const []).where((
-          item,
-        ) {
-          final map = Map<String, dynamic>.from(item as Map);
-          return map['precio_oferta_web'] != null ||
-              map['precioOferta'] != null;
-        }).toList(),
-      );
-      final offerIds = offerProducts
-          .map((item) => (item as Map)['id']?.toString() ?? '')
-          .where((id) => id.isNotEmpty)
-          .toSet();
-      final featuredIds = featuredProducts
-          .map((item) => (item as Map)['id']?.toString() ?? '')
-          .where((id) => id.isNotEmpty)
-          .toSet();
-      final highlightedIds = {...offerIds, ...featuredIds};
-      final productsResponse = productResults[2];
-      final catalogProducts = _dedupeProducts(
-        List<dynamic>.from(productsResponse['items'] as List? ?? const []),
-      );
-      final catalogOnlyProducts = catalogProducts.where((item) {
-        final id = (item as Map)['id']?.toString() ?? '';
-        return id.isEmpty || !highlightedIds.contains(id);
-      }).toList();
-      final categories = _buildDisplayCategories(
-        List<dynamic>.from(secondaryResults[1]['data'] as List? ?? const []),
-        [...featuredProducts, ...offerProducts, ...catalogProducts],
-      );
-
-      setState(() {
-        _categories = categories;
-        _featuredProducts = featuredProducts.where((item) {
-          final id = (item as Map)['id']?.toString() ?? '';
-          return id.isEmpty || !offerIds.contains(id);
-        }).toList();
-        _offerProducts = offerProducts;
-        _products = catalogOnlyProducts;
-        _loading = false;
-      });
-
-      _precacheVisibleImages();
     } catch (e) {
-      setState(() {
-        _error = 'Error de conexión: $e';
-        _loading = false;
-      });
-    }
-  }
-
-  void _precacheVisibleImages() {
-    if (!mounted) return;
-
-    final imagesToPrecache = <String>[];
-
-    for (final banner in _banners) {
-      final map = Map<String, dynamic>.from(banner as Map);
-      final version =
-          map['actualizadoEn']?.toString() ?? map['updatedAt']?.toString();
-      final imageUrl = StorefrontHelpers.normalizeImageUrl(
-        map['imagen_url'] ?? map['imagen'] ?? map['imageUrl'],
-        version: version,
-      );
-      if (imageUrl != null && imageUrl.isNotEmpty) {
-        imagesToPrecache.add(imageUrl);
+      _perfLog('config failed: $e');
+      // No bloquear, usar valores por defecto
+      if (mounted) {
+        setState(() {
+          _config = {
+            'nombre_tienda': 'FULLTECH SRL',
+            'color_principal': '#0F172A',
+            'color_secundario': '#2563EB',
+            'whatsapp_numero': '',
+            'mensaje_principal': 'Tienda oficial FULLTECH SRL',
+            'mensaje_secundario': 'Explora ofertas, productos y soluciones.',
+          };
+          _configLoaded = true;
+        });
       }
     }
 
-    for (final product in _offerProducts) {
-      final map = Map<String, dynamic>.from(product as Map);
-      final image = StorefrontHelpers.getPrimaryImage(map);
-      if (image != null && image.isNotEmpty) {
-        imagesToPrecache.add(image);
+    // ==========================================
+    // PASO 3: Cargar banners (no crítico)
+    // ==========================================
+    Future.microtask(() async {
+      try {
+        final bannersResponse = await StorefrontApiService.getBanners(widget.slug)
+            .timeout(const Duration(seconds: 10));
+        if (mounted) {
+          setState(() {
+            _banners = List<dynamic>.from(bannersResponse['data'] as List? ?? const []);
+            _bannersLoaded = true;
+          });
+          _perfLog('banners loaded');
+        }
+      } catch (e) {
+        _perfLog('banners failed: $e');
+        if (mounted) {
+          setState(() => _bannersLoaded = true);
+        }
       }
-    }
+    });
 
-    for (final product in _featuredProducts) {
-      final map = Map<String, dynamic>.from(product as Map);
-      final image = StorefrontHelpers.getPrimaryImage(map);
-      if (image != null && image.isNotEmpty) {
-        imagesToPrecache.add(image);
+    // ==========================================
+    // PASO 4: Cargar categorías (no crítico)
+    // ==========================================
+    Future.microtask(() async {
+      try {
+        final categoriesResponse = await StorefrontApiService.getCategories(widget.slug)
+            .timeout(const Duration(seconds: 10));
+        if (mounted) {
+          setState(() {
+            final rawCategories = List<dynamic>.from(categoriesResponse['data'] as List? ?? const []);
+            _categories = _buildDisplayCategories(rawCategories, []);
+            _categoriesLoaded = true;
+          });
+          _perfLog('categories loaded');
+        }
+      } catch (e) {
+        _perfLog('categories failed: $e');
+        if (mounted) {
+          setState(() => _categoriesLoaded = true);
+        }
       }
-    }
+    });
 
-    for (final url in imagesToPrecache.take(12)) {
-      if (url.startsWith('http')) {
-        precacheImage(NetworkImage(url), context);
+    // ==========================================
+    // PASO 5: Cargar productos (lo más pesado, al final)
+    // ==========================================
+    Future.microtask(() async {
+      try {
+        final productResults = await Future.wait([
+          StorefrontApiService.getProducts(
+            widget.slug,
+            destacado: true,
+            sort: 'featured',
+            limit: 8,
+          ).timeout(const Duration(seconds: 12)),
+          StorefrontApiService.getProducts(widget.slug, sort: 'offers', limit: 8)
+              .timeout(const Duration(seconds: 12)),
+          StorefrontApiService.getProducts(
+            widget.slug,
+            page: 1,
+            limit: 16,
+            sort: 'featured',
+          ).timeout(const Duration(seconds: 12)),
+        ]);
+
+        if (!mounted) return;
+
+        final featuredProducts = _dedupeProducts(
+          List<dynamic>.from(productResults[0]['items'] as List? ?? const []),
+        );
+        final offerProducts = _dedupeProducts(
+          List<dynamic>.from(productResults[1]['items'] as List? ?? const []).where((
+            item,
+          ) {
+            final map = Map<String, dynamic>.from(item as Map);
+            return map['precio_oferta_web'] != null ||
+                map['precioOferta'] != null;
+          }).toList(),
+        );
+        final offerIds = offerProducts
+            .map((item) => (item as Map)['id']?.toString() ?? '')
+            .where((id) => id.isNotEmpty)
+            .toSet();
+        final featuredIds = featuredProducts
+            .map((item) => (item as Map)['id']?.toString() ?? '')
+            .where((id) => id.isNotEmpty)
+            .toSet();
+        final highlightedIds = {...offerIds, ...featuredIds};
+        final productsResponse = productResults[2];
+        final catalogProducts = _dedupeProducts(
+          List<dynamic>.from(productsResponse['items'] as List? ?? const []),
+        );
+        final catalogOnlyProducts = catalogProducts.where((item) {
+          final id = (item as Map)['id']?.toString() ?? '';
+          return id.isEmpty || !highlightedIds.contains(id);
+        }).toList();
+        final categories = _buildDisplayCategories(
+          List<dynamic>.from([]),
+          [...featuredProducts, ...offerProducts, ...catalogProducts],
+        );
+
+        setState(() {
+          _categories = categories;
+          _featuredProducts = featuredProducts.where((item) {
+            final id = (item as Map)['id']?.toString() ?? '';
+            return id.isEmpty || !offerIds.contains(id);
+          }).toList();
+          _offerProducts = offerProducts;
+          _products = catalogOnlyProducts;
+          _productsLoaded = true;
+        });
+        _perfLog('products loaded');
+      } catch (e) {
+        _perfLog('products failed: $e');
+        if (mounted) {
+          setState(() => _productsLoaded = true);
+        }
       }
+    });
+
+    // ==========================================
+    // PASO 6: Marcar loading como false para quitar skeleton
+    // (se hace inmediatamente después de iniciar las cargas)
+    // ==========================================
+    if (mounted) {
+      setState(() => _loading = false);
+      _perfLog('_loading=false - Home liberado');
     }
   }
 
@@ -399,7 +445,15 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     if (_error != null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Tienda')),
-        body: StorefrontErrorState(message: _error!, onRetry: _loadInitialData),
+        body: StorefrontErrorState(message: _error!, onRetry: () {
+          setState(() {
+            _error = null;
+            _loading = true;
+          });
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _loadHomeDataInBackground();
+          });
+        }),
       );
     }
 

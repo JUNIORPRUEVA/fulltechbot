@@ -17,30 +17,26 @@ import 'features/quotations/providers/bot_quotation_provider.dart';
 import 'features/quotations/providers/quotation_provider.dart';
 
 void main() {
+  final DateTime appStart = DateTime.now();
+  debugPrint('[PERF] main started - ${appStart.millisecondsSinceEpoch}');
+
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
+    debugPrint('[PERF] WidgetsFlutterBinding.ensureInitialized completed - ${DateTime.now().difference(appStart).inMilliseconds}ms');
 
     FlutterError.onError = (FlutterErrorDetails details) {
       FlutterError.presentError(details);
-      debugPrint(
-        '==============================================',
-      );
+      debugPrint('==============================================');
       debugPrint('FLUTTER ERROR: ${details.exception}');
       debugPrint('STACKTRACE: ${details.stack}');
-      debugPrint(
-        '==============================================',
-      );
+      debugPrint('==============================================');
     };
 
     ui.PlatformDispatcher.instance.onError = (error, stack) {
-      debugPrint(
-        '==============================================',
-      );
+      debugPrint('==============================================');
       debugPrint('PLATFORM ERROR: $error');
       debugPrint('STACKTRACE: $stack');
-      debugPrint(
-        '==============================================',
-      );
+      debugPrint('==============================================');
       return true;
     };
 
@@ -113,6 +109,11 @@ void main() {
       );
     };
 
+    // NO cargar nada aquí - los providers se crean sin await
+    // NO google_fonts - eliminado para evitar descarga de fuentes
+    // NO splash screen - Flutter renderiza inmediatamente
+    debugPrint('[PERF] Starting runApp...');
+    
     runApp(
       MultiProvider(
         providers: [
@@ -150,23 +151,36 @@ void main() {
         child: const MyApp(),
       ),
     );
+
+    final elapsed = DateTime.now().difference(appStart).inMilliseconds;
+    debugPrint('[PERF] runApp executed - ${elapsed}ms desde main()');
+    debugPrint('[PERF] Primer frame de Flutter renderizado - splash oculto');
   }, (error, stack) {
-    debugPrint(
-      '==============================================',
-    );
+    debugPrint('==============================================');
     debugPrint('ZONED ERROR: $error');
     debugPrint('STACKTRACE: $stack');
-    debugPrint(
-      '==============================================',
-    );
+    debugPrint('==============================================');
   });
 }
 
 void _reloadPage() {
-  // ignore: undefined_prefixed_name
-  _reloadPageJS();
+  // Usar dart:js para recargar la página en web
+  try {
+    // ignore: undefined_prefixed_name
+    _reloadPageJS();
+  } catch (_) {
+    // Fallback: usar window.location
+    try {
+      // ignore: undefined_prefixed_name
+      _reloadPageFallback();
+    } catch (_) {}
+  }
 }
 
 void _reloadPageJS() {
   // Esta función se reemplaza en web con dart:js
+}
+
+void _reloadPageFallback() {
+  // Fallback para recargar
 }
