@@ -34,16 +34,86 @@
 
   <title>FULLTECH SRL</title>
   <link rel="manifest" href="manifest.json">
+
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+
+  <script>
+    (function() {
+      'use strict';
+      var BUILD_VERSION = '__FULLTECH_BUILD_VERSION__';
+      var VERSION_KEY = 'fulltech_app_version';
+
+      function clearRuntimeCaches() {
+        var tasks = [];
+
+        if ('serviceWorker' in navigator) {
+          tasks.push(
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+              return Promise.all(
+                registrations.map(function(registration) {
+                  return registration.unregister();
+                })
+              );
+            })
+          );
+        }
+
+        if (window.caches) {
+          tasks.push(
+            caches.keys().then(function(cacheNames) {
+              return Promise.all(
+                cacheNames.map(function(cacheName) {
+                  return caches.delete(cacheName);
+                })
+              );
+            })
+          );
+        }
+
+        return Promise.all(tasks).catch(function(error) {
+          console.warn('[FULLTECH] Error limpiando caches:', error);
+        });
+      }
+
+      function loadFlutter(version) {
+        var script = document.createElement('script');
+        script.src = 'flutter_bootstrap.js?v=' + encodeURIComponent(version || Date.now().toString());
+        script.async = true;
+        document.body.appendChild(script);
+      }
+
+      fetch('version.json?ts=' + Date.now(), { cache: 'no-store' })
+        .then(function(response) {
+          if (!response.ok) throw new Error('No se pudo cargar version.json');
+          return response.json();
+        })
+        .then(function(payload) {
+          var currentVersion =
+            BUILD_VERSION !== '__FULLTECH_BUILD_VERSION__'
+              ? BUILD_VERSION
+              : (payload && payload.version) || Date.now().toString();
+          var lastVersion = localStorage.getItem(VERSION_KEY);
+
+          if (lastVersion && lastVersion !== currentVersion) {
+            return clearRuntimeCaches().then(function() {
+              localStorage.setItem(VERSION_KEY, currentVersion);
+              loadFlutter(currentVersion);
+            });
+          }
+
+          localStorage.setItem(VERSION_KEY, currentVersion);
+          loadFlutter(currentVersion);
+        })
+        .catch(function() {
+          clearRuntimeCaches().finally(function() {
+            loadFlutter(Date.now().toString());
+          });
+        });
+    })();
+  </script>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
-  <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

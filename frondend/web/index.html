@@ -40,6 +40,8 @@
   <script>
     (function() {
       'use strict';
+      var BUILD_VERSION = '__FULLTECH_BUILD_VERSION__';
+      var VERSION_KEY = 'fulltech_app_version';
       
       // ==========================================
       // 1. REDIRECT INMEDIATO A LA TIENDA
@@ -57,37 +59,90 @@
         return; // Detener ejecución, la página se recargará
       }
       
-      // ==========================================
-      // 2. DESREGISTRAR Service Workers viejos
-      // ==========================================
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(registrations) {
-          for (var i = 0; i < registrations.length; i++) {
-            registrations[i].unregister();
-          }
-        });
-        
-        navigator.serviceWorker.addEventListener('controllerchange', function() {
-          window.location.reload();
-        });
-      }
-      
-      // ==========================================
-      // 3. LIMPIAR CACHES
-      // ==========================================
-      if (window.caches) {
-        caches.keys().then(function(cacheNames) {
-          return Promise.all(
-            cacheNames.map(function(cacheName) {
-              return caches.delete(cacheName);
+      function clearRuntimeCaches() {
+        var tasks = [];
+
+        if ('serviceWorker' in navigator) {
+          tasks.push(
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+              return Promise.all(
+                registrations.map(function(registration) {
+                  return registration.unregister();
+                })
+              );
             })
           );
+
+          navigator.serviceWorker.addEventListener('controllerchange', function() {
+            window.location.reload();
+          });
+        }
+
+        if (window.caches) {
+          tasks.push(
+            caches.keys().then(function(cacheNames) {
+              return Promise.all(
+                cacheNames.map(function(cacheName) {
+                  return caches.delete(cacheName);
+                })
+              );
+            })
+          );
+        }
+
+        return Promise.all(tasks).catch(function(error) {
+          console.warn('[FULLTECH] Error limpiando caches:', error);
         });
       }
+
+      function loadFlutter(version) {
+        var script = document.createElement('script');
+        script.src = 'flutter_bootstrap.js?v=' + encodeURIComponent(version || Date.now().toString());
+        script.async = true;
+        document.body.appendChild(script);
+      }
+
+      fetch('version.json?ts=' + Date.now(), {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      })
+        .then(function(response) {
+          if (!response.ok) {
+            throw new Error('No se pudo cargar version.json');
+          }
+          return response.json();
+        })
+        .then(function(payload) {
+          var currentVersion =
+            BUILD_VERSION !== '__FULLTECH_BUILD_VERSION__'
+              ? BUILD_VERSION
+              : (payload && payload.version) || Date.now().toString();
+          var lastVersion = localStorage.getItem(VERSION_KEY);
+
+          if (lastVersion && lastVersion !== currentVersion) {
+            console.log('[FULLTECH] Nueva version detectada:', currentVersion);
+            return clearRuntimeCaches().then(function() {
+              localStorage.setItem(VERSION_KEY, currentVersion);
+              loadFlutter(currentVersion);
+            });
+          }
+
+          localStorage.setItem(VERSION_KEY, currentVersion);
+          loadFlutter(currentVersion);
+        })
+        .catch(function(error) {
+          console.warn('[FULLTECH] version.json no disponible, cargando bootstrap directo.', error);
+          clearRuntimeCaches().finally(function() {
+            loadFlutter(Date.now().toString());
+          });
+        });
     })();
   </script>
 </head>
 <body>
-  <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

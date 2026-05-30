@@ -24,6 +24,8 @@ COPY . .
         flutter build web --release --no-wasm-dry-run --pwa-strategy=none --dart-define=STORAGE_PUBLIC_URL="$STORAGE_PUBLIC_URL" $FLUTTER_BUILD_ARGS; \
       fi
 
+RUN sed -i "s/__FULLTECH_BUILD_VERSION__/${GIT_SHA}/g" /app/build/web/index.html
+
 FROM nginx:alpine
 
 LABEL org.opencontainers.image.source="FULLTECH_BOT/frondend"
