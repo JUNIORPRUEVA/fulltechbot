@@ -41,17 +41,9 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Estrategia stale-while-revalidate:
-    // 1. Mostrar skeleton inmediatamente
-    // 2. Cargar datos frescos de la API
-    // 3. Si hay datos en memoria, mostrarlos rápido y refrescar en segundo plano
     _loadInitialData();
   }
 
-  /// Carga datos iniciales con estrategia stale-while-revalidate:
-  /// - Muestra skeleton mientras carga
-  /// - Consulta API fresca (no cache local)
-  /// - Si hay datos previos en memoria, los muestra rápido y refresca en background
   Future<void> _loadInitialData() async {
     setState(() {
       _loading = true;
@@ -59,7 +51,6 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     });
 
     try {
-      // Consultar API fresca con headers anti-cache
       final results = await Future.wait([
         StorefrontApiService.getConfig(widget.slug),
         StorefrontApiService.getBanners(widget.slug),
@@ -129,8 +120,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
         _totalPages = productsResponse['totalPages'] as int? ?? 1;
         _loading = false;
       });
-      
-      // Después de cargar datos, precargar imágenes visibles
+
       _precacheVisibleImages();
     } catch (e) {
       setState(() {
@@ -139,15 +129,12 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
       });
     }
   }
-  
-  
-  /// Precarga las imágenes de los productos visibles para que carguen más rápido.
+
   void _precacheVisibleImages() {
     if (!mounted) return;
-    
+
     final imagesToPrecache = <String>[];
-    
-    // Precargar imágenes de banners
+
     for (final banner in _banners) {
       final map = Map<String, dynamic>.from(banner as Map);
       final imageUrl = map['imagen_url']?.toString();
@@ -155,8 +142,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
         imagesToPrecache.add(imageUrl);
       }
     }
-    
-    // Precargar imágenes de ofertas
+
     for (final product in _offerProducts) {
       final map = Map<String, dynamic>.from(product as Map);
       final image = StorefrontHelpers.getPrimaryImage(map);
@@ -164,8 +150,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
         imagesToPrecache.add(image);
       }
     }
-    
-    // Precargar imágenes de destacados
+
     for (final product in _featuredProducts) {
       final map = Map<String, dynamic>.from(product as Map);
       final image = StorefrontHelpers.getPrimaryImage(map);
@@ -173,8 +158,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
         imagesToPrecache.add(image);
       }
     }
-    
-    // Precargar usando el sistema de Flutter
+
     for (final url in imagesToPrecache.take(12)) {
       if (url.startsWith('http')) {
         precacheImage(NetworkImage(url), context);
@@ -182,11 +166,8 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     }
   }
 
-
   Future<void> _loadMore() async {
-    if (_loadingMore || _page >= _totalPages) {
-      return;
-    }
+    if (_loadingMore || _page >= _totalPages) return;
 
     setState(() => _loadingMore = true);
     try {
@@ -208,17 +189,13 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
         });
       }
     } finally {
-      if (mounted) {
-        setState(() => _loadingMore = false);
-      }
+      if (mounted) setState(() => _loadingMore = false);
     }
   }
 
   Color _getColor(String hex) {
     var normalized = hex.replaceAll('#', '');
-    if (normalized.length == 6) {
-      normalized = 'FF$normalized';
-    }
+    if (normalized.length == 6) normalized = 'FF$normalized';
     return Color(int.parse(normalized, radix: 16));
   }
 
@@ -228,9 +205,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
       for (final item in source) {
         final map = Map<String, dynamic>.from(item as Map);
         final id = map['id']?.toString() ?? map['titulo']?.toString() ?? '';
-        if (id.isNotEmpty) {
-          unique[id] = map;
-        }
+        if (id.isNotEmpty) unique[id] = map;
       }
     }
     return unique.values.toList();
@@ -246,13 +221,11 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) {
-        return _StorefrontSearchSheet(
-          slug: widget.slug,
-          primaryColor: primaryColor,
-          initialProducts: _searchCatalog,
-        );
-      },
+      builder: (_) => _StorefrontSearchSheet(
+        slug: widget.slug,
+        primaryColor: primaryColor,
+        initialProducts: _searchCatalog,
+      ),
     );
   }
 
@@ -261,13 +234,11 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
       _openSearch();
       return;
     }
-
     final firstCategory = _categories.first['nombre']?.toString();
     if (firstCategory == null || firstCategory.isEmpty) {
       _openSearch();
       return;
     }
-
     Navigator.pushNamed(
       context,
       '/tienda/${widget.slug}/categoria/${Uri.encodeComponent(firstCategory)}',
@@ -285,23 +256,18 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
         return;
       }
     }
-
     _openSearch();
   }
 
   void _openWhatsapp(String whatsapp) {
     final number = whatsapp.replaceAll(RegExp(r'[^\d]'), '');
-    if (number.isEmpty) {
-      return;
-    }
+    if (number.isEmpty) return;
     launchUrl(Uri.parse('https://wa.me/$number'));
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const StorefrontHomeSkeleton();
-    }
+    if (_loading) return const StorefrontHomeSkeleton();
 
     if (_error != null) {
       return Scaffold(
@@ -322,18 +288,15 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     final storeName = config['nombre_tienda']?.toString() ?? 'FULLTECH SRL';
     final heroTitle =
         config['mensaje_principal']?.toString().trim().isNotEmpty == true
-        ? config['mensaje_principal'].toString().trim()
-        : 'Tecnología y seguridad para tu hogar y negocio';
+            ? config['mensaje_principal'].toString().trim()
+            : 'Tecnología y seguridad para tu hogar y negocio';
     final heroSubtitle =
         config['mensaje_secundario']?.toString().trim().isNotEmpty == true
-        ? config['mensaje_secundario'].toString().trim()
-        : 'Compra cámaras, motores, automatización y accesorios con asesoría profesional de FULLTECH SRL.';
+            ? config['mensaje_secundario'].toString().trim()
+            : 'Compra cámaras, motores, automatización y accesorios con asesoría profesional de FULLTECH SRL.';
     final isTablet = screenWidth >= 700 && screenWidth < 1100;
     final isDesktop = screenWidth >= 1100;
     final contentPadding = math.max(14.0, ((screenWidth - 1240) / 2) + 16);
-    final categoryCardWidth = isDesktop ? 162.0 : isTablet ? 148.0 : 118.0;
-    final featuredCardWidth = isDesktop ? 260.0 : isTablet ? 236.0 : 196.0;
-    final carouselHeight = isDesktop ? 318.0 : isTablet ? 306.0 : 286.0;
     final catalogCrossAxisCount = isDesktop ? 4 : (isTablet ? 3 : 2);
     final catalogAspectRatio = isDesktop ? 0.78 : (isTablet ? 0.70 : 0.64);
 
@@ -357,14 +320,61 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
           Navigator.pushNamed(context, '/tienda/${widget.slug}/carrito'),
       onWhatsappTap: whatsapp.isEmpty ? null : () => _openWhatsapp(whatsapp),
       slivers: [
+        // ==========================================
+        // BENEFITS CHIPS (scroll horizontal)
+        // ==========================================
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(contentPadding, 8, contentPadding, 4),
+            child: SizedBox(
+              height: 36,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  _BenefitChip(
+                    icon: Icons.verified_rounded,
+                    label: 'Garantía',
+                    color: primaryColor,
+                  ),
+                  const SizedBox(width: 8),
+                  _BenefitChip(
+                    icon: Icons.store_rounded,
+                    label: 'Tienda física',
+                    color: primaryColor,
+                  ),
+                  const SizedBox(width: 8),
+                  _BenefitChip(
+                    icon: Icons.support_agent_rounded,
+                    label: 'Soporte',
+                    color: primaryColor,
+                  ),
+                  const SizedBox(width: 8),
+                  _BenefitChip(
+                    icon: Icons.build_circle_rounded,
+                    label: 'Instalación',
+                    color: primaryColor,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+
+        // ==========================================
+        // CATEGORÍAS RÁPIDAS (scroll horizontal)
+        // ==========================================
         if (_categories.isNotEmpty) ...[
           SliverToBoxAdapter(
-            child: _SectionHeader(
-              title: 'Categorías rápidas',
-              subtitle: 'Encuentra lo que necesitas en segundos.',
-              actionLabel: 'Explorar',
-              horizontalPadding: contentPadding,
-              onTap: _openCategories,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(contentPadding, 8, contentPadding, 4),
+              child: Text(
+                'Categorías',
+                style: TextStyle(
+                  fontSize: isDesktop ? 20 : 17,
+                  fontWeight: FontWeight.w900,
+                  color: const Color(0xFF0F172A),
+                ),
+              ),
             ),
           ),
           SliverToBoxAdapter(
@@ -376,7 +386,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
                 itemBuilder: (context, index) {
                   final category = _categories[index] as Map<String, dynamic>;
                   return _CategoryCard(
-                    width: categoryCardWidth,
+                    width: isDesktop ? 162 : (isTablet ? 148 : 118),
                     category: category,
                     secondaryColor: secondaryColor,
                     onTap: () => Navigator.pushNamed(
@@ -391,96 +401,183 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
             ),
           ),
         ],
+
+        // ==========================================
+        // OFERTAS DEL DÍA (grid 2 columnas en móvil)
+        // ==========================================
         if (_offerProducts.isNotEmpty) ...[
           SliverToBoxAdapter(
-            child: _SectionHeader(
-              title: 'Ofertas del día',
-              subtitle: 'Promociones pensadas para vender hoy.',
-              actionLabel: 'Ver productos',
-              horizontalPadding: contentPadding,
-              onTap: _openOffers,
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: SizedBox(
-              height: carouselHeight,
-              child: ListView.separated(
-                padding: EdgeInsets.symmetric(horizontal: contentPadding),
-                scrollDirection: Axis.horizontal,
-                itemBuilder: (context, index) => SizedBox(
-                  width: featuredCardWidth,
-                  child: StorefrontProductCard(
-                    product: Map<String, dynamic>.from(
-                      _offerProducts[index] as Map,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(contentPadding, 16, contentPadding, 8),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      gradient: StorefrontColors.offerGradient,
+                      borderRadius: BorderRadius.circular(999),
                     ),
-                    slug: widget.slug,
-                    primaryColor: primaryColor,
-                    secondaryColor: secondaryColor,
-                    whatsapp: whatsapp,
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.local_fire_department_rounded, size: 16, color: Colors.white),
+                        SizedBox(width: 4),
+                        Text(
+                          'Ofertas del día',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                separatorBuilder: (_, index) => const SizedBox(width: 14),
-                itemCount: _offerProducts.length,
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: _openOffers,
+                    child: Text(
+                      'Ver todo',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: secondaryColor,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
+          SliverPadding(
+            padding: EdgeInsets.symmetric(horizontal: contentPadding),
+            sliver: SliverGrid(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: catalogCrossAxisCount,
+                childAspectRatio: catalogAspectRatio,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+              ),
+              delegate: SliverChildBuilderDelegate((context, index) {
+                return StorefrontProductCard(
+                  product: Map<String, dynamic>.from(
+                    _offerProducts[index] as Map,
+                  ),
+                  slug: widget.slug,
+                  primaryColor: primaryColor,
+                  secondaryColor: secondaryColor,
+                  compact: true,
+                  whatsapp: whatsapp,
+                );
+              }, childCount: _offerProducts.length),
+            ),
+          ),
         ],
+
+        // ==========================================
+        // DESTACADOS (grid 2 columnas en móvil)
+        // ==========================================
         if (_featuredProducts.isNotEmpty) ...[
           SliverToBoxAdapter(
-            child: _SectionHeader(
-              title: 'Destacados',
-              subtitle: 'Lo más buscado por nuestros clientes.',
-              actionLabel: 'Ver más',
-              horizontalPadding: contentPadding,
-              onTap: () {
-                final category =
-                    _featuredProducts.first['categoria']?.toString() ?? '';
-                if (category.isNotEmpty) {
-                  Navigator.pushNamed(
-                    context,
-                    '/tienda/${widget.slug}/categoria/${Uri.encodeComponent(category)}',
-                  );
-                }
-              },
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: SizedBox(
-              height: carouselHeight,
-              child: ListView.separated(
-                padding: EdgeInsets.symmetric(horizontal: contentPadding),
-                scrollDirection: Axis.horizontal,
-                itemBuilder: (context, index) => SizedBox(
-                  width: featuredCardWidth,
-                  child: StorefrontProductCard(
-                    product: Map<String, dynamic>.from(
-                      _featuredProducts[index] as Map,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(contentPadding, 16, contentPadding, 8),
+              child: Row(
+                children: [
+                  Text(
+                    'Destacados',
+                    style: TextStyle(
+                      fontSize: isDesktop ? 20 : 17,
+                      fontWeight: FontWeight.w900,
+                      color: const Color(0xFF0F172A),
                     ),
-                    slug: widget.slug,
-                    primaryColor: primaryColor,
-                    secondaryColor: secondaryColor,
-                    whatsapp: whatsapp,
                   ),
-                ),
-                separatorBuilder: (_, index) => const SizedBox(width: 14),
-                itemCount: _featuredProducts.length,
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () {
+                      final category =
+                          _featuredProducts.first['categoria']?.toString() ?? '';
+                      if (category.isNotEmpty) {
+                        Navigator.pushNamed(
+                          context,
+                          '/tienda/${widget.slug}/categoria/${Uri.encodeComponent(category)}',
+                        );
+                      }
+                    },
+                    child: Text(
+                      'Ver todo',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: secondaryColor,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
+          SliverPadding(
+            padding: EdgeInsets.symmetric(horizontal: contentPadding),
+            sliver: SliverGrid(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: catalogCrossAxisCount,
+                childAspectRatio: catalogAspectRatio,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+              ),
+              delegate: SliverChildBuilderDelegate((context, index) {
+                return StorefrontProductCard(
+                  product: Map<String, dynamic>.from(
+                    _featuredProducts[index] as Map,
+                  ),
+                  slug: widget.slug,
+                  primaryColor: primaryColor,
+                  secondaryColor: secondaryColor,
+                  compact: true,
+                  whatsapp: whatsapp,
+                );
+              }, childCount: _featuredProducts.length),
+            ),
+          ),
         ],
+
+        // ==========================================
+        // TODO EL CATÁLOGO
+        // ==========================================
         SliverToBoxAdapter(
-          child: _SectionHeader(
-            title: 'Todo el catálogo',
-            subtitle: 'Explora la tienda completa de $storeName.',
-            horizontalPadding: contentPadding,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(contentPadding, 16, contentPadding, 8),
+            child: Text(
+              'Todo el catálogo',
+              style: TextStyle(
+                fontSize: isDesktop ? 20 : 17,
+                fontWeight: FontWeight.w900,
+                color: const Color(0xFF0F172A),
+              ),
+            ),
           ),
         ),
         if (_products.isEmpty)
           SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: contentPadding),
-              child: const _InlineEmptyState(
-                title: 'No hay productos visibles en la tienda.',
+              child: Container(
+                height: 100,
+                alignment: Alignment.center,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(22),
+                  boxShadow: StorefrontShadows.soft,
+                ),
+                child: const Text(
+                  'No hay productos visibles en la tienda.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Color(0xFF64748B),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
           )
@@ -491,8 +588,8 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: catalogCrossAxisCount,
                 childAspectRatio: catalogAspectRatio,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
               ),
               delegate: SliverChildBuilderDelegate((context, index) {
                 return StorefrontProductCard(
@@ -514,9 +611,9 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
                     onPressed: _loadingMore ? null : _loadMore,
                     style: FilledButton.styleFrom(
                       backgroundColor: primaryColor,
-                      minimumSize: const Size(double.infinity, 54),
+                      minimumSize: const Size(double.infinity, 50),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                     ),
                     child: _loadingMore
@@ -567,14 +664,10 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
   List<dynamic> _dedupeProducts(List<dynamic> products) {
     final unique = <String, dynamic>{};
     for (final item in products) {
-      if (item is! Map) {
-        continue;
-      }
+      if (item is! Map) continue;
       final map = Map<String, dynamic>.from(item);
       final id = map['id']?.toString() ?? map['titulo']?.toString() ?? '';
-      if (id.isNotEmpty) {
-        unique[id] = map;
-      }
+      if (id.isNotEmpty) unique[id] = map;
     }
     return unique.values.toList();
   }
@@ -592,9 +685,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     for (final rawCategory in rawCategories.whereType<Map>()) {
       final category = Map<String, dynamic>.from(rawCategory);
       final rawName = category['nombre']?.toString().trim() ?? '';
-      if (rawName.isEmpty) {
-        continue;
-      }
+      if (rawName.isEmpty) continue;
 
       final key = _normalizeCategoryKey(rawName);
       final displayName = _displayCategoryName(rawName);
@@ -618,9 +709,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     if (merged.isEmpty && products.isNotEmpty) {
       for (final product in products) {
         final rawName = product['categoria']?.toString().trim() ?? '';
-        if (rawName.isEmpty) {
-          continue;
-        }
+        if (rawName.isEmpty) continue;
 
         final key = _normalizeCategoryKey(rawName);
         final displayName = _displayCategoryName(rawName);
@@ -647,9 +736,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
       ..sort((a, b) {
         final countCompare =
             (b['cantidad'] as int? ?? 0).compareTo(a['cantidad'] as int? ?? 0);
-        if (countCompare != 0) {
-          return countCompare;
-        }
+        if (countCompare != 0) return countCompare;
         return (a['nombre']?.toString() ?? '').compareTo(
           b['nombre']?.toString() ?? '',
         );
@@ -664,16 +751,12 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     List<Map<String, dynamic>> products,
   ) {
     final directImage = currentImage?.toString().trim() ?? '';
-    if (directImage.isNotEmpty) {
-      return directImage;
-    }
+    if (directImage.isNotEmpty) return directImage;
 
     final key = _normalizeCategoryKey(categoryName);
     for (final product in products) {
       final productCategory = product['categoria']?.toString().trim() ?? '';
-      if (_normalizeCategoryKey(productCategory) != key) {
-        continue;
-      }
+      if (_normalizeCategoryKey(productCategory) != key) continue;
 
       final image =
           product['imagen_destacada_url'] ??
@@ -681,9 +764,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
           product['imagen2'] ??
           product['imagen3'];
       final resolved = image?.toString().trim() ?? '';
-      if (resolved.isNotEmpty) {
-        return resolved;
-      }
+      if (resolved.isNotEmpty) return resolved;
     }
 
     return '';
@@ -713,67 +794,51 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  final String? subtitle;
-  final String? actionLabel;
-  final VoidCallback? onTap;
-  final double horizontalPadding;
+// ==========================================
+// BENEFIT CHIP
+// ==========================================
+class _BenefitChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
 
-  const _SectionHeader({
-    required this.title,
-    this.subtitle,
-    this.actionLabel,
-    this.onTap,
-    this.horizontalPadding = 16,
+  const _BenefitChip({
+    required this.icon,
+    required this.label,
+    required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.sizeOf(context).width >= 1100;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        horizontalPadding,
-        isDesktop ? 28 : 22,
-        horizontalPadding,
-        12,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFE5EAF1)),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: isDesktop ? 24 : 21,
-                    fontWeight: FontWeight.w900,
-                    color: const Color(0xFF0F172A),
-                    letterSpacing: -0.6,
-                  ),
-                ),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 5),
-                  Text(
-                    subtitle!,
-                    style: const TextStyle(
-                      color: Color(0xFF64748B),
-                      height: 1.35,
-                    ),
-                  ),
-                ],
-              ],
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF0F172A),
             ),
           ),
-          if (actionLabel != null)
-            TextButton(onPressed: onTap, child: Text(actionLabel!)),
         ],
       ),
     );
   }
 }
 
+// ==========================================
+// CATEGORY CARD
+// ==========================================
 class _CategoryCard extends StatelessWidget {
   final double width;
   final Map<String, dynamic> category;
@@ -859,34 +924,9 @@ class _CategoryCard extends StatelessWidget {
   }
 }
 
-class _InlineEmptyState extends StatelessWidget {
-  final String title;
-
-  const _InlineEmptyState({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 132,
-      alignment: Alignment.center,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: StorefrontShadows.soft,
-      ),
-      child: Text(
-        title,
-        textAlign: TextAlign.center,
-        style: const TextStyle(
-          color: Color(0xFF64748B),
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-}
-
+// ==========================================
+// SEARCH SHEET
+// ==========================================
 class _StorefrontSearchSheet extends StatefulWidget {
   final String slug;
   final Color primaryColor;
@@ -932,9 +972,7 @@ class _StorefrontSearchSheetState extends State<_StorefrontSearchSheet> {
   }
 
   Future<void> _runSearch(String query) async {
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     if (query.isEmpty) {
       setState(() {
@@ -961,9 +999,7 @@ class _StorefrontSearchSheetState extends State<_StorefrontSearchSheet> {
       _loading = query.length >= 2;
     });
 
-    if (query.length < 2) {
-      return;
-    }
+    if (query.length < 2) return;
 
     try {
       final response = await StorefrontApiService.getProducts(
@@ -981,227 +1017,133 @@ class _StorefrontSearchSheetState extends State<_StorefrontSearchSheet> {
       final merged = <String, Map<String, dynamic>>{};
       for (final item in [...local, ...remote]) {
         final id = item['id']?.toString() ?? item['titulo']?.toString() ?? '';
-        if (id.isNotEmpty) {
-          merged[id] = item;
-        }
+        if (id.isNotEmpty) merged[id] = item;
       }
 
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
       setState(() {
         _results = merged.values.toList();
         _loading = false;
       });
     } catch (_) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() => _loading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Container(
-        height: MediaQuery.sizeOf(context).height * 0.88,
-        decoration: const BoxDecoration(
-          color: Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: Column(
-          children: [
-            const SizedBox(height: 10),
-            Container(
-              width: 48,
-              height: 5,
+    final bottomPadding = MediaQuery.viewPaddingOf(context).bottom;
+    final isDesktop = MediaQuery.sizeOf(context).width >= 1024;
+
+    return Container(
+      height: MediaQuery.sizeOf(context).height * 0.82,
+      decoration: const BoxDecoration(
+        color: Color(0xFFF5F7FA),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: Column(
+        children: [
+          // Handle
+          Padding(
+            padding: const EdgeInsets.only(top: 10, bottom: 6),
+            child: Container(
+              width: 40,
+              height: 4,
               decoration: BoxDecoration(
-                color: const Color(0xFFCBD5E1),
+                color: Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(999),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
-              child: Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Buscar productos',
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close_rounded),
-                  ),
-                ],
-              ),
+          ),
+          // Search field
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              isDesktop ? 24 : 14,
+              6,
+              isDesktop ? 24 : 14,
+              10,
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 8, 18, 0),
-              child: TextField(
-                controller: _controller,
-                autofocus: true,
-                decoration: InputDecoration(
-                  hintText: 'Busca cámaras, motores, routers y más',
-                  prefixIcon: const Icon(Icons.search_rounded),
-                  suffixIcon: _controller.text.trim().isNotEmpty
-                      ? IconButton(
-                          onPressed: () {
-                            _controller.clear();
-                            _runSearch('');
-                          },
-                          icon: const Icon(Icons.close_rounded),
-                        )
-                      : null,
+            child: TextField(
+              controller: _controller,
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: 'Buscar cámaras, DVR, motores...',
+                prefixIcon: Icon(Icons.search_rounded, color: widget.primaryColor),
+                suffixIcon: _controller.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear_rounded, size: 20),
+                        onPressed: () => _controller.clear(),
+                      )
+                    : null,
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(
+                    color: const Color(0xFFE5EAF1),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: widget.primaryColor, width: 1.5),
                 ),
               ),
             ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _results.isEmpty
-                  ? const _SearchEmptyState()
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
-                      itemBuilder: (context, index) {
-                        final product = _results[index];
-                        final image = StorefrontHelpers.getPrimaryImage(product);
-                        final price = StorefrontHelpers.getEffectivePrice(product);
-                        final hasOffer =
-                            StorefrontHelpers.getOriginalPrice(product) != null;
-
-                        return Material(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(20),
-                            onTap: () {
-                              Navigator.of(context).pop();
-                              Navigator.pushNamed(
-                                context,
-                                '/tienda/${widget.slug}/producto/${product['id']}',
-                                arguments: {'product': product},
-                              );
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: Row(
-                                children: [
-                                  SizedBox(
-                                    width: 72,
-                                    height: 72,
-                                    child: StorefrontSmartImage(
-                                      source: image,
-                                      fit: BoxFit.contain,
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          product['categoria']?.toString() ?? '',
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            color: Color(0xFF64748B),
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          product['titulo']?.toString() ?? '',
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w800,
-                                            color: Color(0xFF0F172A),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Row(
-                                          children: [
-                                            Text(
-                                              'RD\$${price.toStringAsFixed(0)}',
-                                              style: TextStyle(
-                                                color: widget.primaryColor,
-                                                fontWeight: FontWeight.w900,
-                                              ),
-                                            ),
-                                            if (hasOffer) ...[
-                                              const SizedBox(width: 8),
-                                              const Text(
-                                                'Oferta',
-                                                style: TextStyle(
-                                                  color: Color(0xFFDC2626),
-                                                  fontWeight: FontWeight.w700,
-                                                  fontSize: 12,
-                                                ),
-                                              ),
-                                            ],
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Icon(
-                                    Icons.arrow_forward_ios_rounded,
-                                    size: 16,
-                                    color: Color(0xFF94A3B8),
-                                  ),
-                                ],
+          ),
+          // Results
+          Expanded(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _results.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.search_off_rounded,
+                              size: 48,
+                              color: Colors.grey.shade400,
+                            ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'No se encontraron productos',
+                              style: TextStyle(
+                                color: Color(0xFF64748B),
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                          ),
-                        );
-                      },
-                      separatorBuilder: (_, index) => const SizedBox(height: 10),
-                      itemCount: _results.length,
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SearchEmptyState extends StatelessWidget {
-  const _SearchEmptyState();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.all(28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.search_off_rounded,
-              size: 40,
-              color: Color(0xFF94A3B8),
-            ),
-            SizedBox(height: 12),
-            Text(
-              'No encontramos productos con esa búsqueda.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Color(0xFF64748B),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
+                          ],
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: EdgeInsets.fromLTRB(
+                          isDesktop ? 24 : 14,
+                          4,
+                          isDesktop ? 24 : 14,
+                          bottomPadding + 16,
+                        ),
+                        itemBuilder: (context, index) {
+                          final product = _results[index];
+                          return StorefrontProductCard(
+                            product: product,
+                            slug: widget.slug,
+                            primaryColor: widget.primaryColor,
+                            secondaryColor: widget.primaryColor,
+                            compact: true,
+                          );
+                        },
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        itemCount: _results.length,
+                      ),
+          ),
+        ],
       ),
     );
   }

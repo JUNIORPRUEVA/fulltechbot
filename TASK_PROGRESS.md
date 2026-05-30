@@ -1,95 +1,117 @@
 # FULLTECH BOT - Progreso de Tareas
 
-## 🔧 FIX DEFINITIVO: Ruteo - La raíz del dominio debe abrir la tienda
+## ✅ FIX 1: Ruteo - La raíz del dominio debe abrir la tienda (COMPLETADO)
 
 ### Problema original
-Cuando el usuario entra a `https://fulltechrd.com`, NO se muestra la tienda. Se muestra el panel/admin o una pantalla incorrecta. Solo funciona si el usuario entra a `https://fulltechrd.com/#/tienda/fulltech-seguridad` o en modo incógnito.
-
-### Causa raíz (2 problemas combinados)
-
-**Problema 1 - Ruteo en Flutter (`app.dart`):**
-Cuando el path es `/`, el router de Flutter llamaba a `PublicEntryScreen()` que intentaba resolver la tienda vía API (`/api/storefront/public/default`). Si la API no respondía rápido o no había tienda configurada, se quedaba en una pantalla de "cargando" o mostraba el panel admin como fallback.
-
-**Problema 2 - Service Worker cacheando versión anterior:**
-El Service Worker de Flutter (generado automáticamente) cacheaba el `index.html` y assets de la versión anterior de la app (FullTech Bot admin). Incluso después de desplegar la nueva versión, el SW seguía sirviendo la versión cacheada.
+Cuando el usuario entra a `https://fulltechrd.com`, NO se muestra la tienda. Solo funciona en modo incógnito.
 
 ### Solución aplicada (6 archivos modificados + 1 creado)
+- `frondend/lib/app.dart` - Ruta `/` redirige directo a `StorefrontHomeScreen(slug: 'fulltech-seguridad')`
+- `frondend/web/index.html` - Redirect inmediato ANTES de que Flutter cargue
+- `frondend/web/service_worker.js` - SW desactivado que se autodestruye
+- `frondend/web/clear-cache.html` - Página de limpieza de cache
+- `frondend/nginx.conf` - Headers anti-cache agresivos
+- `frondend/Dockerfile` - `--pwa-strategy=none`
 
-#### 1. `frondend/lib/app.dart` - FIX en el router de Flutter
-**CAUSA DEL PROBLEMA REAL:** La línea 37:
-```dart
-if (uri.path == '/' || uri.path == '/tienda') {
-```
-Redirigía a `PublicEntryScreen` que dependía de una API para resolver la tienda.
+---
 
-**SOLUCIÓN:** Ahora cuando el path es `/`, redirige DIRECTAMENTE a `StorefrontHomeScreen(slug: 'fulltech-seguridad')` sin depender de ninguna API:
-```dart
-if (uri.path == '/') {
-  return _route(
-    settings,
-    const StorefrontHomeScreen(slug: 'fulltech-seguridad'),
-  );
-}
-```
+## ✅ FIX 2: Optimización móvil de la tienda pública FULLTECH (COMPLETADO)
 
-#### 2. `frondend/web/index.html` - Redirect ANTES de que Flutter cargue
-Se agregó un script que se ejecuta inmediatamente al cargar la página (antes de que Flutter se inicialice) que:
-- Detecta si el path es `/` y el hash está vacío
-- Redirige inmediatamente a `/#/tienda/fulltech-seguridad`
-- También desregistra Service Workers viejos y limpia caches
-
-#### 3. `frondend/web/service_worker.js` - Service Worker desactivado
-Se reescribió para que:
-- Se desregistre a sí mismo al activarse
-- Limpie todos los caches
-- No intercepte ninguna petición
-- Versión: `fulltech-sw-DISABLED`
-
-#### 4. `frondend/web/clear-cache.html` - Página de limpieza (NUEVO)
-Página accesible en `https://fulltechrd.com/clear-cache.html` que:
-- Desregistra todos los Service Workers
-- Limpia todos los caches del navegador
-- Limpia localStorage de claves relacionadas con cache/routing
-- Redirige automáticamente a la tienda después de limpiar
-
-#### 5. `frondend/nginx.conf` - Headers anti-cache
-- `index.html`, `clear-cache.html`, `service_worker.js`: `Cache-Control: no-store, no-cache, must-revalidate, private, max-age=0`
-- `flutter_bootstrap.js`, `main.dart.js`: No cachear
-- Assets estáticos con hash: Cache largo (30 días, immutable)
-
-#### 6. `frondend/Dockerfile` - Compilar sin PWA
-Se agregó `--pwa-strategy=none` al comando de build para que Flutter NO genere su propio service worker automático.
+### Problema original
+La vista móvil se veía institucional, con bloques grandes de texto y tarjetas que no aprovechaban bien el espacio. No se parecía a una tienda moderna tipo Temu/Shopee.
 
 ### Archivos modificados
-| Archivo | Cambio |
-|---------|--------|
-| `frondend/lib/app.dart` | Ruta `/` redirige directo a la tienda sin API |
-| `frondend/web/index.html` | Redirect inmediato + limpieza SW/caches |
-| `frondend/web/service_worker.js` | SW desactivado que se autodestruye |
-| `frondend/web/clear-cache.html` | **NUEVO** - Página de limpieza de cache |
-| `frondend/nginx.conf` | Headers anti-cache agresivos |
-| `frondend/Dockerfile` | `--pwa-strategy=none` en el build |
 
-### Cómo desplegar
-```bash
-# 1. Hacer commit y push a GitHub (si usas EasyPanel)
-git add .
-git commit -m "Fix: ruteo raiz del dominio a la tienda + desactivar SW"
-git push
+#### 1. `frondend/lib/features/storefront/widgets/storefront_main_hero_slider.dart`
+**Cambio principal:** El slider ahora ocupa **55% del alto de pantalla** en móvil (calculado con MediaQuery, clamp 320-420px).
 
-# 2. O construir manualmente
-cd frondend
-flutter build web --release --pwa-strategy=none
-docker build -t fulltech-frontend .
-docker push fulltech-frontend  # o desplegar en tu servidor
+**Layout móvil del hero:**
+- Badge arriba a la izquierda + indicadores de slide a la derecha
+- Título grande (26px, bold) centrado verticalmente
+- Subtítulo (13px) debajo del título
+- Botones "Ofertas" y "Categorías" al fondo
+- Sin duplicación visual, sin texto institucional pesado
+
+#### 2. `frondend/lib/features/storefront/screens/storefront_home_screen.dart`
+**Reescrito completamente** con diseño mobile-first tipo marketplace.
+
+**Nuevo layout móvil (orden de arriba a abajo):**
+```
+┌─────────────────────────────┐
+│  HEADER COMPACTO            │ ← SliverPersistentHeader (blur, búsqueda, carrito, menú)
+├─────────────────────────────┤
+│  ┌───────────────────────┐  │
+│  │   HERO SLIDER (55%)   │  │ ← Ocupa 55% del alto de pantalla
+│  │   Título + CTA        │  │
+│  └───────────────────────┘  │
+│                             │
+│  [Garantía] [Tienda física] │ ← Benefits chips (scroll horizontal)
+│  [Soporte] [Instalación]    │
+│                             │
+│  Categorías                 │ ← Título sección
+│  [Camaras] [DVR] [Acc...]  │ ← Scroll horizontal con imágenes
+│                             │
+│  🔥 Ofertas del día  Ver→  │ ← Badge rojo con gradiente
+│  ┌─────┐ ┌─────┐           │
+│  │Prod1│ │Prod2│           │ ← Grid 2 columnas
+│  └─────┘ └─────┘           │
+│                             │
+│  Destacados          Ver→   │
+│  ┌─────┐ ┌─────┐           │
+│  │Prod1│ │Prod2│           │ ← Grid 2 columnas
+│  └─────┘ └─────┘           │
+│                             │
+│  Todo el catálogo           │
+│  ┌─────┐ ┌─────┐           │
+│  │Prod1│ │Prod2│           │ ← Grid 2 columnas
+│  └─────┘ └─────┘           │
+│                             │
+│  [Ver más productos]        │ ← Botón carga más
+│                             │
+│  FOOTER                     │
+└─────────────────────────────┘
 ```
 
+**Cambios específicos:**
+- ✅ **Eliminada duplicación visual**: Ya no hay dos bloques azules grandes seguidos. El hero slider es el único bloque grande.
+- ✅ **Benefits chips**: Nuevos chips de Garantía, Tienda física, Soporte, Instalación en scroll horizontal
+- ✅ **Ofertas del día**: Badge con gradiente rojo `🔥 Ofertas del día`, grid 2 columnas en móvil
+- ✅ **Categorías**: Scroll horizontal compacto con imágenes
+- ✅ **Productos**: Grid 2 columnas en móvil, 3 en tablet, 4 en desktop
+- ✅ **Search sheet**: Hint actualizado a "Buscar cámaras, DVR, motores..."
+- ✅ **Responsive**: Mobile-first con breakpoints: <700 móvil, 700-1100 tablet, >1100 desktop
+- ✅ **Sin overflow**: Altos calculados con MediaQuery, no valores fijos
+
+### Archivos NO modificados (se mantienen igual)
+- `storefront_product_card.dart` - Ya tenía diseño compacto funcional
+- `storefront_banner_slider.dart` - No se usa directamente (se usa main_hero_slider)
+- `storefront_category_chip.dart` - No se usa directamente
+- `storefront_header.dart` - No se usa directamente (se usa el header del layout)
+- `public_store_layout.dart` - Se mantiene igual (provee el header y hero)
+- `storefront_theme.dart` - Se mantiene igual
+
 ### Cómo probar
-1. Después de desplegar, abre `https://fulltechrd.com` en navegador NORMAL (no incógnito)
-2. Debe redirigir automáticamente a `https://fulltechrd.com/#/tienda/fulltech-seguridad`
-3. Si aún ves la versión anterior, visita `https://fulltechrd.com/clear-cache.html` para forzar limpieza
-4. También puedes probar:
-   - `https://fulltechrd.com/#/` → debe ir a la tienda
-   - `https://fulltechrd.com/#/tienda/fulltech-seguridad` → debe ir a la tienda
-   - `https://fulltechrd.com/#/login` → debe ir al login
-   - `https://fulltechrd.com/#/admin` → debe ir al panel admin (con sesión)
+```bash
+# Después de desplegar, probar en navegador:
+# 1. Abrir https://fulltechrd.com (debe redirigir a la tienda)
+# 2. Abrir https://fulltechrd.com/#/tienda/fulltech-seguridad
+
+# Probar en modo responsive (F12 > toggle device toolbar):
+# - 360x800 (móvil pequeño)
+# - 390x844 (iPhone 14)
+# - 412x915 (Android)
+# - 430x932 (iPhone 15 Pro Max)
+# - 768x1024 (tablet)
+# - 1920x1080 (desktop)
+
+# Verificar:
+# ✅ Hero slider ocupa ~55% del alto en móvil
+# ✅ Benefits chips en scroll horizontal
+# ✅ Categorías en scroll horizontal
+# ✅ Ofertas con badge rojo en grid 2 columnas
+# ✅ Productos en grid 2 columnas
+# ✅ Sin overflow amarillo/negro
+# ✅ Sin textos cortados
+# ✅ Sin duplicación visual
+# ✅ Carrito, búsqueda, login funcionan
+```

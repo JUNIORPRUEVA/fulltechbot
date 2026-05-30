@@ -47,7 +47,8 @@ class StorefrontMainHeroSlider extends StatefulWidget {
   });
 
   @override
-  State<StorefrontMainHeroSlider> createState() => _StorefrontMainHeroSliderState();
+  State<StorefrontMainHeroSlider> createState() =>
+      _StorefrontMainHeroSliderState();
 }
 
 class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
@@ -82,9 +83,10 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
   Map<String, dynamic> _mapProductSlide(Map<String, dynamic> product) {
     return {
       'titulo': product['titulo']?.toString() ?? widget.heroTitle,
-      'subtitulo': product['descripcion_web']?.toString().trim().isNotEmpty == true
-          ? product['descripcion_web'].toString().trim()
-          : widget.heroSubtitle,
+      'subtitulo':
+          product['descripcion_web']?.toString().trim().isNotEmpty == true
+              ? product['descripcion_web'].toString().trim()
+              : widget.heroSubtitle,
       'imagen_url': StorefrontHelpers.getPrimaryImage(product),
       'badge': product['categoria']?.toString() ?? 'Producto destacado',
       'cta_texto': 'Ver producto',
@@ -98,9 +100,7 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
     _pageController = PageController(viewportFraction: 1);
     if (_slides.length > 1) {
       _autoSlideTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-        if (!_pageController.hasClients) {
-          return;
-        }
+        if (!_pageController.hasClients) return;
         final nextPage = (_currentIndex + 1) % _slides.length;
         _pageController.animateToPage(
           nextPage,
@@ -120,7 +120,12 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
 
   @override
   Widget build(BuildContext context) {
-    final height = widget.isDesktop ? 350.0 : 260.0;
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    // En móvil: 55% del alto de pantalla, mínimo 320px, máximo 420px
+    final height = widget.isDesktop
+        ? 350.0
+        : (screenHeight * 0.55).clamp(320.0, 420.0);
 
     return SizedBox(
       height: height,
@@ -137,7 +142,8 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
               PageView.builder(
                 controller: _pageController,
                 itemCount: _slides.length,
-                onPageChanged: (index) => setState(() => _currentIndex = index),
+                onPageChanged: (index) =>
+                    setState(() => _currentIndex = index),
                 itemBuilder: (context, index) {
                   return _HeroSlideBackground(
                     slide: _slides[index],
@@ -146,6 +152,7 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
                   );
                 },
               ),
+              // Overlay gradient
               DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -160,6 +167,7 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
                   ),
                 ),
               ),
+              // Burbujas decorativas
               Positioned(
                 right: -36,
                 top: -18,
@@ -176,6 +184,7 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
                   color: Colors.white.withValues(alpha: 0.08),
                 ),
               ),
+              // Contenido
               Padding(
                 padding: EdgeInsets.all(widget.isDesktop ? 24 : 16),
                 child: widget.isDesktop
@@ -236,33 +245,43 @@ class _MobileHeroOverlay extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _HeroBadge(label: badge),
+        // Badge + indicadores arriba
+        Row(
+          children: [
+            _HeroBadge(label: badge),
+            const Spacer(),
+            _Indicators(currentIndex: currentIndex, totalSlides: totalSlides),
+          ],
+        ),
         const Spacer(),
+        // Título grande
         Text(
           title,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             color: Colors.white,
-            fontSize: 24,
+            fontSize: 26,
             fontWeight: FontWeight.w900,
-            height: 1.02,
+            height: 1.05,
             letterSpacing: -0.8,
           ),
         ),
         const SizedBox(height: 8),
+        // Subtítulo
         Text(
           subtitle,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.90),
-            fontSize: 12.5,
+            fontSize: 13,
             fontWeight: FontWeight.w600,
             height: 1.35,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
+        // Botones de acción
         Row(
           children: [
             _HeroMiniButton(
@@ -273,11 +292,9 @@ class _MobileHeroOverlay extends StatelessWidget {
             const SizedBox(width: 8),
             _HeroMiniButton(
               icon: Icons.grid_view_rounded,
-              label: 'Categorias',
+              label: 'Categorías',
               onTap: onCategoriesTap,
             ),
-            const Spacer(),
-            _Indicators(currentIndex: currentIndex, totalSlides: totalSlides),
           ],
         ),
       ],
@@ -362,7 +379,7 @@ class _DesktopHeroOverlay extends StatelessWidget {
                   const SizedBox(width: 10),
                   _HeroMiniButton(
                     icon: Icons.grid_view_rounded,
-                    label: 'Explorar categorias',
+                    label: 'Explorar categorías',
                     onTap: onCategoriesTap,
                   ),
                 ],
@@ -541,9 +558,7 @@ class _Indicators extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (totalSlides <= 1) {
-      return const SizedBox.shrink();
-    }
+    if (totalSlides <= 1) return const SizedBox.shrink();
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -568,10 +583,7 @@ class _GlowBubble extends StatelessWidget {
   final double size;
   final Color color;
 
-  const _GlowBubble({
-    required this.size,
-    required this.color,
-  });
+  const _GlowBubble({required this.size, required this.color});
 
   @override
   Widget build(BuildContext context) {
