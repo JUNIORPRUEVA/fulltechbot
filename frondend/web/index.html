@@ -27,38 +27,174 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 
-  <!-- 
-    ============================================================
-    FIX DEFINITIVO: REDIRECT INMEDIATO A LA TIENDA
-    ============================================================
-    Cuando el usuario entra a https://fulltechrd.com, esto se ejecuta
-    ANTES de que Flutter cargue, redirigiendo inmediatamente a la tienda.
+  <style>
+    /* ============================================
+       SPLASH SCREEN - Se muestra inmediatamente
+       mientras Flutter carga. Sin pantalla blanca.
+       ============================================ */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     
-    También desregistra cualquier Service Worker viejo y limpia caches.
-    ============================================================
-  -->
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: #0F172A;
+    }
+
+    #splash-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #0F172A 100%);
+      z-index: 9999;
+      transition: opacity 0.4s ease-out;
+    }
+
+    #splash-screen.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .splash-logo {
+      width: 80px;
+      height: 80px;
+      background: rgba(37, 99, 235, 0.15);
+      border-radius: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+      border: 1px solid rgba(37, 99, 235, 0.2);
+    }
+
+    .splash-logo svg {
+      width: 44px;
+      height: 44px;
+    }
+
+    .splash-title {
+      color: #FFFFFF;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 28px;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
+    }
+
+    .splash-subtitle {
+      color: rgba(255, 255, 255, 0.6);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 32px;
+    }
+
+    .splash-loader {
+      width: 48px;
+      height: 48px;
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      border-top-color: #2563EB;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .splash-message {
+      color: rgba(255, 255, 255, 0.4);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 12px;
+      margin-top: 20px;
+      letter-spacing: 0.3px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Patrón de fondo sutil */
+    .splash-pattern {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      pointer-events: none;
+      opacity: 0.03;
+    }
+
+    .splash-pattern div {
+      position: absolute;
+      border-radius: 50%;
+      background: #2563EB;
+    }
+
+    .splash-pattern .dot1 { width: 300px; height: 300px; top: -80px; right: -60px; }
+    .splash-pattern .dot2 { width: 200px; height: 200px; bottom: -40px; left: -40px; }
+    .splash-pattern .dot3 { width: 120px; height: 120px; top: 40%; left: 10%; }
+
+    /* Cuando Flutter carga, ocultar splash */
+    #flutter-ready #splash-screen {
+      opacity: 0;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- ==========================================
+       SPLASH SCREEN - Visible inmediatamente
+       ========================================== -->
+  <div id="splash-screen">
+    <div class="splash-pattern">
+      <div class="dot1"></div>
+      <div class="dot2"></div>
+      <div class="dot3"></div>
+    </div>
+    <div class="splash-logo">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#2563EB" stroke-width="1.5" stroke-linejoin="round"/>
+        <path d="M2 17L12 22L22 17" stroke="#2563EB" stroke-width="1.5" stroke-linejoin="round"/>
+        <path d="M2 12L12 17L22 12" stroke="#2563EB" stroke-width="1.5" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="splash-title">FULLTECH</div>
+    <div class="splash-subtitle">Cargando tienda...</div>
+    <div class="splash-loader"></div>
+    <div class="splash-message">Tecnología, seguridad y automatización</div>
+  </div>
+
+  <!-- ==========================================
+       BOOTSTRAP CON VERSIONADO Y CACHE CONTROL
+       ========================================== -->
   <script>
     (function() {
       'use strict';
       var BUILD_VERSION = '__FULLTECH_BUILD_VERSION__';
       var VERSION_KEY = 'fulltech_app_version';
+      var SPLASH_KEY = 'fulltech_splash_shown';
       
       // ==========================================
       // 1. REDIRECT INMEDIATO A LA TIENDA
-      //    Esto se ejecuta antes de que Flutter cargue
+      //    Se ejecuta antes de que Flutter cargue
       // ==========================================
       var path = window.location.pathname || "/";
       var hash = window.location.hash || "";
       var isRootPath = path === "/" || path === "";
       var isEmptyHash = hash === "" || hash === "#" || hash === "#/";
       
-      // Si estamos en la raíz sin hash, redirigir a la tienda
       if (isRootPath && isEmptyHash) {
-        console.log('[FIX] Redirigiendo a la tienda principal...');
+        console.log('[FULLTECH] Redirigiendo a la tienda principal...');
         window.location.replace("/#/tienda/fulltech");
-        return; // Detener ejecución, la página se recargará
+        return;
       }
       
+      // ==========================================
+      // 2. LIMPIEZA DE CACHE (solo si hay cambio de versión)
+      // ==========================================
       function clearRuntimeCaches() {
         var tasks = [];
 
@@ -72,10 +208,6 @@
               );
             })
           );
-
-          navigator.serviceWorker.addEventListener('controllerchange', function() {
-            window.location.reload();
-          });
         }
 
         if (window.caches) {
@@ -95,6 +227,9 @@
         });
       }
 
+      // ==========================================
+      // 3. CARGA DE FLUTTER CON VERSIONADO
+      // ==========================================
       function loadFlutter(version) {
         var script = document.createElement('script');
         script.src = 'flutter_bootstrap.js?v=' + encodeURIComponent(version || Date.now().toString());
@@ -102,6 +237,9 @@
         document.body.appendChild(script);
       }
 
+      // ==========================================
+      // 4. VERIFICAR VERSIÓN Y CARGAR
+      // ==========================================
       fetch('version.json?ts=' + Date.now(), {
         cache: 'no-store',
         headers: {
@@ -124,7 +262,7 @@
           var lastVersion = localStorage.getItem(VERSION_KEY);
 
           if (lastVersion && lastVersion !== currentVersion) {
-            console.log('[FULLTECH] Nueva version detectada:', currentVersion);
+            console.log('[FULLTECH] Nueva versión detectada:', currentVersion, '(anterior:', lastVersion + ')');
             return clearRuntimeCaches().then(function() {
               localStorage.setItem(VERSION_KEY, currentVersion);
               loadFlutter(currentVersion);
@@ -140,9 +278,25 @@
             loadFlutter(Date.now().toString());
           });
         });
+
+      // ==========================================
+      // 5. TIMEOUT DE SEGURIDAD - Si Flutter no carga en 15s
+      // ==========================================
+      setTimeout(function() {
+        var splash = document.getElementById('splash-screen');
+        if (splash && !splash.classList.contains('hidden')) {
+          splash.querySelector('.splash-message').textContent = 'La tienda está tardando más de lo esperado...';
+          
+          // Segundo timeout a los 25s - mostrar botón de recarga
+          setTimeout(function() {
+            if (splash && !splash.classList.contains('hidden')) {
+              splash.querySelector('.splash-message').innerHTML = 
+                '¿La tienda no carga? <a href="#" onclick="location.reload()" style="color:#2563EB;text-decoration:underline;">Recargar página</a>';
+            }
+          }, 10000);
+        }
+      }, 15000);
     })();
   </script>
-</head>
-<body>
 </body>
 </html>

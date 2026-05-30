@@ -1,119 +1,186 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Limpiando cache - FULLTECH</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Limpiar Cache - FULLTECH SRL</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: #0F172A;
-      color: white;
+      color: #fff;
       display: flex;
-      justify-content: center;
       align-items: center;
+      justify-content: center;
       min-height: 100vh;
       padding: 20px;
     }
     .card {
-      background: rgba(255,255,255,0.08);
+      background: #1E293B;
       border-radius: 24px;
-      padding: 40px;
-      max-width: 480px;
+      padding: 40px 32px;
+      max-width: 400px;
+      width: 100%;
       text-align: center;
-      border: 1px solid rgba(255,255,255,0.1);
+      border: 1px solid #334155;
     }
-    .icon {
-      width: 64px;
-      height: 64px;
-      background: rgba(37, 99, 235, 0.2);
-      border-radius: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 20px;
-      font-size: 32px;
+    .logo {
+      font-size: 28px;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
     }
-    h1 { font-size: 24px; margin-bottom: 12px; }
-    p { color: #94A3B8; line-height: 1.6; margin-bottom: 8px; font-size: 14px; }
-    .status { color: #22C55E; font-weight: 600; margin-top: 16px; }
-    .error { color: #EF4444; }
+    .logo span { color: #3B82F6; }
+    .subtitle {
+      color: #94A3B8;
+      font-size: 14px;
+      margin-bottom: 28px;
+    }
+    .status {
+      background: #0F172A;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 24px;
+      text-align: left;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .status .label { color: #64748B; }
+    .status .value { color: #E2E8F0; font-weight: 600; }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 16px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 12px;
+    }
+    .btn-primary {
+      background: #3B82F6;
+      color: #fff;
+    }
+    .btn-primary:hover { background: #2563EB; }
+    .btn-secondary {
+      background: #334155;
+      color: #E2E8F0;
+    }
+    .btn-secondary:hover { background: #475569; }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .success {
+      color: #22C55E;
+      font-weight: 600;
+      margin-top: 12px;
+    }
+    .error {
+      color: #EF4444;
+      font-weight: 600;
+      margin-top: 12px;
+    }
     .hidden { display: none; }
   </style>
 </head>
 <body>
   <div class="card">
-    <div class="icon">🧹</div>
-    <h1>Limpiando cache...</h1>
-    <p>Estamos eliminando versiones anteriores almacenadas en tu navegador.</p>
-    <p>Esto solo tomará unos segundos.</p>
-    <div id="status" class="status">Procesando...</div>
+    <div class="logo">FULL<span>TECH</span></div>
+    <div class="subtitle">Herramienta de limpieza de caché</div>
+
+    <div class="status" id="status">
+      <div><span class="label">Service Worker:</span> <span class="value" id="swStatus">Verificando...</span></div>
+      <div><span class="label">Caches activos:</span> <span class="value" id="cacheCount">-</span></div>
+      <div><span class="label">Versión actual:</span> <span class="value" id="currentVersion">-</span></div>
+    </div>
+
+    <button class="btn btn-primary" id="btnClear" onclick="clearAllCaches()">
+      🗑️ Limpiar todo el caché
+    </button>
+    <button class="btn btn-secondary" id="btnReload" onclick="reloadStore()" disabled>
+      🔄 Recargar tienda
+    </button>
+
+    <div id="message"></div>
   </div>
 
   <script>
-    (async function() {
-      const statusEl = document.getElementById('status');
-      const steps = [];
-      
-      // 1. Desregistrar Service Workers
-      if ('serviceWorker' in navigator) {
-        try {
-          const registrations = await navigator.serviceWorker.getRegistrations();
-          for (const reg of registrations) {
-            await reg.unregister();
-            steps.push('✓ Service Worker desregistrado');
-          }
-          if (registrations.length === 0) steps.push('✓ No había Service Workers');
-        } catch(e) {
-          steps.push('⚠ Error desregistrando SW: ' + e.message);
-        }
-      } else {
-        steps.push('✓ Service Workers no soportados');
-      }
-      
-      // 2. Limpiar caches
-      if (window.caches) {
-        try {
-          const cacheNames = await caches.keys();
-          await Promise.all(cacheNames.map(name => caches.delete(name)));
-          steps.push('✓ ' + cacheNames.length + ' cache(s) eliminados');
-        } catch(e) {
-          steps.push('⚠ Error limpiando caches: ' + e.message);
-        }
-      } else {
-        steps.push('✓ Cache API no soportada');
-      }
-      
-      // 3. Limpiar localStorage (solo claves relacionadas con cache/routing)
+    async function checkStatus() {
       try {
-        const keysToRemove = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && (key.toLowerCase().includes('cache') || 
-                      key.toLowerCase().includes('route') ||
-                      key.toLowerCase().includes('sw') ||
-                      key.toLowerCase().includes('service_worker'))) {
-            keysToRemove.push(key);
-          }
+        // Verificar service worker
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          document.getElementById('swStatus').textContent = 
+            registrations.length > 0 ? '✅ Registrado' : '❌ No registrado';
+        } else {
+          document.getElementById('swStatus').textContent = '⚠️ No soportado';
         }
-        keysToRemove.forEach(key => localStorage.removeItem(key));
-        steps.push('✓ ' + keysToRemove.length + ' clave(s) de localStorage limpiadas');
+
+        // Verificar caches
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          document.getElementById('cacheCount').textContent = keys.length > 0 
+            ? keys.join(', ') 
+            : 'Ninguno';
+        }
+
+        // Verificar versión
+        try {
+          const res = await fetch('/version.json?_=' + Date.now());
+          const data = await res.json();
+          document.getElementById('currentVersion').textContent = data.version || 'Desconocida';
+        } catch(e) {
+          document.getElementById('currentVersion').textContent = 'No disponible';
+        }
       } catch(e) {
-        steps.push('⚠ Error limpiando localStorage: ' + e.message);
+        console.error('Error checking status:', e);
       }
-      
-      // Mostrar resultados
-      statusEl.innerHTML = steps.join('<br>');
-      
-      // Redirigir a la tienda después de 2 segundos
-      setTimeout(function() {
-        statusEl.innerHTML = '✓ Todo limpio. Redirigiendo a la tienda...';
-        setTimeout(function() {
-          window.location.replace('/#/tienda/fulltech');
-        }, 1000);
-      }, 1500);
-    })();
+    }
+
+    async function clearAllCaches() {
+      const btn = document.getElementById('btnClear');
+      const msg = document.getElementById('message');
+      btn.disabled = true;
+      msg.className = '';
+      msg.textContent = 'Limpiando...';
+
+      try {
+        // Limpiar caches
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(key => caches.delete(key)));
+        }
+
+        // Desregistrar service workers
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map(reg => reg.unregister()));
+        }
+
+        msg.className = 'success';
+        msg.textContent = '✅ Caché limpiado correctamente';
+        document.getElementById('btnReload').disabled = false;
+        
+        // Actualizar estado
+        await checkStatus();
+      } catch(e) {
+        msg.className = 'error';
+        msg.textContent = '❌ Error: ' + e.message;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function reloadStore() {
+      window.location.href = '/';
+    }
+
+    // Verificar estado al cargar
+    checkStatus();
   </script>
 </body>
 </html>

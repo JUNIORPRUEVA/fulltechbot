@@ -1,41 +1,101 @@
-# FULLTECH SRL - Storefront Home Optimization
+# 🚀 Optimización Completa de Carga, Cache y Actualización - FULLTECH BOT
 
-## Estado: ✅ COMPLETADO
+## Estado del Proyecto
 
-### Resumen de cambios realizados
+### ✅ Completado
 
-Se optimizó completamente la pantalla principal de la tienda online FULLTECH SRL con un diseño mobile-first, premium, tecnológico y persuasivo.
+#### 1. index.html - Splash Screen + Anti-cache + Service Worker
+- [x] Splash screen con logo FULLTECH SRL y fondo oscuro (#0F172A)
+- [x] Mensaje "Cargando tienda..." con spinner animado
+- [x] Meta tags anti-cache (no-cache, no-store, must-revalidate)
+- [x] Service Worker con control de versión y auto-actualización
+- [x] Timeout de 15s con fallback visual
+- [x] Ocultar splash cuando Flutter esté listo (vía JS bridge)
+- [x] Precarga de main.dart.js con fetch temprano
+- [x] Google Fonts precargados
+- [x] Manifest.json actualizado
 
-### Archivos creados/modificados
+#### 2. nginx.conf - Configuración optimizada
+- [x] gzip activado con tipos MIME correctos
+- [x] Cache-Control correcto por tipo de archivo:
+  - index.html, flutter_bootstrap.js, flutter.js, main.dart.js, version.json, manifest.json → no-cache
+  - assets/ con hash → public, max-age=31536000, immutable
+- [x] Fallback para rutas Flutter (try_files)
+- [x] Tipos MIME explícitos para .js, .wasm, .json
+- [x] Seguridad: X-Content-Type-Options, X-Frame-Options
 
-| Archivo | Acción | Descripción |
-|---------|--------|-------------|
-| `storefront_app_bar.dart` | ✅ Creado | AppBar superior profesional con menú, nombre, buscador y carrito |
-| `storefront_hero_slider.dart` | ✅ Creado | Slider principal limpio con imágenes, títulos, precios y botón |
-| `storefront_trust_chips.dart` | ✅ Creado | Chips de confianza: Garantía, Tienda física, Soporte, Instalación |
-| `storefront_whatsapp_button.dart` | ✅ Creado | Botón flotante WhatsApp con enlace directo al 829-534-4286 |
-| `storefront_footer.dart` | ✅ Actualizado | Footer profesional con datos de contacto, servicios y copyright |
-| `storefront_product_card.dart` | ✅ Actualizado | Tarjetas de producto optimizadas con precio visible y diseño compacto |
-| `storefront_skeleton.dart` | ✅ Actualizado | Skeleton loading animado para carga inicial |
-| `storefront_home_screen.dart` | ✅ Actualizado | Pantalla principal completamente refactorizada con slivers |
-| `public_store_layout.dart` | ✅ Actualizado | Layout público integrando AppBar, slider y WhatsApp button |
+#### 3. Dockerfile - Multi-stage optimizado
+- [x] Stage 1: Build Flutter Web en release
+- [x] Stage 2: nginx:alpine liviano
+- [x] Solo copia build/web/
+- [x] Incluye nginx.conf personalizado
 
-### Checklist de requisitos cumplidos
+#### 4. Service Worker - Control de versión
+- [x] Versión dinámica desde version.json
+- [x] Cache de assets con hash (immutable)
+- [x] Cache de imágenes con versionado por URL
+- [x] Estrategia Network-First para HTML, JS, CSS
+- [x] Auto-actualización al detectar nuevo service worker
+- [x] Notificación al usuario de nueva versión disponible
+- [x] Limpieza de caches antiguos
+- [x] Fallback offline para imágenes cacheadas
 
-- [x] **AppBar superior profesional**: Fino, moderno, con menú, nombre FULLTECH SRL, buscador compacto y carrito
-- [x] **Header/Slider principal**: Limpio, con imágenes, títulos, precios y botón "Ver oferta"
-- [x] **Botón flotante WhatsApp**: Circular, verde, con enlace `https://wa.me/18295344286`
-- [x] **Footer profesional**: Nombre, descripción, dirección, teléfono, servicios y copyright
-- [x] **Product Cards**: Imagen, nombre, descripción, precio visible, botón carrito, 2 columnas en móvil
-- [x] **Categorías**: Tarjetas horizontales con imagen, nombre y cantidad de productos
-- [x] **Ofertas del día**: Sección con icono de fuego, productos en oferta, botón "Ver todo"
-- [x] **Rendimiento**: Cache de imágenes, precarga, skeleton loading, const widgets
-- [x] **Responsive mobile-first**: SafeArea, MediaQuery, LayoutBuilder, slivers
-- [x] **Estilo visual**: Tecnológico, premium, colores navy/azul oscuro, fondo gris claro
-- [x] **Persuasión comercial**: Chips de confianza (Garantía, Tienda física, Soporte, Instalación)
-- [x] **Limpieza**: Sin elementos repetidos, sin duplicación de nombre/buscador en slider
-- [x] **Código limpio**: Widgets separados, sin lógica visual desordenada
-- [x] **Sin errores de compilación**: `dart analyze` muestra 0 errores y 0 warnings en storefront
-- [x] **Corrección de errores**: Eliminado argumento `null` extra en `_takeText`, eliminados métodos no usados `_handleSlideAction` y `_offerCta`, eliminado import no usado de `url_launcher`
+#### 5. version.json - Versionado de build
+- [x] Archivo version.json con versión y build
+- [x] Versión semántica (YYYY.MM.DD.HH)
+- [x] Consultable por la app para detectar cambios
 
+#### 6. main.dart - Optimizado
+- [x] Ocultar splash screen cuando Flutter renderiza primer frame
+- [x] ErrorWidget con diseño oscuro y botón de recarga
+- [x] Manejo de errores global con runZonedGuarded
 
+#### 7. storefront_home_screen.dart - Carga progresiva
+- [x] Carga progresiva: primero config, luego banners/categorías, luego productos
+- [x] Skeleton loading mientras carga
+- [x] Precarga de imágenes visibles (solo primeras 12)
+- [x] addPostFrameCallback para no bloquear el primer frame
+
+#### 8. clear-cache.html - Herramienta de limpieza
+- [x] Página para limpiar caches manualmente
+- [x] Botón para recargar después de limpiar
+
+### 🔄 Pendiente
+
+#### 9. Optimización de imágenes
+- [ ] Convertir imágenes grandes a WebP
+- [ ] Verificar tamaños de imágenes del slider
+- [ ] Implementar lazy loading en productos fuera de pantalla
+
+#### 10. API y datos
+- [ ] Timeout de API configurable
+- [ ] Cache local ligera de productos para fallback offline
+- [ ] Skeleton loading en todas las pantallas
+
+#### 11. Cloudflare/CDN
+- [ ] Verificar configuración de Cloudflare
+- [ ] Page Rules para no cachear archivos críticos
+- [ ] Purge cache después del deploy
+
+#### 12. Validación final
+- [ ] Probar en modo incógnito
+- [ ] Probar en otro teléfono
+- [ ] Probar en datos móviles
+- [ ] Probar después de un deploy nuevo
+- [ ] Verificar que no hay errores 404
+- [ ] Verificar que no hay errores de service worker
+- [ ] Verificar que no hay errores en consola
+
+## Resumen de cambios realizados
+
+| Archivo | Cambio |
+|---------|--------|
+| `frondend/web/index.html` | Splash screen, anti-cache, SW con versión, timeout, precarga |
+| `frondend/web/service_worker.js` | Control de versión, cache de assets, auto-actualización |
+| `frondend/web/manifest.json` | Configuración PWA correcta |
+| `frondend/web/version.json` | Versionado de build |
+| `frondend/web/clear-cache.html` | Herramienta de limpieza de cache |
+| `frondend/nginx.conf` | Headers cache, gzip, MIME types, fallback |
+| `frondend/Dockerfile` | Multi-stage build optimizado |
+| `frondend/lib/main.dart` | Ocultar splash, error widget, recarga |
+| `frondend/lib/features/storefront/screens/storefront_home_screen.dart` | Carga progresiva |

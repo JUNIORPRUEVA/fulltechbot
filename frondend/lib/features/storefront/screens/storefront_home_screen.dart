@@ -42,7 +42,10 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadInitialData();
+    // Carga progresiva: primero mostrar skeleton, luego cargar datos
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadInitialData();
+    });
   }
 
   Future<void> _loadInitialData() async {
@@ -52,10 +55,37 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     });
 
     try {
-      final results = await Future.wait([
-        StorefrontApiService.getConfig(widget.slug),
+      // Carga progresiva: primero config (esencial), luego el resto
+      final configResponse = await StorefrontApiService.getConfig(widget.slug);
+      
+      if (configResponse['ok'] != true) {
+        setState(() {
+          _error =
+              configResponse['message']?.toString() ??
+              'No se pudo cargar la tienda.';
+          _loading = false;
+        });
+        return;
+      }
+
+      setState(() {
+        _config = Map<String, dynamic>.from(configResponse['data'] as Map);
+      });
+
+      // Cargar banners y categorías en paralelo (más rápidos)
+      final secondaryResults = await Future.wait([
         StorefrontApiService.getBanners(widget.slug),
         StorefrontApiService.getCategories(widget.slug),
+      ]);
+
+      setState(() {
+        _banners = List<dynamic>.from(secondaryResults[0]['data'] as List? ?? const []);
+        final rawCategories = List<dynamic>.from(secondaryResults[1]['data'] as List? ?? const []);
+        _categories = _buildDisplayCategories(rawCategories, []);
+      });
+
+      // Cargar productos en paralelo (lo más pesado)
+      final productResults = await Future.wait([
         StorefrontApiService.getProducts(
           widget.slug,
           destacado: true,
@@ -71,22 +101,11 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
         ),
       ]);
 
-      final configResponse = results[0];
-      if (configResponse['ok'] != true) {
-        setState(() {
-          _error =
-              configResponse['message']?.toString() ??
-              'No se pudo cargar la tienda.';
-          _loading = false;
-        });
-        return;
-      }
-
       final featuredProducts = _dedupeProducts(
-        List<dynamic>.from(results[3]['items'] as List? ?? const []),
+        List<dynamic>.from(productResults[0]['items'] as List? ?? const []),
       );
       final offerProducts = _dedupeProducts(
-        List<dynamic>.from(results[4]['items'] as List? ?? const []).where((
+        List<dynamic>.from(productResults[1]['items'] as List? ?? const []).where((
           item,
         ) {
           final map = Map<String, dynamic>.from(item as Map);
@@ -103,7 +122,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
           .where((id) => id.isNotEmpty)
           .toSet();
       final highlightedIds = {...offerIds, ...featuredIds};
-      final productsResponse = results[5];
+      final productsResponse = productResults[2];
       final catalogProducts = _dedupeProducts(
         List<dynamic>.from(productsResponse['items'] as List? ?? const []),
       );
@@ -112,13 +131,11 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
         return id.isEmpty || !highlightedIds.contains(id);
       }).toList();
       final categories = _buildDisplayCategories(
-        List<dynamic>.from(results[2]['data'] as List? ?? const []),
+        List<dynamic>.from(secondaryResults[1]['data'] as List? ?? const []),
         [...featuredProducts, ...offerProducts, ...catalogProducts],
       );
 
       setState(() {
-        _config = Map<String, dynamic>.from(configResponse['data'] as Map);
-        _banners = List<dynamic>.from(results[1]['data'] as List? ?? const []);
         _categories = categories;
         _featuredProducts = featuredProducts.where((item) {
           final id = (item as Map)['id']?.toString() ?? '';
@@ -127,7 +144,6 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
         _offerProducts = offerProducts;
         _products = catalogOnlyProducts;
         _loading = false;
-
       });
 
       _precacheVisibleImages();

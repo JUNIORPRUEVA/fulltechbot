@@ -1,3 +1,6 @@
+# ==========================================
+# STAGE 1: BUILD FLUTTER WEB
+# ==========================================
 FROM ghcr.io/cirruslabs/flutter:stable AS build
 
 WORKDIR /app
@@ -6,6 +9,7 @@ ARG API_BASE_URL
 ARG STORAGE_PUBLIC_URL
 ARG FLUTTER_BUILD_ARGS=""
 ARG GIT_SHA="unknown"
+ARG BUILD_VERSION="2026.05.30.01"
 
 ENV CI=true
 
@@ -16,22 +20,39 @@ RUN flutter pub get
 # Copy project
 COPY . .
 
-# Build the web app with optional dart-defines from EasyPanel.
+# Generar version.json con la versión del build
+RUN echo "{\"version\":\"${BUILD_VERSION}\",\"build\":\"fulltech-store\",\"gitSha\":\"${GIT_SHA}\",\"updatedAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > web/version.json
+
+# Build the web app en modo release
 # --pwa-strategy=none: No generar service worker automático de Flutter
-  RUN if [ -n "$API_BASE_URL" ]; then \
-        flutter build web --release --no-wasm-dry-run --pwa-strategy=none --dart-define=API_BASE_URL="$API_BASE_URL" --dart-define=STORAGE_PUBLIC_URL="$STORAGE_PUBLIC_URL" $FLUTTER_BUILD_ARGS; \
-      else \
-        flutter build web --release --no-wasm-dry-run --pwa-strategy=none --dart-define=STORAGE_PUBLIC_URL="$STORAGE_PUBLIC_URL" $FLUTTER_BUILD_ARGS; \
-      fi
+RUN if [ -n "$API_BASE_URL" ]; then \
+      flutter build web --release --no-wasm-dry-run --pwa-strategy=none \
+        --dart-define=API_BASE_URL="$API_BASE_URL" \
+        --dart-define=STORAGE_PUBLIC_URL="$STORAGE_PUBLIC_URL" \
+        $FLUTTER_BUILD_ARGS; \
+    else \
+      flutter build web --release --no-wasm-dry-run --pwa-strategy=none \
+        --dart-define=STORAGE_PUBLIC_URL="$STORAGE_PUBLIC_URL" \
+        $FLUTTER_BUILD_ARGS; \
+    fi
 
-RUN sed -i "s/__FULLTECH_BUILD_VERSION__/${GIT_SHA}/g" /app/build/web/index.html
-RUN sed -i "s/__FULLTECH_BUILD_VERSION__/${GIT_SHA}/g" /app/build/web/version.json
+# Reemplazar placeholder de versión en index.html
+RUN sed -i "s/__FULLTECH_BUILD_VERSION__/${BUILD_VERSION}/g" /app/build/web/index.html
 
+# ==========================================
+# STAGE 2: SERVE WITH NGINX
+# ==========================================
 FROM nginx:alpine
 
 LABEL org.opencontainers.image.source="FULLTECH_BOT/frondend"
 
+# Instalar brotli para compresión
+RUN apk add --no-cache nginx-mod-http-brotli
+
+# Copiar build de Flutter
 COPY --from=build /app/build/web /usr/share/nginx/html
+
+# Copiar configuración Nginx personalizada
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80

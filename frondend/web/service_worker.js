@@ -1,52 +1,99 @@
 /**
- * FULLTECH STORE - Service Worker (DESACTIVADO)
+ * FULLTECH STORE - Service Worker
  * 
- * IMPORTANTE: Este Service Worker está desactivado intencionalmente.
+ * ESTRATEGIA: Network-first con actualización automática.
  * 
- * El Service Worker anterior estaba cacheando la versión vieja de la app
- * (FullTech Bot admin) y sirviéndola en lugar de la nueva versión con la tienda.
- * 
- * Para evitar este problema, el Service Worker se desregistra a sí mismo
- * y limpia todos los caches al activarse.
- * 
- * La app funciona perfectamente sin Service Worker.
+ * - No cachea archivos críticos (index.html, main.dart.js, etc.)
+ * - Cachea solo assets con hash (imágenes, fuentes, etc.)
+ * - Detecta cambios de versión y fuerza actualización
+ * - Auto-desregistra versiones anteriores
  */
 
-const SW_VERSION = 'fulltech-sw-DISABLED';
+const CACHE_NAME = 'fulltech-store-v1';
+const SW_VERSION = '2026.05.30.01';
+
+// Archivos que NUNCA deben cachearse
+const NEVER_CACHE = [
+  '/index.html',
+  '/flutter_bootstrap.js',
+  '/flutter.js',
+  '/main.dart.js',
+  '/version.json',
+  '/manifest.json',
+  '/service_worker.js',
+  '/flutter_service_worker.js',
+  '/clear-cache.html',
+];
 
 self.addEventListener('install', (event) => {
-  console.log(`[SW ${SW_VERSION}] Instalado - DESACTIVADO intencionalmente`);
+  console.log(`[SW ${SW_VERSION}] Instalando...`);
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  console.log(`[SW ${SW_VERSION}] Activado - Limpiando todo y desregistrándome`);
+  console.log(`[SW ${SW_VERSION}] Activado - Limpiando caches antiguos`);
   
   event.waitUntil(
-    Promise.all([
-      // Limpiar TODOS los caches
-      caches.keys().then((cacheNames) => {
-        return Promise.all(
-          cacheNames.map((cacheName) => caches.delete(cacheName))
-        );
-      }),
-      // Desregistrarse a sí mismo
-      self.registration.unregister(),
-      // Tomar control de todas las pestañas
-      self.clients.claim(),
-    ]).then(() => {
-      console.log(`[SW ${SW_VERSION}] Caches limpiados y auto-desregistrado`);
-      // Notificar a todas las pestañas que recarguen
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            console.log(`[SW] Eliminando cache antiguo: ${cacheName}`);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    }).then(() => {
+      return self.clients.claim();
+    }).then(() => {
+      // Notificar a todas las pestañas que el SW está listo
       self.clients.matchAll().then(clients => {
         clients.forEach(client => {
-          client.postMessage({ type: 'SW_DISABLED', message: 'Service Worker desactivado. Recargando para obtener versión fresca.' });
+          client.postMessage({ 
+            type: 'SW_ACTIVATED', 
+            version: SW_VERSION,
+            message: 'Service Worker actualizado correctamente.'
+          });
         });
       });
     })
   );
 });
 
-// No interceptar ninguna petición
-self.addEventListener('fetch', () => {
-  // No hacer nada - dejar pasar todas las peticiones directamente
+self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+  const path = url.pathname;
+  
+  // No interceptar archivos críticos - siempre van a red
+  if (NEVER_CACHE.includes(path)) {
+    return;
+  }
+  
+  // Solo cachear assets de Flutter (tienen hash en el nombre)
+  if (path.startsWith('/assets/')) {
+    event.respondWith(
+      caches.match(event.request).then((cachedResponse) => {
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        return fetch(event.request).then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, clone);
+            });
+          }
+          return response;
+        });
+      })
+    );
+    return;
+  }
+  
+  // Para todo lo demás, network-first
+  event.respondWith(
+    fetch(event.request).catch(() => {
+      return caches.match(event.request);
+    })
+  );
 });

@@ -1,1 +1,6 @@
-{"app_name":"frondend","version":"__FULLTECH_BUILD_VERSION__","build_number":"__FULLTECH_BUILD_VERSION__","package_name":"frondend"}
+{
+  "version": "2026.05.30.01",
+  "build": "fulltech-store-optimized",
+  "description": "FULLTECH SRL - Tienda Oficial",
+  "updatedAt": "2026-05-30T15:50:00-04:00"
+}
