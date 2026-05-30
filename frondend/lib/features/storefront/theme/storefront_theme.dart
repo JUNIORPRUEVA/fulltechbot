@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class StorefrontColors {
   // Colores de marca
@@ -96,7 +95,9 @@ class StorefrontTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      textTheme: GoogleFonts.manropeTextTheme(),
+      // Usamos el textTheme por defecto de Material 3
+      // (Google Fonts eliminado para reducir bundle y evitar descarga externa)
+      textTheme: ThemeData.light(useMaterial3: true).textTheme,
       scaffoldBackgroundColor: StorefrontColors.background,
       colorScheme: const ColorScheme.light(
         primary: StorefrontColors.primary,

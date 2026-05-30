@@ -30,12 +30,12 @@ RUN echo "{\"version\":\"${BUILD_VERSION}\",\"build\":\"fulltech-store\",\"gitSh
 # Canvaskit es más pesado de descargar (2-3MB extra) y tarda más en renderizar
 # HTML renderer carga más rápido y es mejor para contenido dinámico como tiendas
 RUN if [ -n "$API_BASE_URL" ]; then \
-      flutter build web --release --pwa-strategy=none \
+      flutter build web --release --pwa-strategy=none --no-wasm-dry-run \
         --dart-define=API_BASE_URL="$API_BASE_URL" \
         --dart-define=STORAGE_PUBLIC_URL="$STORAGE_PUBLIC_URL" \
         $FLUTTER_BUILD_ARGS; \
     else \
-      flutter build web --release --pwa-strategy=none \
+      flutter build web --release --pwa-strategy=none --no-wasm-dry-run \
         --dart-define=STORAGE_PUBLIC_URL="$STORAGE_PUBLIC_URL" \
         $FLUTTER_BUILD_ARGS; \
     fi
