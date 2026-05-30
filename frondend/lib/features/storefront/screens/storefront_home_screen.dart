@@ -298,7 +298,9 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     final isDesktop = screenWidth >= 1100;
     final contentPadding = math.max(14.0, ((screenWidth - 1240) / 2) + 16);
     final catalogCrossAxisCount = isDesktop ? 4 : (isTablet ? 3 : 2);
-    final catalogAspectRatio = isDesktop ? 0.78 : (isTablet ? 0.70 : 0.64);
+    // Aspect ratio optimizado para cards compactas estilo Temu/Shopee
+    // Imagen 65% + Info 35% = card completa
+    final catalogAspectRatio = isDesktop ? 0.78 : (isTablet ? 0.72 : 0.72);
 
     return PublicStoreLayout(
       slug: widget.slug,

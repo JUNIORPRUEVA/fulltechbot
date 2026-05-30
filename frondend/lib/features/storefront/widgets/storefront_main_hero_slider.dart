@@ -122,10 +122,10 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.sizeOf(context).height;
     final screenWidth = MediaQuery.sizeOf(context).width;
-    // En móvil: 55% del alto de pantalla, mínimo 320px, máximo 420px
+    // En móvil: 45% del alto de pantalla, mínimo 280px, máximo 380px
     final height = widget.isDesktop
         ? 350.0
-        : (screenHeight * 0.55).clamp(320.0, 420.0);
+        : (screenHeight * 0.45).clamp(280.0, 380.0);
 
     return SizedBox(
       height: height,
@@ -152,41 +152,29 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
                   );
                 },
               ),
-              // Overlay gradient
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      const Color(0xB80F172A),
-                      widget.primaryColor.withValues(alpha: 0.78),
-                      widget.secondaryColor.withValues(alpha: 0.48),
-                    ],
-                    stops: const [0, 0.62, 1],
-                    begin: Alignment.bottomLeft,
-                    end: Alignment.topRight,
+              // Overlay gradient SUAVE - no tapa la imagen
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.black.withValues(alpha: 0.45),
+                          Colors.transparent,
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.25),
+                        ],
+                        stops: const [0, 0.25, 0.65, 1],
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              // Burbujas decorativas
-              Positioned(
-                right: -36,
-                top: -18,
-                child: _GlowBubble(
-                  size: widget.isDesktop ? 180 : 124,
-                  color: Colors.white.withValues(alpha: 0.10),
-                ),
-              ),
-              Positioned(
-                left: -30,
-                bottom: -34,
-                child: _GlowBubble(
-                  size: widget.isDesktop ? 150 : 104,
-                  color: Colors.white.withValues(alpha: 0.08),
                 ),
               ),
               // Contenido
               Padding(
-                padding: EdgeInsets.all(widget.isDesktop ? 24 : 16),
+                padding: EdgeInsets.all(widget.isDesktop ? 24 : 14),
                 child: widget.isDesktop
                     ? _DesktopHeroOverlay(
                         slide: _slides[_currentIndex],
@@ -254,20 +242,20 @@ class _MobileHeroOverlay extends StatelessWidget {
           ],
         ),
         const Spacer(),
-        // Título grande
+        // Título - más pequeño en móvil
         Text(
           title,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             color: Colors.white,
-            fontSize: 26,
+            fontSize: 20,
             fontWeight: FontWeight.w900,
             height: 1.05,
-            letterSpacing: -0.8,
+            letterSpacing: -0.5,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         // Subtítulo
         Text(
           subtitle,
@@ -275,13 +263,13 @@ class _MobileHeroOverlay extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.90),
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: FontWeight.w600,
             height: 1.35,
           ),
         ),
-        const SizedBox(height: 14),
-        // Botones de acción
+        const SizedBox(height: 10),
+        // Botones de acción - SOLO en el slider, NO repetir fuera
         Row(
           children: [
             _HeroMiniButton(
@@ -438,11 +426,10 @@ class _HeroSlideBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final image = StorefrontHelpers.resolveMediaUrl(
-      slide['imagen_url'] ?? slide['imagen'] ?? slide['imageUrl'],
-    );
+    final rawImage = slide['imagen_url'] ?? slide['imagen'] ?? slide['imageUrl'];
+    final resolved = StorefrontHelpers.resolveMediaUrl(rawImage);
 
-    if (image == null || image.isEmpty) {
+    if (resolved == null || resolved.isEmpty) {
       return DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -476,7 +463,7 @@ class _HeroSlideBackground extends StatelessWidget {
       );
     }
 
-    return StorefrontSmartImage(source: image, fit: BoxFit.cover);
+    return StorefrontSmartImage(source: resolved, fit: BoxFit.cover);
   }
 }
 
@@ -575,24 +562,6 @@ class _Indicators extends StatelessWidget {
           ),
         );
       }),
-    );
-  }
-}
-
-class _GlowBubble extends StatelessWidget {
-  final double size;
-  final Color color;
-
-  const _GlowBubble({required this.size, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(shape: BoxShape.circle, color: color),
-      ),
     );
   }
 }
