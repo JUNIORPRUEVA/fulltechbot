@@ -1,84 +1,65 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../services/storefront_helpers.dart';
-
 import 'storefront_smart_image.dart';
 
-class StorefrontMainHeroSlider extends StatefulWidget {
+/// Slider principal limpio y profesional.
+/// Solo muestra: imagen, título, descripción, precio/oferta, botón CTA e indicadores.
+/// NO incluye nombre de empresa, buscador ni carrito (van en el AppBar).
+class StorefrontHeroSlider extends StatefulWidget {
   final String slug;
-  final String storeName;
-  final dynamic logoUrl;
   final Color primaryColor;
   final Color secondaryColor;
-  final String heroTitle;
-  final String heroSubtitle;
   final List<dynamic> banners;
   final List<dynamic> promotedProducts;
   final bool isDesktop;
   final VoidCallback onSearchTap;
   final VoidCallback onCategoriesTap;
   final VoidCallback onOffersTap;
-  final VoidCallback onCartTap;
-  final VoidCallback? onMenuTap;
-  final bool canPop;
 
-  const StorefrontMainHeroSlider({
+  const StorefrontHeroSlider({
     super.key,
     required this.slug,
-    required this.storeName,
-    required this.logoUrl,
     required this.primaryColor,
     required this.secondaryColor,
-    required this.heroTitle,
-    required this.heroSubtitle,
     required this.banners,
     required this.promotedProducts,
     required this.isDesktop,
     required this.onSearchTap,
     required this.onCategoriesTap,
     required this.onOffersTap,
-    required this.onCartTap,
-    required this.canPop,
-    this.onMenuTap,
   });
 
   @override
-  State<StorefrontMainHeroSlider> createState() =>
-      _StorefrontMainHeroSliderState();
+  State<StorefrontHeroSlider> createState() => _StorefrontHeroSliderState();
 }
 
-class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
+class _StorefrontHeroSliderState extends State<StorefrontHeroSlider> {
   late final PageController _pageController;
   Timer? _autoSlideTimer;
-  Timer? _cartCheckTimer;
   int _currentIndex = 0;
-  int _cartItemCount = 0;
 
   static const List<Map<String, String>> _fallbackCopy = [
     {
-      'titulo': 'Tienda oficial FULLTECH SRL',
-      'subtitulo': 'Productos, ofertas y soluciones para hogar, empresa y proyectos',
-      'badge': 'FULLTECH SRL',
+      'titulo': 'Tecnología para tu hogar y empresa',
+      'subtitulo': 'Cámaras, motores, computadoras y más',
       'cta': 'Ver ofertas',
       'action': 'offers',
     },
     {
-      'titulo': 'Compra facil desde un solo lugar',
-      'subtitulo': 'Explora categorias, productos y promociones de FULLTECH',
-      'badge': 'Tienda general',
-      'cta': 'Buscar productos',
-      'action': 'search',
+      'titulo': 'Soluciones profesionales',
+      'subtitulo': 'Sistemas de seguridad, software e instalación',
+      'cta': 'Explorar',
+      'action': 'categories',
     },
     {
-      'titulo': 'Atencion profesional y entrega rapida',
-      'subtitulo': 'Soporte, tienda fisica y acompanamiento en cada compra',
-      'badge': 'Soporte profesional',
-      'cta': 'Cotizar ahora',
-      'action': 'categories',
+      'titulo': 'Compra fácil y seguro',
+      'subtitulo': 'Atención personalizada y entrega rápida',
+      'cta': 'Buscar productos',
+      'action': 'search',
     },
   ];
 
@@ -107,7 +88,6 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
       return {
         'titulo': copy['titulo'],
         'subtitulo': copy['subtitulo'],
-        'badge': copy['badge'],
         'boton_texto': copy['cta'],
         'cta_action': copy['action'],
       };
@@ -117,7 +97,8 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
   Map<String, dynamic> _normalizeSlide(Map<String, dynamic> raw) {
     final index = _slidesSeedIndex(raw);
     final copy = _fallbackCopy[index % _fallbackCopy.length];
-    final version = raw['actualizadoEn']?.toString() ?? raw['updatedAt']?.toString();
+    final version =
+        raw['actualizadoEn']?.toString() ?? raw['updatedAt']?.toString();
     final image = StorefrontHelpers.normalizeImageUrl(
       raw['imagen_url'] ?? raw['imagen'] ?? raw['imageUrl'] ?? raw['image'],
       version: version,
@@ -125,19 +106,13 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
 
     return {
       ...raw,
-      'titulo': _takeText(
-        raw['titulo'],
-        raw['title'],
-        null,
-        copy['titulo']!,
-      ),
+      'titulo': _takeText(raw['titulo'], raw['title'], null, copy['titulo']!),
       'subtitulo': _takeText(
         raw['subtitulo'],
         raw['subtitle'],
         raw['descripcion'],
         copy['subtitulo']!,
       ),
-      'badge': _takeText(raw['badge'], raw['tag'], null, copy['badge']!),
       'boton_texto': _takeText(
         raw['boton_texto'],
         raw['cta_texto'],
@@ -151,12 +126,12 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
   }
 
   Map<String, dynamic> _mapProductSlide(Map<String, dynamic> product) {
-    final index = product['orden'] is num
-        ? (product['orden'] as num).toInt()
-        : 0;
+    final index =
+        product['orden'] is num ? (product['orden'] as num).toInt() : 0;
     final copy = _fallbackCopy[index % _fallbackCopy.length];
     final productId = product['id']?.toString();
-    final family = _serviceFamily(product);
+    final price = StorefrontHelpers.getDisplayPrice(product);
+    final originalPrice = StorefrontHelpers.getOriginalPrice(product);
 
     return {
       'titulo': _takeText(product['titulo'], null, null, copy['titulo']!),
@@ -166,15 +141,11 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
         null,
         copy['subtitulo']!,
       ),
-      'badge': _takeText(
-        _serviceBadge(family),
-        product['subcategoria'],
-        product['categoria'],
-        copy['badge']!,
-      ),
-
-      'boton_texto': _productCta(product, family),
-      'cta_action': productId != null && productId.isNotEmpty ? 'product' : copy['action'],
+      'precio': price,
+      'precio_original': originalPrice,
+      'boton_texto': price != null && price > 0 ? 'Ver oferta' : copy['cta'],
+      'cta_action':
+          productId != null && productId.isNotEmpty ? 'product' : copy['action'],
       'cta_url': productId != null && productId.isNotEmpty
           ? '/tienda/${widget.slug}/producto/$productId'
           : null,
@@ -187,11 +158,10 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
     super.initState();
     _pageController = PageController(viewportFraction: 1);
     _restartAutoplay();
-    _startCartPolling();
   }
 
   @override
-  void didUpdateWidget(covariant StorefrontMainHeroSlider oldWidget) {
+  void didUpdateWidget(covariant StorefrontHeroSlider oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.banners != widget.banners ||
         oldWidget.promotedProducts != widget.promotedProducts) {
@@ -218,49 +188,8 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
   @override
   void dispose() {
     _autoSlideTimer?.cancel();
-    _cartCheckTimer?.cancel();
     _pageController.dispose();
     super.dispose();
-  }
-
-  void _startCartPolling() {
-    _checkCartCount();
-    _cartCheckTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      _checkCartCount();
-    });
-  }
-
-  Future<void> _checkCartCount() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final key = 'storefront_session_${widget.slug}';
-      final sessionId = prefs.getString(key);
-      if (sessionId == null || sessionId.isEmpty) {
-        if (_cartItemCount != 0 && mounted) {
-          setState(() => _cartItemCount = 0);
-        }
-        return;
-      }
-
-      final cartKey = 'storefront_cart_${widget.slug}_$sessionId';
-      final cartData = prefs.getString(cartKey);
-      if (cartData == null) {
-        if (_cartItemCount != 0 && mounted) {
-          setState(() => _cartItemCount = 0);
-        }
-        return;
-      }
-
-      final cart = jsonDecode(cartData) as Map<String, dynamic>;
-      final items = List<dynamic>.from(cart['items'] as List? ?? const []);
-      final count = items.fold<int>(0, (sum, item) {
-        final map = item as Map<String, dynamic>;
-        return sum + (int.tryParse(map['cantidad']?.toString() ?? '0') ?? 0);
-      });
-      if (count != _cartItemCount && mounted) {
-        setState(() => _cartItemCount = count);
-      }
-    } catch (_) {}
   }
 
   @override
@@ -268,15 +197,16 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
     final screenHeight = MediaQuery.sizeOf(context).height;
     final height = widget.isDesktop
         ? 420.0
-        : (screenHeight * 0.43).clamp(320.0, 420.0);
+        : (screenHeight * 0.38).clamp(280.0, 380.0);
 
     return SizedBox(
       height: height,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(widget.isDesktop ? 34 : 28),
+        borderRadius: BorderRadius.circular(widget.isDesktop ? 34 : 24),
         child: Stack(
           fit: StackFit.expand,
           children: [
+            // PageView con las slides
             PageView.builder(
               controller: _pageController,
               padEnds: false,
@@ -300,18 +230,20 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
                 );
               },
             ),
+
+            // Gradiente oscuro suave en la parte inferior para legibilidad
             Positioned.fill(
               child: IgnorePointer(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        Colors.black.withValues(alpha: widget.isDesktop ? 0.22 : 0.12),
-                        Colors.black.withValues(alpha: widget.isDesktop ? 0.18 : 0.08),
-                        Colors.black.withValues(alpha: 0.28),
-                        Colors.black.withValues(alpha: 0.68),
+                        Colors.black.withValues(alpha: 0.08),
+                        Colors.black.withValues(alpha: 0.06),
+                        Colors.black.withValues(alpha: 0.22),
+                        Colors.black.withValues(alpha: 0.58),
                       ],
-                      stops: const [0, 0.36, 0.68, 1],
+                      stops: const [0, 0.3, 0.6, 1],
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                     ),
@@ -319,35 +251,19 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
                 ),
               ),
             ),
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      widget.primaryColor.withValues(alpha: 0.24),
-                      Colors.transparent,
-                      widget.secondaryColor.withValues(alpha: 0.18),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                widget.isDesktop ? 28 : 16,
-                widget.isDesktop ? 22 : 14,
-                widget.isDesktop ? 28 : 16,
-                widget.isDesktop ? 24 : 16,
-              ),
+
+            // Contenido del slide (solo texto, precio y botón)
+            Positioned(
+              left: widget.isDesktop ? 28 : 16,
+              right: widget.isDesktop ? 28 : 16,
+              bottom: widget.isDesktop ? 24 : 16,
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 360),
                 switchInCurve: Curves.easeOutCubic,
                 switchOutCurve: Curves.easeInCubic,
                 transitionBuilder: (child, animation) {
                   final offset = Tween<Offset>(
-                    begin: const Offset(0.08, 0),
+                    begin: const Offset(0.06, 0),
                     end: Offset.zero,
                   ).animate(animation);
                   return FadeTransition(
@@ -355,21 +271,17 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
                     child: SlideTransition(position: offset, child: child),
                   );
                 },
-                child: _HeroSlideOverlay(
+                child: _HeroSlideContent(
                   key: ValueKey(
-                    'overlay-$_currentIndex-${_slides[_currentIndex]['titulo']}',
+                    'slide-content-$_currentIndex-${_slides[_currentIndex]['titulo']}',
                   ),
                   slide: _slides[_currentIndex],
                   isDesktop: widget.isDesktop,
                   currentIndex: _currentIndex,
                   totalSlides: _slides.length,
                   primaryColor: widget.primaryColor,
-                  cartItemCount: _cartItemCount,
-                  onSecondaryAction: widget.onSearchTap,
-                  onCartTap: widget.onCartTap,
-                  onMenuTap: widget.onMenuTap,
                   onIndicatorTap: _goToPage,
-                  canPop: widget.canPop,
+                  onCtaTap: () => _handleSlideAction(_slides[_currentIndex]),
                 ),
               ),
             ),
@@ -388,8 +300,39 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
     );
   }
 
-  int _slidesSeedIndex(Map<String, dynamic> slide) {
+  Future<void> _handleSlideAction(Map<String, dynamic> slide) async {
+    final action = slide['cta_action']?.toString().trim().toLowerCase() ?? '';
+    final url = slide['cta_url']?.toString().trim() ?? '';
 
+    if (url.isNotEmpty) {
+      if (url.startsWith('/')) {
+        if (!mounted) return;
+        Navigator.pushNamed(context, url);
+        return;
+      }
+
+      final uri = Uri.tryParse(url);
+      if (uri != null) {
+        await launchUrl(uri, mode: LaunchMode.platformDefault);
+        return;
+      }
+    }
+
+    switch (action) {
+      case 'search':
+        widget.onSearchTap();
+        return;
+      case 'categories':
+        widget.onCategoriesTap();
+        return;
+      case 'product':
+      case 'offers':
+      default:
+        widget.onOffersTap();
+    }
+  }
+
+  int _slidesSeedIndex(Map<String, dynamic> slide) {
     final raw = slide['id']?.toString() ?? slide['titulo']?.toString() ?? '';
     if (raw.isEmpty) return 0;
     return raw.codeUnits.fold<int>(0, (sum, item) => sum + item);
@@ -404,207 +347,211 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
     }
     return fallback;
   }
-
-  String _productCta(Map<String, dynamic> product, String family) {
-
-    final offerPrice = product['precio_oferta_web'] ?? product['precioOferta'];
-    if (offerPrice != null) return 'Ver oferta';
-
-    return switch (family) {
-      'motor' => 'Ver motor',
-      'camaras' => 'Ver sistema',
-      'punto_venta' => 'Ver punto de venta',
-      _ => 'Ver detalles',
-    };
-  }
-
-  String _serviceFamily(Map<String, dynamic> product) {
-    final raw = [
-      product['titulo'],
-      product['categoria'],
-      product['subcategoria'],
-      product['descripcion'],
-      product['descripcion_web'],
-      product['informacion'],
-      product['incluye'],
-    ].where((value) => value != null).join(' ').toLowerCase();
-
-    if (raw.contains('motor')) return 'motor';
-    if (raw.contains('camara')) return 'camaras';
-    if (raw.contains('punto de venta') ||
-        raw.contains('pos') ||
-        raw.contains('facturacion')) {
-      return 'punto_venta';
-    }
-    return 'general';
-  }
-
-  String? _serviceBadge(String family) {
-    return switch (family) {
-      'motor' => 'Motores con instalacion',
-      'camaras' => 'Sistema de camaras',
-      'punto_venta' => 'Punto de venta',
-      _ => null,
-    };
-  }
 }
 
-class _HeroSlideOverlay extends StatelessWidget {
+/// Contenido del slide: título, descripción, precio, botón CTA e indicadores
+class _HeroSlideContent extends StatelessWidget {
   final Map<String, dynamic> slide;
   final bool isDesktop;
   final int currentIndex;
   final int totalSlides;
   final Color primaryColor;
-  final int cartItemCount;
-  final VoidCallback onSecondaryAction;
-  final VoidCallback onCartTap;
-  final VoidCallback? onMenuTap;
   final ValueChanged<int> onIndicatorTap;
-  final bool canPop;
+  final VoidCallback onCtaTap;
 
-  const _HeroSlideOverlay({
+  const _HeroSlideContent({
     super.key,
     required this.slide,
     required this.isDesktop,
     required this.currentIndex,
     required this.totalSlides,
     required this.primaryColor,
-    required this.cartItemCount,
-    required this.onSecondaryAction,
-    required this.onCartTap,
-    required this.onMenuTap,
     required this.onIndicatorTap,
-    required this.canPop,
+    required this.onCtaTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final title = slide['titulo']?.toString() ?? '';
     final subtitle = slide['subtitulo']?.toString() ?? '';
+    final price = slide['precio'];
+    final originalPrice = slide['precio_original'];
+    final ctaText = slide['boton_texto']?.toString() ?? 'Ver más';
+    final hasPrice = price != null && (price is num && price > 0);
 
     return Column(
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Título
+        ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: isDesktop ? 560 : 260,
+          ),
+          child: Text(
+            title,
+            maxLines: isDesktop ? 2 : 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: isDesktop ? 30 : 20,
+              fontWeight: FontWeight.w900,
+              height: 1.08,
+              letterSpacing: isDesktop ? -0.8 : -0.2,
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+
+        // Descripción
+        ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: isDesktop ? 480 : 250,
+          ),
+          child: Text(
+            subtitle,
+            maxLines: isDesktop ? 2 : 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.9),
+              fontSize: isDesktop ? 14 : 11.5,
+              fontWeight: FontWeight.w600,
+              height: 1.3,
+            ),
+          ),
+        ),
+
+        // Precio (si aplica)
+        if (hasPrice) ...[
+          const SizedBox(height: 8),
+          _SlidePrice(
+            price: price,
+            originalPrice: originalPrice,
+            isDesktop: isDesktop,
+          ),
+        ],
+
+        const SizedBox(height: 10),
+
+        // Botón CTA + Indicadores
         Row(
           children: [
-            const Text(
-              'FULLTECH',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 0.6,
-              ),
+            _SlideCtaButton(
+              label: ctaText,
+              isDesktop: isDesktop,
+              onTap: onCtaTap,
             ),
             const Spacer(),
-            _Indicators(
+            _SlideIndicators(
               currentIndex: currentIndex,
               totalSlides: totalSlides,
               onTap: onIndicatorTap,
             ),
           ],
         ),
-        const SizedBox(height: 12),
-        _HeroSearchBar(
-          primaryColor: primaryColor,
-          onTap: onSecondaryAction,
-        ),
-        const Spacer(),
-        ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: isDesktop ? 620 : 280),
-          child: Text(
-            title,
-            maxLines: isDesktop ? 2 : 3,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: isDesktop ? 34 : 22,
-              fontWeight: FontWeight.w900,
-              height: 1.06,
-              letterSpacing: isDesktop ? -0.9 : -0.3,
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: isDesktop ? 520 : 270),
-          child: Text(
-            subtitle,
-            maxLines: isDesktop ? 2 : 3,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.9),
-              fontSize: isDesktop ? 14.5 : 11.5,
-              fontWeight: FontWeight.w600,
-              height: 1.35,
-            ),
-          ),
-        ),
       ],
     );
   }
 }
 
-class _HeroSearchBar extends StatelessWidget {
-  final Color primaryColor;
+/// Precio del slide
+class _SlidePrice extends StatelessWidget {
+  final dynamic price;
+  final dynamic originalPrice;
+  final bool isDesktop;
+
+  const _SlidePrice({
+    required this.price,
+    this.originalPrice,
+    required this.isDesktop,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasOffer = originalPrice != null &&
+        (originalPrice is num && originalPrice > 0) &&
+        (price is num) &&
+        originalPrice > price;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'RD\$${(price as num).toStringAsFixed(0)}',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: isDesktop ? 26 : 20,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -0.5,
+            height: 1,
+          ),
+        ),
+        if (hasOffer) ...[
+          const SizedBox(width: 8),
+          Text(
+            'RD\$${(originalPrice as num).toStringAsFixed(0)}',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.6),
+              fontSize: isDesktop ? 15 : 12,
+              decoration: TextDecoration.lineThrough,
+              decorationColor: Colors.white.withValues(alpha: 0.6),
+              fontWeight: FontWeight.w600,
+              height: 1,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Botón CTA del slide
+class _SlideCtaButton extends StatelessWidget {
+  final String label;
+  final bool isDesktop;
   final VoidCallback onTap;
 
-  const _HeroSearchBar({
-    required this.primaryColor,
+  const _SlideCtaButton({
+    required this.label,
+    required this.isDesktop,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white.withValues(alpha: 0.26),
+      color: Colors.white.withValues(alpha: 0.22),
       borderRadius: BorderRadius.circular(999),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(999),
         child: Container(
-          height: 48,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          padding: EdgeInsets.symmetric(
+            horizontal: isDesktop ? 20 : 14,
+            vertical: isDesktop ? 10 : 8,
+          ),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x14000000),
-                blurRadius: 16,
-                offset: Offset(0, 8),
-              ),
-            ],
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.3),
+            ),
           ),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.search_rounded, color: Colors.white, size: 20),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Buscar productos',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.96),
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w800,
-                  ),
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: isDesktop ? 14 : 12,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  Icons.tune_rounded,
-                  color: primaryColor.computeLuminance() > 0.65
-                      ? const Color(0xFF0F172A)
-                      : Colors.white,
-                  size: 18,
-                ),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.arrow_forward_rounded,
+                color: Colors.white,
+                size: isDesktop ? 16 : 14,
               ),
             ],
           ),
@@ -614,6 +561,47 @@ class _HeroSearchBar extends StatelessWidget {
   }
 }
 
+/// Indicadores de página del slider
+class _SlideIndicators extends StatelessWidget {
+  final int currentIndex;
+  final int totalSlides;
+  final ValueChanged<int> onTap;
+
+  const _SlideIndicators({
+    required this.currentIndex,
+    required this.totalSlides,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (totalSlides <= 1) return const SizedBox.shrink();
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(totalSlides, (index) {
+        final active = index == currentIndex;
+        return GestureDetector(
+          onTap: () => onTap(index),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            margin: EdgeInsets.only(right: index == totalSlides - 1 ? 0 : 5),
+            width: active ? 18 : 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: active
+                  ? Colors.white
+                  : Colors.white.withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+}
+
+/// Fondo del slide con imagen
 class _HeroSlideBackground extends StatelessWidget {
   final Map<String, dynamic> slide;
   final Color primaryColor;
@@ -627,8 +615,7 @@ class _HeroSlideBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final resolved =
-        slide['imagen_resuelta']?.toString() ??
+    final resolved = slide['imagen_resuelta']?.toString() ??
         StorefrontHelpers.normalizeImageUrl(
           slide['imagen_url'] ?? slide['imagen'] ?? slide['imageUrl'],
         );
@@ -671,42 +658,5 @@ class _HeroSlideBackground extends StatelessWidget {
     }
 
     return StorefrontSmartImage(source: resolved, fit: BoxFit.cover);
-  }
-}
-
-class _Indicators extends StatelessWidget {
-  final int currentIndex;
-  final int totalSlides;
-  final ValueChanged<int> onTap;
-
-  const _Indicators({
-    required this.currentIndex,
-    required this.totalSlides,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (totalSlides <= 1) return const SizedBox.shrink();
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(totalSlides, (index) {
-        final active = index == currentIndex;
-        return GestureDetector(
-          onTap: () => onTap(index),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            margin: EdgeInsets.only(right: index == totalSlides - 1 ? 0 : 6),
-            width: active ? 20 : 7,
-            height: 7,
-            decoration: BoxDecoration(
-              color: active ? Colors.white : Colors.white.withValues(alpha: 0.34),
-              borderRadius: BorderRadius.circular(999),
-            ),
-          ),
-        );
-      }),
-    );
   }
 }

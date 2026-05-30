@@ -124,96 +124,104 @@ class StorefrontHomeSkeleton extends StatelessWidget {
       backgroundColor: const Color(0xFFF8FAFC),
       body: CustomScrollView(
         slivers: [
-          SliverAppBar(
-            expandedHeight: 120,
-            pinned: true,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+          // AppBar skeleton
+          SliverToBoxAdapter(
+            child: Container(
+              padding: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top + 8,
+                left: 16,
+                right: 16,
+                bottom: 12,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
-                ),
-                padding: EdgeInsets.only(
-                  top: MediaQuery.of(context).padding.top + 16,
-                  left: 20,
-                  right: 20,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const StorefrontSkeleton(width: 36, height: 36, borderRadius: 8),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Container(
-                            height: 20,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                ],
+              ),
+              child: Row(
+                children: [
+                  const StorefrontSkeleton(width: 36, height: 36, borderRadius: 10),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: StorefrontSkeleton(width: double.infinity, height: 18, borderRadius: 4),
+                  ),
+                  const SizedBox(width: 12),
+                  const StorefrontSkeleton(width: 36, height: 36, borderRadius: 10),
+                ],
+              ),
+            ),
+          ),
+          // Slider skeleton
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: const StorefrontSkeleton(width: double.infinity, height: 200, borderRadius: 20),
+            ),
+          ),
+          // Trust chips skeleton
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: SizedBox(
+                height: 36,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: 4,
+                  itemBuilder: (_, __) => const Padding(
+                    padding: EdgeInsets.only(right: 8),
+                    child: StorefrontSkeleton(width: 100, height: 36, borderRadius: 18),
+                  ),
                 ),
               ),
             ),
           ),
+          // Categories skeleton
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  const StorefrontSkeleton(width: double.infinity, height: 48, borderRadius: 16),
-                  const SizedBox(height: 16),
-                  const StorefrontSkeleton(width: double.infinity, height: 200, borderRadius: 16),
-                  const SizedBox(height: 24),
-                  const StorefrontSkeleton(width: 150, height: 22, borderRadius: 4),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 44,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: 6,
-                      itemBuilder: (_, __) => const Padding(
-                        padding: EdgeInsets.only(right: 8),
-                        child: StorefrontSkeleton(width: 100, height: 44, borderRadius: 22),
-                      ),
-                    ),
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+              child: const StorefrontSkeleton(width: 120, height: 22, borderRadius: 4),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: SizedBox(
+                height: 144,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: 4,
+                  itemBuilder: (_, __) => const Padding(
+                    padding: EdgeInsets.only(right: 12),
+                    child: StorefrontSkeleton(width: 118, height: 144, borderRadius: 22),
                   ),
-                  const SizedBox(height: 24),
-                  const StorefrontSkeleton(width: 150, height: 22, borderRadius: 4),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 280,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: 4,
-                      itemBuilder: (_, __) => const SizedBox(
-                        width: 200,
-                        child: Padding(
-                          padding: EdgeInsets.only(right: 12),
-                          child: StorefrontProductCardSkeleton(),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
+            ),
+          ),
+          // Products grid skeleton
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+              child: const StorefrontSkeleton(width: 150, height: 22, borderRadius: 4),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: SliverGrid(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 0.61,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+              ),
+              delegate: SliverChildBuilderDelegate((context, index) {
+                return const StorefrontProductCardSkeleton();
+              }, childCount: 4),
             ),
           ),
         ],

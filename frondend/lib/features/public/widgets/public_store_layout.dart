@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
 
-import '../../storefront/theme/storefront_theme.dart';
-import '../../storefront/widgets/storefront_main_hero_slider.dart';
+import '../../storefront/widgets/storefront_app_bar.dart';
+import '../../storefront/widgets/storefront_hero_slider.dart';
+import '../../storefront/widgets/storefront_whatsapp_button.dart' as wa;
 
+/// Layout principal de la tienda pública FULLTECH SRL.
+/// Incluye AppBar superior fijo (fuera del scroll), slider hero,
+/// contenido (slivers) y WhatsApp flotante.
+///
+/// El AppBar está fuera del CustomScrollView para garantizar que
+/// los botones (menú, buscador, carrito) sean siempre presionables
+/// y no compitan con el gesto de scroll.
 class PublicStoreLayout extends StatelessWidget {
   final String slug;
   final String storeName;
@@ -53,8 +61,8 @@ class PublicStoreLayout extends StatelessWidget {
     final sidePadding = width >= 1320
         ? ((width - 1240) / 2).clamp(18.0, 9999.0)
         : width >= 700
-        ? 20.0
-        : 14.0;
+            ? 20.0
+            : 14.0;
 
     return Scaffold(
       key: scaffoldKey,
@@ -69,294 +77,89 @@ class PublicStoreLayout extends StatelessWidget {
               onCartTap: onCartTap,
               onWhatsappTap: onWhatsappTap,
             ),
-      floatingActionButton: floatingActionButton,
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
-        slivers: [
-          SliverPadding(
-            padding: EdgeInsets.fromLTRB(
-              sidePadding,
-              MediaQuery.viewPaddingOf(context).top + 10,
-              sidePadding,
-              0,
-            ),
-            sliver: SliverToBoxAdapter(
-              child: StorefrontMainHeroSlider(
+      body: Stack(
+        children: [
+          // ==========================================
+          // CONTENIDO PRINCIPAL
+          // ==========================================
+          Column(
+            children: [
+              // ==========================================
+              // APPBAR FIJO - FUERA DEL SCROLL
+              // ==========================================
+              StorefrontAppBar(
                 slug: slug,
                 storeName: storeName,
-                logoUrl: logoUrl,
                 primaryColor: primaryColor,
                 secondaryColor: secondaryColor,
-                heroTitle: heroTitle,
-                heroSubtitle: heroSubtitle,
-                banners: banners,
-                promotedProducts: promotedProducts,
+                onMenuTap: () => scaffoldKey.currentState?.openDrawer(),
                 onSearchTap: onSearchTap,
-                onCategoriesTap: onCategoriesTap,
-                onOffersTap: onOffersTap,
                 onCartTap: onCartTap,
-                onMenuTap: isDesktop
-                    ? null
-                    : () => scaffoldKey.currentState?.openDrawer(),
-                canPop: false,
+              ),
+
+              // ==========================================
+              // CONTENIDO SCROLLABLE
+              // ==========================================
+              Expanded(
+                child: CustomScrollView(
+                  physics: const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
+                  ),
+                  slivers: [
+                    // ==========================================
+                    // HERO SLIDER PRINCIPAL
+                    // ==========================================
+                    SliverPadding(
+                      padding: EdgeInsets.fromLTRB(sidePadding, 10, sidePadding, 0),
+                      sliver: SliverToBoxAdapter(
+                        child: StorefrontHeroSlider(
+                          slug: slug,
+                          primaryColor: primaryColor,
+                          secondaryColor: secondaryColor,
+                          banners: banners,
+                          promotedProducts: promotedProducts,
+                          isDesktop: isDesktop,
+                          onSearchTap: onSearchTap,
+                          onCategoriesTap: onCategoriesTap,
+                          onOffersTap: onOffersTap,
+                        ),
+                      ),
+                    ),
+
+                    // ==========================================
+                    // CONTENIDO ADICIONAL (categorías, productos, footer)
+                    // ==========================================
+                    ...slivers,
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          // ==========================================
+          // BOTÓN FLOTANTE WHATSAPP
+          // Posicionado sobre el contenido, respeta SafeArea
+          // ==========================================
+          if (floatingActionButton != null)
+            Positioned(
+              right: 16,
+              bottom: MediaQuery.viewPaddingOf(context).bottom + 16,
+              child: floatingActionButton!,
+            )
+          else if (onWhatsappTap != null)
+            Positioned(
+              right: 16,
+              bottom: MediaQuery.viewPaddingOf(context).bottom + 16,
+              child: wa.StorefrontWhatsAppFloatingButton(
+                phoneNumber: '829-534-4286',
                 isDesktop: isDesktop,
               ),
             ),
-          ),
-          // NOTA: La línea de Categorías/Ofertas que estaba aquí se ha eliminado
-          // porque ya está representada dentro del slider (StorefrontMainHeroSlider).
-          // Los botones "Ofertas" y "Categorías" están dentro del hero overlay.
-          ...slivers,
         ],
       ),
     );
   }
 }
-
-// ==========================================
-// ANIMATED CART ICON
-// ==========================================
-
-// ==========================================
-// FILTER BOTTOM SHEET REAL
-// ==========================================
-class _StorefrontFilterSheet extends StatefulWidget {
-  final Color primaryColor;
-
-  const _StorefrontFilterSheet({required this.primaryColor});
-
-  @override
-  State<_StorefrontFilterSheet> createState() => _StorefrontFilterSheetState();
-}
-
-class _StorefrontFilterSheetState extends State<_StorefrontFilterSheet> {
-  String _selectedSort = 'featured';
-  bool _onlyOffers = false;
-  bool _onlyAvailable = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final bottomPadding = MediaQuery.viewPaddingOf(context).bottom;
-
-    return Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.sizeOf(context).height * 0.75,
-      ),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Handle
-          Container(
-            margin: const EdgeInsets.only(top: 12),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: const Color(0xFFD1D5DB),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          // Header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-            child: Row(
-              children: [
-                const Text(
-                  'Filtros',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF0F172A),
-                  ),
-                ),
-                const Spacer(),
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _selectedSort = 'featured';
-                      _onlyOffers = false;
-                      _onlyAvailable = false;
-                    });
-                  },
-                  child: Text(
-                    'Limpiar',
-                    style: TextStyle(
-                      color: widget.primaryColor,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          // Content
-          Flexible(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-              children: [
-                // Ordenar por
-                const Text(
-                  'Ordenar por',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF0F172A),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _FilterChip(
-                      label: 'Destacados',
-                      selected: _selectedSort == 'featured',
-                      primaryColor: widget.primaryColor,
-                      onTap: () => setState(() => _selectedSort = 'featured'),
-                    ),
-                    _FilterChip(
-                      label: 'Menor precio',
-                      selected: _selectedSort == 'price_asc',
-                      primaryColor: widget.primaryColor,
-                      onTap: () => setState(() => _selectedSort = 'price_asc'),
-                    ),
-                    _FilterChip(
-                      label: 'Mayor precio',
-                      selected: _selectedSort == 'price_desc',
-                      primaryColor: widget.primaryColor,
-                      onTap: () => setState(() => _selectedSort = 'price_desc'),
-                    ),
-                    _FilterChip(
-                      label: 'Más recientes',
-                      selected: _selectedSort == 'newest',
-                      primaryColor: widget.primaryColor,
-                      onTap: () => setState(() => _selectedSort = 'newest'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                // Ofertas
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text(
-                    'Solo ofertas',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  subtitle: const Text(
-                    'Productos con descuento',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                  value: _onlyOffers,
-                  activeColor: widget.primaryColor,
-                  onChanged: (v) => setState(() => _onlyOffers = v),
-                ),
-                // Disponibilidad
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text(
-                    'Solo disponibles',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  subtitle: const Text(
-                    'Productos en stock',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                  value: _onlyAvailable,
-                  activeColor: widget.primaryColor,
-                  onChanged: (v) => setState(() => _onlyAvailable = v),
-                ),
-              ],
-            ),
-          ),
-          // Apply button
-          SafeArea(
-            top: false,
-            minimum: EdgeInsets.only(bottom: bottomPadding + 8),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-              child: FilledButton(
-                onPressed: () {
-                  Navigator.pop(context, {
-                    'sort': _selectedSort,
-                    'onlyOffers': _onlyOffers,
-                    'onlyAvailable': _onlyAvailable,
-                  });
-                },
-                style: FilledButton.styleFrom(
-                  backgroundColor: widget.primaryColor,
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                child: const Text(
-                  'Aplicar filtros',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final Color primaryColor;
-  final VoidCallback onTap;
-
-  const _FilterChip({
-    required this.label,
-    required this.selected,
-    required this.primaryColor,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? primaryColor : const Color(0xFFF4F6F9),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: selected ? primaryColor : const Color(0xFFE5EAF1),
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? Colors.white : const Color(0xFF0F172A),
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 
 // ==========================================
 // PUBLIC MENU DRAWER
@@ -391,7 +194,13 @@ class _PublicMenuDrawer extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(24),
-                boxShadow: StorefrontShadows.soft,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 12,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -419,7 +228,7 @@ class _PublicMenuDrawer extends StatelessWidget {
             ),
             _DrawerTile(
               icon: Icons.grid_view_rounded,
-              title: 'Categorias',
+              title: 'Categorías',
               onTap: () {
                 Navigator.pop(context);
                 onCategoriesTap();
@@ -452,7 +261,7 @@ class _PublicMenuDrawer extends StatelessWidget {
               ),
             _DrawerTile(
               icon: Icons.admin_panel_settings_outlined,
-              title: 'Iniciar sesion',
+              title: 'Iniciar sesión',
               onTap: () {
                 Navigator.pop(context);
                 onAdminTap();

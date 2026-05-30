@@ -278,7 +278,11 @@ class _GridProductCardState extends State<_GridProductCard> {
 
   void _openProduct(BuildContext context, String productId) {
     if (productId.isEmpty) return;
-    Navigator.pushNamed(context, '/tienda/${widget.slug}/producto/$productId');
+    Navigator.pushNamed(
+      context,
+      '/tienda/${widget.slug}/producto/$productId',
+      arguments: {'product': widget.product},
+    );
   }
 }
 

@@ -77,7 +77,7 @@ class MyApp extends StatelessWidget {
         uri.pathSegments[0] == 'tienda' &&
         uri.pathSegments[2] == 'producto') {
       final args = settings.arguments as Map<String, dynamic>?;
-      return _route(
+      return _heroRoute(
         settings,
         StorefrontProductDetailScreen(
           slug: uri.pathSegments[1],
@@ -224,6 +224,31 @@ class MyApp extends StatelessWidget {
     return MaterialPageRoute(
       builder: (_) => child,
       settings: settings,
+    );
+  }
+
+  /// Ruta con transición suave para Hero animation en el detalle de producto.
+  PageRouteBuilder<dynamic> _heroRoute(RouteSettings settings, Widget child) {
+    return PageRouteBuilder(
+      settings: settings,
+      pageBuilder: (context, animation, secondaryAnimation) => child,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.03),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+            )),
+            child: child,
+          ),
+        );
+      },
+      transitionDuration: const Duration(milliseconds: 300),
+      reverseTransitionDuration: const Duration(milliseconds: 250),
     );
   }
 

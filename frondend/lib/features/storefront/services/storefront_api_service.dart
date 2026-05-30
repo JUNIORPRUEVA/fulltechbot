@@ -688,6 +688,7 @@ class StorefrontApiService {
       'id': raw['id']?.toString() ?? '',
       'titulo': raw['titulo']?.toString() ?? '',
       'categoria': raw['categoria']?.toString() ?? 'General',
+      'subcategoria': raw['subcategoria']?.toString(),
       'descripcion': raw['descripcion']?.toString(),
       'informacion': raw['informacion']?.toString(),
       'precio': precio,
