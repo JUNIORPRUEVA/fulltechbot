@@ -16,42 +16,9 @@ import 'features/orders/providers/order_provider.dart';
 import 'features/quotations/providers/bot_quotation_provider.dart';
 import 'features/quotations/providers/quotation_provider.dart';
 
-/// Oculta el splash screen de HTML cuando Flutter ya renderizó el primer frame.
-void _hideSplashScreen() {
-  try {
-    // Usamos dart:js para llamar JS desde Flutter
-    // ignore: undefined_prefixed_name
-    _hideSplashJS();
-  } catch (_) {
-    // Ignorar si no es web
-  }
-}
-
-// JS interop para ocultar el splash screen
-void _hideSplashJS() {
-  // Esta función se reemplaza en web con dart:js
-}
-
-// JS interop para recargar la página
-void _reloadPage() {
-  try {
-    // ignore: undefined_prefixed_name
-    _reloadPageJS();
-  } catch (_) {
-    // Ignorar si no es web
-  }
-}
-
-void _reloadPageJS() {
-  // Esta función se reemplaza en web con dart:js
-}
-
 void main() {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
-
-    // Ocultar splash screen inmediatamente cuando Flutter esté listo
-    _hideSplashScreen();
 
     FlutterError.onError = (FlutterErrorDetails details) {
       FlutterError.presentError(details);
@@ -130,9 +97,11 @@ void main() {
                 const SizedBox(height: 24),
                 FilledButton.icon(
                   onPressed: () {
-                    // Recargar la página
-                    // ignore: undefined_prefixed_name
-                    _reloadPage();
+                    // Recargar la página usando window.location
+                    try {
+                      // ignore: undefined_prefixed_name
+                      _reloadPage();
+                    } catch (_) {}
                   },
                   icon: const Icon(Icons.refresh_rounded),
                   label: const Text('Recargar tienda'),
@@ -191,4 +160,13 @@ void main() {
       '==============================================',
     );
   });
+}
+
+void _reloadPage() {
+  // ignore: undefined_prefixed_name
+  _reloadPageJS();
+}
+
+void _reloadPageJS() {
+  // Esta función se reemplaza en web con dart:js
 }

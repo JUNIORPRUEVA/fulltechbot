@@ -136,12 +136,6 @@
     .splash-pattern .dot1 { width: 300px; height: 300px; top: -80px; right: -60px; }
     .splash-pattern .dot2 { width: 200px; height: 200px; bottom: -40px; left: -40px; }
     .splash-pattern .dot3 { width: 120px; height: 120px; top: 40%; left: 10%; }
-
-    /* Cuando Flutter carga, ocultar splash */
-    #flutter-ready #splash-screen {
-      opacity: 0;
-      pointer-events: none;
-    }
   </style>
 </head>
 <body>
@@ -175,11 +169,60 @@
       'use strict';
       var BUILD_VERSION = '__FULLTECH_BUILD_VERSION__';
       var VERSION_KEY = 'fulltech_app_version';
-      var SPLASH_KEY = 'fulltech_splash_shown';
       
       // ==========================================
-      // 1. REDIRECT INMEDIATO A LA TIENDA
-      //    Se ejecuta antes de que Flutter cargue
+      // 1. EXPONER FUNCIÓN GLOBAL PARA OCULTAR SPLASH
+      //    Flutter la llamará cuando esté listo
+      // ==========================================
+      window.fulltechHideSplash = function() {
+        var splash = document.getElementById('splash-screen');
+        if (splash) {
+          splash.classList.add('hidden');
+        }
+      };
+
+      // ==========================================
+      // 2. EXPONER FUNCIÓN GLOBAL PARA RECARGAR
+      // ==========================================
+      window.fulltechReloadPage = function() {
+        window.location.reload();
+      };
+
+      // ==========================================
+      // 3. DETECCIÓN AUTOMÁTICA DE FLUTTER
+      //    Observa el DOM hasta que aparezca el canvas de Flutter
+      // ==========================================
+      function startFlutterDetection() {
+        var checkCount = 0;
+        var maxChecks = 100; // ~10 segundos máximo
+        
+        var checkInterval = setInterval(function() {
+          checkCount++;
+          
+          // Detectar el canvas de Flutter (flt-glass-pane o canvas)
+          var fltCanvas = document.querySelector('flt-glass-pane') || 
+                          document.querySelector('canvas[style*="flt"]') ||
+                          document.querySelector('canvas');
+          
+          // También detectar si el splash ya fue ocultado por Flutter
+          var splash = document.getElementById('splash-screen');
+          if (!splash) {
+            clearInterval(checkInterval);
+            return;
+          }
+          
+          if (fltCanvas || checkCount > maxChecks) {
+            clearInterval(checkInterval);
+            // Ocultar splash después de un breve delay para transición suave
+            setTimeout(function() {
+              window.fulltechHideSplash();
+            }, 300);
+          }
+        }, 100);
+      }
+
+      // ==========================================
+      // 4. REDIRECT INMEDIATO A LA TIENDA
       // ==========================================
       var path = window.location.pathname || "/";
       var hash = window.location.hash || "";
@@ -193,7 +236,7 @@
       }
       
       // ==========================================
-      // 2. LIMPIEZA DE CACHE (solo si hay cambio de versión)
+      // 5. LIMPIEZA DE CACHE (solo si hay cambio de versión)
       // ==========================================
       function clearRuntimeCaches() {
         var tasks = [];
@@ -228,25 +271,24 @@
       }
 
       // ==========================================
-      // 3. CARGA DE FLUTTER CON VERSIONADO
+      // 6. CARGA DE FLUTTER
       // ==========================================
       function loadFlutter(version) {
         var script = document.createElement('script');
         script.src = 'flutter_bootstrap.js?v=' + encodeURIComponent(version || Date.now().toString());
-        script.async = true;
+        script.async = false;
+        script.onload = function() {
+          // Iniciar detección del canvas de Flutter
+          startFlutterDetection();
+        };
         document.body.appendChild(script);
       }
 
       // ==========================================
-      // 4. VERIFICAR VERSIÓN Y CARGAR
+      // 7. VERIFICAR VERSIÓN Y CARGAR
       // ==========================================
       fetch('version.json?ts=' + Date.now(), {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
+        cache: 'no-store'
       })
         .then(function(response) {
           if (!response.ok) {
@@ -280,14 +322,13 @@
         });
 
       // ==========================================
-      // 5. TIMEOUT DE SEGURIDAD - Si Flutter no carga en 15s
+      // 8. TIMEOUT DE SEGURIDAD
       // ==========================================
       setTimeout(function() {
         var splash = document.getElementById('splash-screen');
         if (splash && !splash.classList.contains('hidden')) {
           splash.querySelector('.splash-message').textContent = 'La tienda está tardando más de lo esperado...';
           
-          // Segundo timeout a los 25s - mostrar botón de recarga
           setTimeout(function() {
             if (splash && !splash.classList.contains('hidden')) {
               splash.querySelector('.splash-message').innerHTML = 
