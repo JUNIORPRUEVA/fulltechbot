@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-
 class ApiConfig {
   static const String _compiledBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
@@ -20,14 +18,7 @@ class ApiConfig {
       return compiled;
     }
 
-    if (kIsWeb) {
-      final host = Uri.base.host.toLowerCase();
-      if (!_isLocalHost(host)) {
-        return _cloudBackendUrl;
-      }
-    }
-
-    return 'http://localhost:3000';
+    return _cloudBackendUrl;
   }
 
   static String get baseUrl => apiBaseUrl;
@@ -80,11 +71,4 @@ class ApiConfig {
 
   static String _normalizeBaseUrl(String value) =>
       value.trim().replaceAll(RegExp(r'/+$'), '');
-
-  static bool _isLocalHost(String host) {
-    return host == 'localhost' ||
-        host == '127.0.0.1' ||
-        host == '0.0.0.0' ||
-        host == '::1';
-  }
 }

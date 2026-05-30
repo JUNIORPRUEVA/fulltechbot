@@ -41,7 +41,7 @@ class MyApp extends StatelessWidget {
     if (uri.path == '/') {
       return _route(
         settings,
-        const StorefrontHomeScreen(slug: 'fulltech-seguridad'),
+        const StorefrontHomeScreen(slug: 'fulltech'),
       );
     }
 

@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/storefront_helpers.dart';
@@ -20,7 +22,6 @@ class StorefrontMainHeroSlider extends StatefulWidget {
   final VoidCallback onSearchTap;
   final VoidCallback onCategoriesTap;
   final VoidCallback onOffersTap;
-  final VoidCallback onAdminTap;
   final VoidCallback onCartTap;
   final VoidCallback? onMenuTap;
   final bool canPop;
@@ -40,7 +41,6 @@ class StorefrontMainHeroSlider extends StatefulWidget {
     required this.onSearchTap,
     required this.onCategoriesTap,
     required this.onOffersTap,
-    required this.onAdminTap,
     required this.onCartTap,
     required this.canPop,
     this.onMenuTap,
@@ -54,26 +54,28 @@ class StorefrontMainHeroSlider extends StatefulWidget {
 class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
   late final PageController _pageController;
   Timer? _autoSlideTimer;
+  Timer? _cartCheckTimer;
   int _currentIndex = 0;
+  int _cartItemCount = 0;
 
   static const List<Map<String, String>> _fallbackCopy = [
     {
-      'titulo': 'Camaras de seguridad instaladas',
-      'subtitulo': 'Kits completos con garantia y soporte',
-      'badge': 'Instalacion incluida',
+      'titulo': 'Tienda oficial FULLTECH SRL',
+      'subtitulo': 'Productos, ofertas y soluciones para hogar, empresa y proyectos',
+      'badge': 'FULLTECH SRL',
       'cta': 'Ver ofertas',
       'action': 'offers',
     },
     {
-      'titulo': 'Protege tu casa o negocio',
-      'subtitulo': 'Camaras, DVR, motores y accesorios',
-      'badge': 'FULLTECH SRL',
+      'titulo': 'Compra facil desde un solo lugar',
+      'subtitulo': 'Explora categorias, productos y promociones de FULLTECH',
+      'badge': 'Tienda general',
       'cta': 'Buscar productos',
       'action': 'search',
     },
     {
-      'titulo': 'Ofertas listas para instalar',
-      'subtitulo': 'Compra facil desde tu celular',
+      'titulo': 'Atencion profesional y entrega rapida',
+      'subtitulo': 'Soporte, tienda fisica y acompanamiento en cada compra',
       'badge': 'Soporte profesional',
       'cta': 'Cotizar ahora',
       'action': 'categories',
@@ -81,20 +83,23 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
   ];
 
   List<Map<String, dynamic>> get _slides {
+    final productSlides = widget.promotedProducts
+        .whereType<Map>()
+        .map((item) => _mapProductSlide(Map<String, dynamic>.from(item)))
+        .where(
+          (item) => (item['imagen_resuelta']?.toString().trim() ?? '').isNotEmpty,
+        )
+        .toList();
+    if (productSlides.isNotEmpty) {
+      return productSlides;
+    }
+
     final bannerSlides = widget.banners
         .whereType<Map>()
         .map((item) => _normalizeSlide(Map<String, dynamic>.from(item)))
         .toList();
     if (bannerSlides.isNotEmpty) {
       return bannerSlides;
-    }
-
-    final productSlides = widget.promotedProducts
-        .whereType<Map>()
-        .map((item) => _mapProductSlide(Map<String, dynamic>.from(item)))
-        .toList();
-    if (productSlides.isNotEmpty) {
-      return productSlides;
     }
 
     return List.generate(3, (index) {
@@ -166,7 +171,7 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
         null,
         copy['badge']!,
       ),
-      'boton_texto': copy['cta'],
+      'boton_texto': _offerCta(product, copy['cta']!),
       'cta_action': productId != null && productId.isNotEmpty ? 'product' : copy['action'],
       'cta_url': productId != null && productId.isNotEmpty
           ? '/tienda/${widget.slug}/producto/$productId'
@@ -180,6 +185,7 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
     super.initState();
     _pageController = PageController(viewportFraction: 1);
     _restartAutoplay();
+    _startCartPolling();
   }
 
   @override
@@ -210,16 +216,57 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
   @override
   void dispose() {
     _autoSlideTimer?.cancel();
+    _cartCheckTimer?.cancel();
     _pageController.dispose();
     super.dispose();
+  }
+
+  void _startCartPolling() {
+    _checkCartCount();
+    _cartCheckTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      _checkCartCount();
+    });
+  }
+
+  Future<void> _checkCartCount() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'storefront_session_${widget.slug}';
+      final sessionId = prefs.getString(key);
+      if (sessionId == null || sessionId.isEmpty) {
+        if (_cartItemCount != 0 && mounted) {
+          setState(() => _cartItemCount = 0);
+        }
+        return;
+      }
+
+      final cartKey = 'storefront_cart_${widget.slug}_$sessionId';
+      final cartData = prefs.getString(cartKey);
+      if (cartData == null) {
+        if (_cartItemCount != 0 && mounted) {
+          setState(() => _cartItemCount = 0);
+        }
+        return;
+      }
+
+      final cart = jsonDecode(cartData) as Map<String, dynamic>;
+      final items = List<dynamic>.from(cart['items'] as List? ?? const []);
+      final count = items.fold<int>(0, (sum, item) {
+        final map = item as Map<String, dynamic>;
+        return sum + (int.tryParse(map['cantidad']?.toString() ?? '0') ?? 0);
+      });
+      if (count != _cartItemCount && mounted) {
+        setState(() => _cartItemCount = count);
+      }
+    } catch (_) {}
   }
 
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.sizeOf(context).height;
     final height = widget.isDesktop
-        ? 400.0
-        : (screenHeight * 0.41).clamp(310.0, 420.0);
+        ? 420.0
+        : (screenHeight * 0.43).clamp(320.0, 420.0);
 
     return SizedBox(
       height: height,
@@ -315,9 +362,12 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
                   currentIndex: _currentIndex,
                   totalSlides: _slides.length,
                   primaryColor: widget.primaryColor,
-                  onPrimaryAction: () => _handleSlideAction(_slides[_currentIndex]),
+                  cartItemCount: _cartItemCount,
                   onSecondaryAction: widget.onSearchTap,
+                  onCartTap: widget.onCartTap,
+                  onMenuTap: widget.onMenuTap,
                   onIndicatorTap: _goToPage,
+                  canPop: widget.canPop,
                 ),
               ),
             ),
@@ -383,6 +433,11 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
     }
     return fallback;
   }
+
+  String _offerCta(Map<String, dynamic> product, String fallback) {
+    final offerPrice = product['precio_oferta_web'] ?? product['precioOferta'];
+    return offerPrice != null ? 'Ver oferta' : fallback;
+  }
 }
 
 class _HeroSlideOverlay extends StatelessWidget {
@@ -391,9 +446,12 @@ class _HeroSlideOverlay extends StatelessWidget {
   final int currentIndex;
   final int totalSlides;
   final Color primaryColor;
-  final VoidCallback onPrimaryAction;
+  final int cartItemCount;
   final VoidCallback onSecondaryAction;
+  final VoidCallback onCartTap;
+  final VoidCallback? onMenuTap;
   final ValueChanged<int> onIndicatorTap;
+  final bool canPop;
 
   const _HeroSlideOverlay({
     super.key,
@@ -402,24 +460,33 @@ class _HeroSlideOverlay extends StatelessWidget {
     required this.currentIndex,
     required this.totalSlides,
     required this.primaryColor,
-    required this.onPrimaryAction,
+    required this.cartItemCount,
     required this.onSecondaryAction,
+    required this.onCartTap,
+    required this.onMenuTap,
     required this.onIndicatorTap,
+    required this.canPop,
   });
 
   @override
   Widget build(BuildContext context) {
     final title = slide['titulo']?.toString() ?? '';
     final subtitle = slide['subtitulo']?.toString() ?? '';
-    final badge = slide['badge']?.toString() ?? 'FULLTECH SRL';
-    final cta = slide['boton_texto']?.toString() ?? 'Ver ofertas';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            _HeroBadge(label: badge),
+            const Text(
+              'FULLTECH',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.6,
+              ),
+            ),
             const Spacer(),
             _Indicators(
               currentIndex: currentIndex,
@@ -428,88 +495,112 @@ class _HeroSlideOverlay extends StatelessWidget {
             ),
           ],
         ),
+        const SizedBox(height: 12),
+        _HeroSearchBar(
+          primaryColor: primaryColor,
+          onTap: onSecondaryAction,
+        ),
         const Spacer(),
         ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: isDesktop ? 640 : 310),
+          constraints: BoxConstraints(maxWidth: isDesktop ? 620 : 280),
           child: Text(
             title,
             maxLines: isDesktop ? 2 : 3,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: Colors.white,
-              fontSize: isDesktop ? 38 : 25,
+              fontSize: isDesktop ? 34 : 22,
               fontWeight: FontWeight.w900,
-              height: 1.02,
-              letterSpacing: isDesktop ? -1.1 : -0.6,
+              height: 1.06,
+              letterSpacing: isDesktop ? -0.9 : -0.3,
             ),
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: isDesktop ? 560 : 300),
+          constraints: BoxConstraints(maxWidth: isDesktop ? 520 : 270),
           child: Text(
             subtitle,
             maxLines: isDesktop ? 2 : 3,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.92),
-              fontSize: isDesktop ? 15.5 : 12.5,
+              color: Colors.white.withValues(alpha: 0.9),
+              fontSize: isDesktop ? 14.5 : 11.5,
               fontWeight: FontWeight.w600,
-              height: 1.42,
+              height: 1.35,
             ),
           ),
         ),
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            FilledButton(
-              onPressed: onPrimaryAction,
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: primaryColor,
-                padding: EdgeInsets.symmetric(
-                  horizontal: isDesktop ? 18 : 16,
-                  vertical: isDesktop ? 14 : 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: Text(
-                cta,
-                style: TextStyle(
-                  fontSize: isDesktop ? 14 : 13,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            OutlinedButton.icon(
-              onPressed: onSecondaryAction,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white,
-                side: BorderSide(color: Colors.white.withValues(alpha: 0.32)),
-                padding: EdgeInsets.symmetric(
-                  horizontal: isDesktop ? 16 : 14,
-                  vertical: isDesktop ? 14 : 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              icon: const Icon(Icons.search_rounded, size: 18),
-              label: Text(
-                'Buscar productos',
-                style: TextStyle(
-                  fontSize: isDesktop ? 13.5 : 12.5,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
-        ),
       ],
+    );
+  }
+}
+
+class _HeroSearchBar extends StatelessWidget {
+  final Color primaryColor;
+  final VoidCallback onTap;
+
+  const _HeroSearchBar({
+    required this.primaryColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.26),
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x14000000),
+                blurRadius: 16,
+                offset: Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.search_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Buscar productos',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.96),
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.tune_rounded,
+                  color: primaryColor.computeLuminance() > 0.65
+                      ? const Color(0xFF0F172A)
+                      : Colors.white,
+                  size: 18,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -571,32 +662,6 @@ class _HeroSlideBackground extends StatelessWidget {
     }
 
     return StorefrontSmartImage(source: resolved, fit: BoxFit.cover);
-  }
-}
-
-class _HeroBadge extends StatelessWidget {
-  final String label;
-
-  const _HeroBadge({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 11.5,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
   }
 }
 

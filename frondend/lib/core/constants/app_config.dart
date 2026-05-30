@@ -2,7 +2,7 @@ class AppConfig {
   // Slug publico por defecto para que la raiz "/" abra la tienda del cliente.
   static const String defaultStoreSlug = String.fromEnvironment(
     'DEFAULT_STOREFRONT_SLUG',
-    defaultValue: 'fulltech-seguridad',
+    defaultValue: 'fulltech',
   );
 
   // Gate simple para el panel admin. Esto protege la interfaz, pero no sustituye

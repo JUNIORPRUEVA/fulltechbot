@@ -85,7 +85,7 @@ class _GridProductCardState extends State<_GridProductCard> {
     final description = StorefrontHelpers.getShortDescription(widget.product);
     final price = StorefrontHelpers.getDisplayPrice(widget.product);
     final originalPrice = StorefrontHelpers.getOriginalPrice(widget.product);
-    final image = StorefrontHelpers.getPrimaryImage(widget.product);
+    final gallery = StorefrontHelpers.getGallery(widget.product);
     final productId = widget.product['id']?.toString() ?? '';
     final stock = int.tryParse(widget.product['stock']?.toString() ?? '0') ?? 0;
     final hasStock = stock > 0;
@@ -127,9 +127,12 @@ class _GridProductCardState extends State<_GridProductCard> {
                               end: Alignment.bottomCenter,
                             ),
                           ),
-                          child: StorefrontSmartImage(
-                            source: image,
+                          child: _ProductImageCarousel(
+                            images: gallery,
                             fit: BoxFit.cover,
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(widget.isDesktop ? 20 : 16),
+                            ),
                           ),
                         ),
                       ),
@@ -298,7 +301,7 @@ class _ListProductCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final title = product['titulo']?.toString().trim() ?? '';
     final description = StorefrontHelpers.getShortDescription(product);
-    final image = StorefrontHelpers.getPrimaryImage(product);
+    final gallery = StorefrontHelpers.getGallery(product);
     final price = StorefrontHelpers.getDisplayPrice(product);
     final originalPrice = StorefrontHelpers.getOriginalPrice(product);
     final productId = product['id']?.toString() ?? '';
@@ -324,9 +327,11 @@ class _ListProductCard extends StatelessWidget {
               SizedBox(
                 width: 92,
                 height: 92,
-                child: ClipRRect(
+                child: _ProductImageCarousel(
+                  images: gallery,
+                  fit: BoxFit.cover,
                   borderRadius: BorderRadius.circular(14),
-                  child: StorefrontSmartImage(source: image, fit: BoxFit.cover),
+                  showIndicators: false,
                 ),
               ),
               const SizedBox(width: 10),
@@ -398,6 +403,186 @@ class _StatusBadge extends StatelessWidget {
           fontSize: 9.5,
           fontWeight: FontWeight.w800,
           height: 1,
+        ),
+      ),
+    );
+  }
+}
+
+class _ProductImageCarousel extends StatefulWidget {
+  final List<String> images;
+  final BoxFit fit;
+  final BorderRadius borderRadius;
+  final bool showIndicators;
+
+  const _ProductImageCarousel({
+    required this.images,
+    required this.fit,
+    required this.borderRadius,
+    this.showIndicators = true,
+  });
+
+  @override
+  State<_ProductImageCarousel> createState() => _ProductImageCarouselState();
+}
+
+class _ProductImageCarouselState extends State<_ProductImageCarousel> {
+  late final PageController _controller;
+  int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = PageController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final images = widget.images;
+    final primaryImage = images.isNotEmpty ? images.first : null;
+
+    return ClipRRect(
+      borderRadius: widget.borderRadius,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (images.length <= 1)
+            StorefrontSmartImage(source: primaryImage, fit: widget.fit)
+          else
+            PageView.builder(
+              controller: _controller,
+              onPageChanged: (index) => setState(() => _currentIndex = index),
+              itemCount: images.length,
+              itemBuilder: (context, index) {
+                return StorefrontSmartImage(
+                  source: images[index],
+                  fit: widget.fit,
+                );
+              },
+            ),
+          if (images.length > 1)
+            Positioned(
+              left: 6,
+              top: 0,
+              bottom: 0,
+              child: _CarouselArrowButton(
+                icon: Icons.chevron_left_rounded,
+                onTap: _currentIndex > 0
+                    ? () => _goToPage(_currentIndex - 1)
+                    : null,
+              ),
+            ),
+          if (images.length > 1)
+            Positioned(
+              right: 6,
+              top: 0,
+              bottom: 0,
+              child: _CarouselArrowButton(
+                icon: Icons.chevron_right_rounded,
+                onTap: _currentIndex < images.length - 1
+                    ? () => _goToPage(_currentIndex + 1)
+                    : null,
+              ),
+            ),
+          if (images.length > 1 && widget.showIndicators)
+            Positioned(
+              left: 8,
+              right: 8,
+              bottom: 8,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(images.length > 5 ? 5 : images.length, (index) {
+                  final active = _currentIndex == index;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    width: active ? 14 : 5,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: active
+                          ? Colors.white
+                          : Colors.white.withValues(alpha: 0.48),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  );
+                }),
+              ),
+            ),
+          if (images.length > 1)
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.44),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '${_currentIndex + 1}/${images.length}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w800,
+                    height: 1,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _goToPage(int page) {
+    _controller.animateToPage(
+      page,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+    );
+  }
+}
+
+class _CarouselArrowButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  const _CarouselArrowButton({
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: IgnorePointer(
+        ignoring: onTap == null,
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 160),
+          opacity: onTap == null ? 0.35 : 1,
+          child: Material(
+            color: Colors.black.withValues(alpha: 0.26),
+            borderRadius: BorderRadius.circular(999),
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(999),
+              child: SizedBox(
+                width: 28,
+                height: 28,
+                child: Icon(
+                  icon,
+                  color: Colors.white,
+                  size: 18,
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );

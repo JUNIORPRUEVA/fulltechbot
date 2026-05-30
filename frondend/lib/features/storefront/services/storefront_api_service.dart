@@ -12,6 +12,9 @@ import '../../../core/constants/api_config.dart';
 /// - Si la API falla, usa datos cacheados en memoria como fallback offline.
 class StorefrontApiService {
   static final String _baseUrl = '${ApiConfig.baseUrl}/api/storefront';
+  static const Map<String, String> _slugAliases = {
+    'fulltech': 'fulltech-seguridad',
+  };
   
   // Headers anti-cache para todas las requests
   static final Map<String, String> _noCacheHeaders = {
@@ -33,7 +36,7 @@ class StorefrontApiService {
   // ============================================
 
   static Future<Map<String, dynamic>> getConfig(String slug) async {
-    final response = await _getStorefront('/$slug/config');
+    final response = await _getStorefront('/${_resolveSlug(slug)}/config');
     if (_isSuccessful(response)) {
       final data = _asMap(response['data']);
       if (data.isNotEmpty) {
@@ -45,7 +48,7 @@ class StorefrontApiService {
   }
 
   static Future<Map<String, dynamic>> getBanners(String slug) async {
-    final response = await _getStorefront('/$slug/banners');
+    final response = await _getStorefront('/${_resolveSlug(slug)}/banners');
     if (_isSuccessful(response)) {
       return response;
     }
@@ -116,7 +119,7 @@ class StorefrontApiService {
     }
 
     final response = await _getStorefront(
-      '/$slug/products',
+      '/${_resolveSlug(slug)}/products',
       queryParameters: params,
     );
     if (_isSuccessful(response)) {
@@ -175,7 +178,7 @@ class StorefrontApiService {
   }
 
   static Future<Map<String, dynamic>> getProduct(String slug, String id) async {
-    final response = await _getStorefront('/$slug/products/$id');
+    final response = await _getStorefront('/${_resolveSlug(slug)}/products/$id');
     if (_isSuccessful(response)) {
       return response;
     }
@@ -210,7 +213,7 @@ class StorefrontApiService {
   }
 
   static Future<Map<String, dynamic>> getCategories(String slug) async {
-    final response = await _getStorefront('/$slug/categories');
+    final response = await _getStorefront('/${_resolveSlug(slug)}/categories');
     if (_isSuccessful(response)) {
       return response;
     }
@@ -245,8 +248,9 @@ class StorefrontApiService {
     String slug,
     String sessionId,
   ) async {
+    final resolvedSlug = _resolveSlug(slug);
     final res = await http.post(
-      Uri.parse('$_baseUrl/$slug/cart'),
+      Uri.parse('$_baseUrl/$resolvedSlug/cart'),
       headers: {
         'Content-Type': 'application/json',
         ..._noCacheHeaders,
@@ -260,8 +264,9 @@ class StorefrontApiService {
     String slug,
     String sessionId,
   ) async {
+    final resolvedSlug = _resolveSlug(slug);
     final res = await http.get(
-      Uri.parse('$_baseUrl/$slug/cart/$sessionId'),
+      Uri.parse('$_baseUrl/$resolvedSlug/cart/$sessionId'),
       headers: _noCacheHeaders,
     );
     return _decodeResponse(res);
@@ -277,8 +282,9 @@ class StorefrontApiService {
     String? imagenUrl,
     Map<String, dynamic>? metadata,
   }) async {
+    final resolvedSlug = _resolveSlug(slug);
     final res = await http.post(
-      Uri.parse('$_baseUrl/$slug/cart/$sessionId/items'),
+      Uri.parse('$_baseUrl/$resolvedSlug/cart/$sessionId/items'),
       headers: {
         'Content-Type': 'application/json',
         ..._noCacheHeaders,
@@ -301,8 +307,9 @@ class StorefrontApiService {
     String itemId, {
     required int cantidad,
   }) async {
+    final resolvedSlug = _resolveSlug(slug);
     final res = await http.put(
-      Uri.parse('$_baseUrl/$slug/cart/$sessionId/items/$itemId'),
+      Uri.parse('$_baseUrl/$resolvedSlug/cart/$sessionId/items/$itemId'),
       headers: {
         'Content-Type': 'application/json',
         ..._noCacheHeaders,
@@ -317,8 +324,9 @@ class StorefrontApiService {
     String sessionId,
     String itemId,
   ) async {
+    final resolvedSlug = _resolveSlug(slug);
     final res = await http.delete(
-      Uri.parse('$_baseUrl/$slug/cart/$sessionId/items/$itemId'),
+      Uri.parse('$_baseUrl/$resolvedSlug/cart/$sessionId/items/$itemId'),
       headers: _noCacheHeaders,
     );
     return _decodeResponse(res);
@@ -340,8 +348,9 @@ class StorefrontApiService {
     String metodoPago = 'whatsapp',
     String? notas,
   }) async {
+    final resolvedSlug = _resolveSlug(slug);
     final res = await http.post(
-      Uri.parse('$_baseUrl/$slug/checkout'),
+      Uri.parse('$_baseUrl/$resolvedSlug/checkout'),
       headers: {
         'Content-Type': 'application/json',
         ..._noCacheHeaders,
@@ -372,8 +381,9 @@ class StorefrontApiService {
     String metodoEntrega = 'retiro_tienda',
     String? notas,
   }) async {
+    final resolvedSlug = _resolveSlug(slug);
     final res = await http.post(
-      Uri.parse('$_baseUrl/$slug/whatsapp-order'),
+      Uri.parse('$_baseUrl/$resolvedSlug/whatsapp-order'),
       headers: {
         'Content-Type': 'application/json',
         ..._noCacheHeaders,
@@ -577,7 +587,7 @@ class StorefrontApiService {
   static Future<Map<String, dynamic>> _buildFallbackConfigResponse(
     String slug,
   ) async {
-    final bot = await _getBotBySlug(slug);
+    final bot = await _getBotBySlug(_resolveSlug(slug));
     final data = {
       'id': 'fallback-${bot['id']}',
       'bot_id': bot['id'],
@@ -591,8 +601,8 @@ class StorefrontApiService {
       'telefono_contacto': bot['telefonoWhatsapp'],
       'direccion': null,
       'horario': null,
-      'mensaje_principal': 'Ofertas en camaras de seguridad y tecnologia',
-      'mensaje_secundario': 'Compra facil y rapida desde tu celular',
+      'mensaje_principal': 'Tienda oficial FULLTECH SRL',
+      'mensaje_secundario': 'Compra facil, ofertas y productos para tu hogar, empresa y proyectos.',
       'activo': true,
       'permitir_paypal': false,
       'permitir_whatsapp': true,
@@ -615,7 +625,7 @@ class StorefrontApiService {
 
   static Future<Map<String, dynamic>> _getBotBySlug(String slug) async {
     final response = await _getJson(
-      Uri.parse('${ApiConfig.baseUrl}/api/bots/slug/$slug'),
+      Uri.parse('${ApiConfig.baseUrl}/api/bots/slug/${_resolveSlug(slug)}'),
     );
     if (response['ok'] != true) {
       throw Exception(
@@ -632,7 +642,7 @@ class StorefrontApiService {
     // Cada llamada consulta API fresca. Esto es intencional para que
     // cambios en productos/precios/ofertas se reflejen inmediatamente.
 
-    final bot = await _getBotBySlug(slug);
+    final bot = await _getBotBySlug(_resolveSlug(slug));
     final botId = bot['id']?.toString() ?? '';
     if (botId.isEmpty) {
       throw Exception('El bot publico no tiene id valido');
@@ -726,6 +736,11 @@ class StorefrontApiService {
         _toInt(product['stock']) > 0 ||
         product['imagen1'] != null ||
         product['imagen_destacada_url'] != null;
+  }
+
+  static String _resolveSlug(String slug) {
+    final normalized = slug.trim().toLowerCase();
+    return _slugAliases[normalized] ?? slug;
   }
 
   static int _sortProducts(

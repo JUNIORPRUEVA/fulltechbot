@@ -97,10 +97,19 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
           .map((item) => (item as Map)['id']?.toString() ?? '')
           .where((id) => id.isNotEmpty)
           .toSet();
+      final featuredIds = featuredProducts
+          .map((item) => (item as Map)['id']?.toString() ?? '')
+          .where((id) => id.isNotEmpty)
+          .toSet();
+      final highlightedIds = {...offerIds, ...featuredIds};
       final productsResponse = results[5];
       final catalogProducts = _dedupeProducts(
         List<dynamic>.from(productsResponse['items'] as List? ?? const []),
       );
+      final catalogOnlyProducts = catalogProducts.where((item) {
+        final id = (item as Map)['id']?.toString() ?? '';
+        return id.isEmpty || !highlightedIds.contains(id);
+      }).toList();
       final categories = _buildDisplayCategories(
         List<dynamic>.from(results[2]['data'] as List? ?? const []),
         [...featuredProducts, ...offerProducts, ...catalogProducts],
@@ -115,7 +124,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
           return id.isEmpty || !offerIds.contains(id);
         }).toList();
         _offerProducts = offerProducts;
-        _products = catalogProducts;
+        _products = catalogOnlyProducts;
         _page = productsResponse['page'] as int? ?? 1;
         _totalPages = productsResponse['totalPages'] as int? ?? 1;
         _loading = false;
@@ -184,10 +193,25 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
       );
 
       if (response['ok'] == true) {
+        final highlightedIds = {
+          ..._featuredProducts
+              .map((item) => (item as Map)['id']?.toString() ?? '')
+              .where((id) => id.isNotEmpty),
+          ..._offerProducts
+              .map((item) => (item as Map)['id']?.toString() ?? '')
+              .where((id) => id.isNotEmpty),
+        };
+        final nextItems = List<dynamic>.from(
+          response['items'] as List? ?? const [],
+        ).where((item) {
+          if (item is! Map) return false;
+          final id = item['id']?.toString() ?? '';
+          return id.isEmpty || !highlightedIds.contains(id);
+        }).toList();
         setState(() {
           _products = _dedupeProducts([
             ..._products,
-            ...List<dynamic>.from(response['items'] as List? ?? const []),
+            ...nextItems,
           ]);
           _page = response['page'] as int? ?? _page + 1;
           _totalPages = response['totalPages'] as int? ?? _totalPages;
@@ -290,15 +314,17 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
       config['color_secundario']?.toString() ?? '#2563EB',
     );
     final whatsapp = config['whatsapp_numero']?.toString() ?? '';
-    final storeName = config['nombre_tienda']?.toString() ?? 'FULLTECH SRL';
+    final storeName = _normalizeStoreName(
+      config['nombre_tienda']?.toString(),
+    );
     final heroTitle =
         config['mensaje_principal']?.toString().trim().isNotEmpty == true
             ? config['mensaje_principal'].toString().trim()
-            : 'Tecnología y seguridad para tu hogar y negocio';
+            : 'Tienda oficial FULLTECH SRL';
     final heroSubtitle =
         config['mensaje_secundario']?.toString().trim().isNotEmpty == true
             ? config['mensaje_secundario'].toString().trim()
-            : 'Compra cámaras, motores, automatización y accesorios con asesoría profesional de FULLTECH SRL.';
+            : 'Explora ofertas, productos y soluciones para tu hogar, empresa y proyectos con FULLTECH SRL.';
     final isTablet = screenWidth >= 700 && screenWidth < 1100;
     final isDesktop = screenWidth >= 1100;
     final contentPadding = math.max(14.0, ((screenWidth - 1240) / 2) + 16);
@@ -799,6 +825,18 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
         .replaceAll('ñ', 'n');
     return decomposed.replaceAll(_combiningMarks, '');
   }
+
+  String _normalizeStoreName(String? raw) {
+    final value = raw?.trim() ?? '';
+    if (value.isEmpty) return 'FULLTECH';
+
+    final normalized = value.toLowerCase();
+    if (normalized.contains('fulltech')) {
+      return 'FULLTECH';
+    }
+
+    return value;
+  }
 }
 
 // ==========================================
@@ -882,23 +920,44 @@ class _CategoryCard extends StatelessWidget {
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFF8FAFD), Color(0xFFF1F5F9)],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
+                  gradient: LinearGradient(
+                    colors: [
+                      secondaryColor.withValues(alpha: 0.16),
+                      const Color(0xFFF1F5F9),
+                      Colors.white,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
                 ),
-                child: StorefrontSmartImage(
-                  source: category['imagen'],
-                  fit: BoxFit.contain,
-                  borderRadius: BorderRadius.circular(16),
-                  placeholder: Center(
-                    child: Icon(
-                      Icons.category_outlined,
-                      color: secondaryColor,
-                      size: 22,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Positioned(
+                      right: -18,
+                      top: -10,
+                      child: Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withValues(alpha: 0.42),
+                        ),
+                      ),
                     ),
-                  ),
+                    StorefrontSmartImage(
+                      source: category['imagen'],
+                      fit: BoxFit.cover,
+                      borderRadius: BorderRadius.circular(16),
+                      placeholder: Center(
+                        child: Icon(
+                          Icons.category_outlined,
+                          color: secondaryColor,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -1076,7 +1135,7 @@ class _StorefrontSearchSheetState extends State<_StorefrontSearchSheet> {
               controller: _controller,
               autofocus: true,
               decoration: InputDecoration(
-                hintText: 'Buscar cámaras, DVR, motores...',
+                hintText: 'Buscar productos, ofertas y marcas...',
                 prefixIcon: Icon(Icons.search_rounded, color: widget.primaryColor),
                 suffixIcon: _controller.text.isNotEmpty
                     ? IconButton(
