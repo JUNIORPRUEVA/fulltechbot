@@ -35,79 +35,75 @@
   <title>FULLTECH SRL</title>
   <link rel="manifest" href="manifest.json">
 
-  <!-- Meta tags anti-cache para evitar que el navegador sirva versiones viejas del HTML -->
+  <!-- Meta tags anti-cache -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 
   <!-- 
-    FULLTECH STORE - Service Worker v3
-    Estrategia: Siempre red primero para navegación.
-    Si ves una versión anterior, haz Ctrl+F5 para forzar recarga.
+    ============================================================
+    FULLTECH STORE - FIX: DESREGISTRAR SERVICE WORKER ANTERIOR
+    ============================================================
+    El Service Worker anterior estaba cacheando la versión vieja
+    de la app (FullTech Bot admin) y sirviéndola en lugar de la
+    nueva versión con la tienda.
+    
+    SOLUCIÓN: Desregistramos el SW anterior, limpiamos todos los
+    caches, y NO registramos un nuevo SW para evitar este problema.
+    
+    La app funciona perfectamente sin Service Worker.
+    ============================================================
   -->
   <script>
     (function() {
       'use strict';
       
-      if (!('serviceWorker' in navigator)) return;
-      
       // ==========================================
-      // 1. Limpiar TODOS los caches existentes al cargar la página
-      //    Esto asegura que no se sirvan versiones antiguas
+      // 1. DESREGISTRAR cualquier Service Worker existente
       // ==========================================
-      if (window.caches) {
-        caches.keys().then(function(cacheNames) {
-          return Promise.all(
-            cacheNames.map(function(cacheName) {
-              console.log('[PWA] Limpiando cache:', cacheName);
-              return caches.delete(cacheName);
-            })
-          );
-        }).then(function() {
-          console.log('[PWA] Todos los caches antiguos eliminados');
+      if ('serviceWorker' in navigator) {
+        // Obtener todos los registros de SW y desregistrarlos
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          console.log('[FIX] Service Workers encontrados:', registrations.length);
+          for (var i = 0; i < registrations.length; i++) {
+            var registration = registrations[i];
+            console.log('[FIX] Desregistrando SW:', registration.active ? registration.active.scriptURL : 'unknown');
+            registration.unregister().then(function(success) {
+              console.log('[FIX] SW desregistrado:', success);
+            });
+          }
         }).catch(function(err) {
-          console.warn('[PWA] Error limpiando caches:', err);
+          console.warn('[FIX] Error obteniendo registros SW:', err);
+        });
+        
+        // Escuchar cuando el SW se desconecte para recargar
+        navigator.serviceWorker.addEventListener('controllerchange', function() {
+          console.log('[FIX] SW cambiado, recargando página...');
+          window.location.reload();
         });
       }
       
       // ==========================================
-      // 2. Dar tiempo para que se limpien los caches
-      //    y luego registrar el nuevo service worker
+      // 2. LIMPIAR TODOS LOS CACHES
       // ==========================================
-      setTimeout(function() {
-        navigator.serviceWorker.register('/service_worker.js?t=' + Date.now())
-          .then(function(registration) {
-            console.log('[PWA] Service Worker v3 registrado correctamente');
-            
-            // Si ya hay un SW activo, forzar actualización
-            if (registration.active) {
-              registration.update();
-            }
-            
-            // Detectar nueva versión del service worker
-            registration.addEventListener('updatefound', function() {
-              var newWorker = registration.installing;
-              newWorker.addEventListener('statechange', function() {
-                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  console.log('[PWA] Nueva versión disponible - activando inmediatamente');
-                  newWorker.postMessage('SKIP_WAITING');
-                }
-              });
-            });
-          })
-          .catch(function(error) {
-            console.warn('[PWA] Error registrando Service Worker:', error);
-          });
-        
-        // Refrescar automáticamente cuando se active un nuevo service worker
-        var refreshing = false;
-        navigator.serviceWorker.addEventListener('controllerchange', function() {
-          if (refreshing) return;
-          refreshing = true;
-          console.log('[PWA] Nuevo service worker activado, recargando para aplicar cambios...');
-          window.location.reload();
+      if (window.caches) {
+        caches.keys().then(function(cacheNames) {
+          console.log('[FIX] Caches encontrados:', cacheNames);
+          return Promise.all(
+            cacheNames.map(function(cacheName) {
+              console.log('[FIX] Eliminando cache:', cacheName);
+              return caches.delete(cacheName);
+            })
+          );
+        }).then(function() {
+          console.log('[FIX] Todos los caches eliminados correctamente');
+        }).catch(function(err) {
+          console.warn('[FIX] Error limpiando caches:', err);
         });
-      }, 500); // Esperar 500ms para asegurar limpieza de caches
+      }
+      
+      console.log('[FIX] Service Worker desregistrado y caches limpiados');
+      console.log('[FIX] La app cargará FRESCA desde el servidor');
     })();
   </script>
 </head>

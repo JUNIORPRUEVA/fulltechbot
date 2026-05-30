@@ -132,33 +132,35 @@
 
 ---
 
-## 🔧 Fix: Service Worker - Cache de versión anterior
+## 🔧 FIX DEFINITIVO: Service Worker - Cache de versión anterior
 
 ### Problema
-Al entrar a la URL de la tienda (ej: `https://fulltech-bot-fulltechbot-app.gcdndd.easypanel.host`), se mostraba la versión anterior de la app (FullTech Bot admin) en lugar de la tienda. Solo funcionaba en modo incógnito porque ahí no hay cache del Service Worker.
+Al entrar a la URL de la tienda, se mostraba la versión anterior de la app (FullTech Bot admin) en lugar de la tienda. Solo funcionaba en modo incógnito.
 
 ### Causa raíz
-El Service Worker anterior estaba cacheando el `index.html` y los assets de Flutter con una estrategia que priorizaba el cache sobre la red, sirviendo la versión anterior de la app.
+El Service Worker anterior estaba instalado en el navegador del usuario y cacheaba el `index.html` y assets de la versión anterior. Incluso después de desplegar la nueva versión, el SW seguía sirviendo la versión cacheada.
 
 ### Solución aplicada (3 archivos modificados)
 
-#### 1. `frondend/web/service_worker.js` - Service Worker reescrito
-- **Nueva versión**: `fulltech-sw-v3.0.0` con nombres de cache únicos (`fulltech-store-v3`)
-- **Estrategia de navegación**: `networkFirstNavigation()` - SIEMPRE va a la red primero, NUNCA cachea el HTML de navegación
-- **API dinámica**: `networkOnly()` - Las APIs de storefront nunca se cachean
-- **Imágenes**: `imageCacheStrategy()` - Cache-first con fallback a placeholder SVG
-- **Assets Flutter**: `staleWhileRevalidate()` - Sirve rápido del cache, actualiza en background
-- **Activación inmediata**: `skipWaiting()` + `clients.claim()` para tomar control de todas las pestañas
-- **Limpieza automática**: Elimina todos los caches viejos al activarse
-- **Mensajes**: Soporta `SKIP_WAITING`, `CLEAR_CACHES` y `CHECK_VERSION`
+#### 1. `frondend/web/index.html` - DESREGISTRAR Service Worker
+- **Desregistra** cualquier Service Worker existente usando `navigator.serviceWorker.getRegistrations()`
+- **Limpia TODOS los caches** del navegador usando `caches.delete()`
+- **NO registra un nuevo Service Worker** - la app funciona sin SW
+- Recarga la página automáticamente cuando el SW se desconecta
 
-#### 2. `frondend/web/index.html` - Bootstrap mejorado
-- **Limpieza de caches**: Al cargar la página, elimina TODOS los caches existentes del Service Worker
-- **Registro con cache busting**: Registra el SW con `?t=Date.now()` para evitar cache del navegador
-- **Forzar actualización**: Si ya hay un SW activo, llama a `registration.update()`
-- **Auto-recarga**: Cuando se activa un nuevo SW, recarga la página automáticamente
+#### 2. `frondend/web/service_worker.js` - Service Worker "trampa" que se autodestruye
+- Se desregistra a sí mismo al activarse (`self.registration.unregister()`)
+- Limpia todos los caches al activarse
+- No intercepta ninguna petición (`fetch` handler vacío)
+- Versión: `fulltech-sw-DISABLED`
 
-#### 3. `frondend/nginx.conf` - Headers anti-cache
-- **index.html**: `Cache-Control: no-store, no-cache, must-revalidate, private` + `Pragma: no-cache` + `Expires: 0`
-- **service_worker.js**: Mismos headers anti-cache que index.html
-- **flutter_bootstrap.js y main.dart.js**: No cachear (cambian en cada build)
+#### 3. `frondend/nginx.conf` - Headers anti-cache agresivos
+- `index.html`: `Cache-Control: no-store, no-cache, must-revalidate, private, max-age=0`
+- `service_worker.js`: Mismos headers + `Service-Worker-Allowed: /`
+- `flutter_bootstrap.js` y `main.dart.js`: No cachear
+
+### ¿Qué debes hacer?
+1. **Desplegar el frontend** (reconstruir el contenedor web con estos cambios)
+2. **Los usuarios deben hacer Ctrl+F5** (recarga forzada) UNA SOLA VEZ para que el navegador descargue el nuevo index.html que desregistra el SW
+3. Después de eso, la tienda cargará siempre fresca desde el servidor
+4. **Ya no se necesita modo incógnito**
