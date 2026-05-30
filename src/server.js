@@ -26,6 +26,7 @@ const orderRoutes = require('./routes/order.routes');
 const quotationRoutes = require('./routes/quotation.routes');
 const syncRoutes = require('./routes/sync.routes');
 const storefrontRoutes = require('./routes/storefront.routes');
+const authRoutes = require('./routes/auth.routes');
 
 const app = express();
 const BACKEND_VERSION = 'campaign-module-005-force-rebuild';
@@ -108,6 +109,9 @@ app.use('/api/sync', syncRoutes);
 
 // Storefront - Tienda online/PWA
 app.use('/api/storefront', storefrontRoutes);
+
+// Autenticación
+app.use('/api/auth', authRoutes);
 
 app.use((req, res) => {
   res.status(404).json({

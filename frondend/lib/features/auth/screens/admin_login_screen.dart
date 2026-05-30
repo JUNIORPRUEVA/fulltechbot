@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-
-import '../../../core/constants/app_config.dart';
 import '../services/admin_session_service.dart';
 
 class AdminLoginScreen extends StatefulWidget {
@@ -17,7 +15,7 @@ class AdminLoginScreen extends StatefulWidget {
 
 class _AdminLoginScreenState extends State<AdminLoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _userCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
 
   bool _loadingSession = true;
@@ -36,12 +34,22 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
     if (!mounted) return;
 
     if (authenticated) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.of(context).pushReplacementNamed(widget.redirectTo);
-      });
-      return;
+      // Verificar que el token siga siendo válido
+      final valido = await AdminSessionService.verifyToken();
+      if (!mounted) return;
+
+      if (valido) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Navigator.of(context).pushReplacementNamed(widget.redirectTo);
+        });
+        return;
+      } else {
+        // Token expirado, cerrar sesión
+        await AdminSessionService.logout();
+      }
     }
 
+    if (!mounted) return;
     setState(() {
       _loadingSession = false;
     });
@@ -55,35 +63,26 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
       _error = null;
     });
 
-    if (!AppConfig.hasAdminCredentials) {
+    try {
+      await AdminSessionService.login(
+        email: _emailCtrl.text.trim(),
+        password: _passCtrl.text,
+      );
+
+      if (!mounted) return;
+      Navigator.of(context).pushReplacementNamed(widget.redirectTo);
+    } catch (e) {
+      if (!mounted) return;
       setState(() {
         _submitting = false;
-        _error =
-            'No hay un backend de autenticacion conectado ni credenciales temporales configuradas.';
+        _error = e.toString().replaceFirst('Exception: ', '');
       });
-      return;
     }
-
-    final validUser = _userCtrl.text.trim() == AppConfig.adminUsername;
-    final validPass = _passCtrl.text == AppConfig.adminPassword;
-
-    if (!validUser || !validPass) {
-      setState(() {
-        _submitting = false;
-        _error = 'Credenciales invalidas.';
-      });
-      return;
-    }
-
-    await AdminSessionService.setAuthenticated(true);
-
-    if (!mounted) return;
-    Navigator.of(context).pushReplacementNamed(widget.redirectTo);
   }
 
   @override
   void dispose() {
-    _userCtrl.dispose();
+    _emailCtrl.dispose();
     _passCtrl.dispose();
     super.dispose();
   }
@@ -137,7 +136,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                       ),
                       const SizedBox(height: 6),
                       const Text(
-                        'Iniciar sesion',
+                        'Iniciar sesión',
                         style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.w900,
@@ -146,7 +145,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Accede al panel administrativo con tus credenciales.',
+                        'Accede al panel administrativo con tu correo y contraseña.',
                         style: TextStyle(
                           color: Colors.grey.shade600,
                           height: 1.5,
@@ -154,14 +153,18 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                       ),
                       const SizedBox(height: 24),
                       TextFormField(
-                        controller: _userCtrl,
+                        controller: _emailCtrl,
+                        keyboardType: TextInputType.emailAddress,
                         decoration: const InputDecoration(
-                          labelText: 'Usuario o correo',
-                          prefixIcon: Icon(Icons.person_outline_rounded),
+                          labelText: 'Correo electrónico',
+                          prefixIcon: Icon(Icons.email_outlined),
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Escribe tu usuario o correo.';
+                            return 'Escribe tu correo electrónico.';
+                          }
+                          if (!value.contains('@')) {
+                            return 'Correo inválido.';
                           }
                           return null;
                         },
@@ -171,12 +174,12 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                         controller: _passCtrl,
                         obscureText: true,
                         decoration: const InputDecoration(
-                          labelText: 'Contrasena',
+                          labelText: 'Contraseña',
                           prefixIcon: Icon(Icons.lock_outline_rounded),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Escribe tu contrasena.';
+                            return 'Escribe tu contraseña.';
                           }
                           return null;
                         },

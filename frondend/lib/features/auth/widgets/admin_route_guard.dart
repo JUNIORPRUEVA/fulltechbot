@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../services/admin_session_service.dart';
 
 class AdminRouteGuard extends StatefulWidget {
@@ -39,6 +38,22 @@ class _AdminRouteGuardState extends State<AdminRouteGuard> {
       return;
     }
 
+    // Verificar que el token siga siendo válido contra el backend
+    final valido = await AdminSessionService.verifyToken();
+    if (!mounted) return;
+
+    if (!valido) {
+      // Token expirado, cerrar sesión y redirigir al login
+      await AdminSessionService.logout();
+      if (!mounted) return;
+      final encoded = Uri.encodeComponent(widget.redirectPath);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.of(context).pushReplacementNamed('/login?redirect=$encoded');
+      });
+      return;
+    }
+
+    if (!mounted) return;
     setState(() {
       _allowed = true;
       _loading = false;

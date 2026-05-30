@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-
-import '../../../core/constants/app_config.dart';
 import '../services/admin_session_service.dart';
 
 class AdminAccessGate extends StatefulWidget {
@@ -14,7 +12,7 @@ class AdminAccessGate extends StatefulWidget {
 
 class _AdminAccessGateState extends State<AdminAccessGate> {
   final _formKey = GlobalKey<FormState>();
-  final _userCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
 
   bool _loading = true;
@@ -29,13 +27,29 @@ class _AdminAccessGateState extends State<AdminAccessGate> {
   }
 
   Future<void> _loadSession() async {
-    final authenticated = AppConfig.hasAdminCredentials
-        ? await AdminSessionService.isAuthenticated()
-        : true;
+    final authenticated = await AdminSessionService.isAuthenticated();
+
+    if (!mounted) return;
+
+    if (authenticated) {
+      // Verificar que el token siga siendo válido
+      final valido = await AdminSessionService.verifyToken();
+      if (!mounted) return;
+
+      if (valido) {
+        setState(() {
+          _authenticated = true;
+          _loading = false;
+        });
+        return;
+      } else {
+        // Token expirado
+        await AdminSessionService.logout();
+      }
+    }
 
     if (!mounted) return;
     setState(() {
-      _authenticated = authenticated;
       _loading = false;
     });
   }
@@ -48,29 +62,29 @@ class _AdminAccessGateState extends State<AdminAccessGate> {
       _error = null;
     });
 
-    final validUser = _userCtrl.text.trim() == AppConfig.adminUsername;
-    final validPass = _passCtrl.text == AppConfig.adminPassword;
+    try {
+      await AdminSessionService.login(
+        email: _emailCtrl.text.trim(),
+        password: _passCtrl.text,
+      );
 
-    if (!validUser || !validPass) {
+      if (!mounted) return;
+      setState(() {
+        _authenticated = true;
+        _submitting = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
       setState(() {
         _submitting = false;
-        _error = 'Credenciales invalidas.';
+        _error = e.toString().replaceFirst('Exception: ', '');
       });
-      return;
     }
-
-    await AdminSessionService.setAuthenticated(true);
-
-    if (!mounted) return;
-    setState(() {
-      _authenticated = true;
-      _submitting = false;
-    });
   }
 
   @override
   void dispose() {
-    _userCtrl.dispose();
+    _emailCtrl.dispose();
     _passCtrl.dispose();
     super.dispose();
   }
@@ -111,7 +125,7 @@ class _AdminAccessGateState extends State<AdminAccessGate> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Introduce tus credenciales para entrar al panel.',
+                      'Introduce tu correo y contraseña para entrar al panel.',
                       style: TextStyle(
                         color: Colors.grey.shade600,
                         height: 1.4,
@@ -119,33 +133,49 @@ class _AdminAccessGateState extends State<AdminAccessGate> {
                     ),
                     const SizedBox(height: 20),
                     TextFormField(
-                      controller: _userCtrl,
+                      controller: _emailCtrl,
+                      keyboardType: TextInputType.emailAddress,
                       decoration: const InputDecoration(
-                        labelText: 'Usuario',
-                        prefixIcon: Icon(Icons.person_outline),
+                        labelText: 'Correo electrónico',
+                        prefixIcon: Icon(Icons.email_outlined),
                       ),
-                      validator: (value) => (value == null || value.trim().isEmpty)
-                          ? 'Escribe el usuario.'
-                          : null,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Escribe tu correo.';
+                        }
+                        if (!value.contains('@')) {
+                          return 'Correo inválido.';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _passCtrl,
                       obscureText: true,
                       decoration: const InputDecoration(
-                        labelText: 'Contrasena',
+                        labelText: 'Contraseña',
                         prefixIcon: Icon(Icons.lock_outline),
                       ),
                       validator: (value) =>
-                          (value == null || value.isEmpty) ? 'Escribe la contrasena.' : null,
+                          (value == null || value.isEmpty) ? 'Escribe la contraseña.' : null,
                     ),
                     if (_error != null) ...[
                       const SizedBox(height: 12),
-                      Text(
-                        _error!,
-                        style: const TextStyle(
-                          color: Color(0xFFDC2626),
-                          fontWeight: FontWeight.w600,
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEE2E2),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFFCA5A5)),
+                        ),
+                        child: Text(
+                          _error!,
+                          style: const TextStyle(
+                            color: Color(0xFFB91C1C),
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ],
