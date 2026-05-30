@@ -27,6 +27,15 @@ class StorefrontHomeScreen extends StatefulWidget {
 }
 
 class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
+  static const Map<String, dynamic> _fallbackConfig = {
+    'nombre_tienda': 'FULLTECH SRL',
+    'color_principal': '#0F172A',
+    'color_secundario': '#2563EB',
+    'whatsapp_numero': '',
+    'mensaje_principal': 'Tienda oficial FULLTECH SRL',
+    'mensaje_secundario': 'Explora ofertas, productos y soluciones.',
+  };
+
   // ==========================================
   // PERF LOGGING
   // ==========================================
@@ -57,6 +66,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
   void initState() {
     super.initState();
     _perfLog('StorefrontHomeScreen.initState');
+    _config = Map<String, dynamic>.from(_fallbackConfig);
     
     // ==========================================
     // PASO 1: Mostrar Home INMEDIATAMENTE con skeleton
@@ -70,7 +80,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
         _loading = false;
       });
       // Iniciar carga en segundo plano
-      _loadHomeDataInBackground();
+      unawaited(_loadHomeDataInBackground());
     });
   }
 
@@ -78,42 +88,32 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
   Future<void> _loadHomeDataInBackground() async {
     _perfLog('_loadHomeDataInBackground started');
 
-    // ==========================================
-    // PASO 2: Cargar config (esencial pero no bloquea el frame)
-    // ==========================================
-    try {
-      final configResponse = await StorefrontApiService.getConfig(widget.slug)
-          .timeout(const Duration(seconds: 10));
-      
-      if (configResponse['ok'] == true && mounted) {
-        setState(() {
-          _config = Map<String, dynamic>.from(configResponse['data'] as Map);
-          _configLoaded = true;
-        });
-        _perfLog('config loaded');
+    Future.microtask(() async {
+      _perfLog('config loading started');
+      try {
+        final configResponse = await StorefrontApiService.getConfig(widget.slug)
+            .timeout(const Duration(seconds: 10));
+
+        if (configResponse['ok'] == true && mounted) {
+          setState(() {
+            _config = Map<String, dynamic>.from(configResponse['data'] as Map);
+            _configLoaded = true;
+          });
+          _perfLog('config loaded');
+        }
+      } catch (e) {
+        _perfLog('config failed: $e');
+        if (mounted) {
+          setState(() => _configLoaded = true);
+        }
       }
-    } catch (e) {
-      _perfLog('config failed: $e');
-      // No bloquear, usar valores por defecto
-      if (mounted) {
-        setState(() {
-          _config = {
-            'nombre_tienda': 'FULLTECH SRL',
-            'color_principal': '#0F172A',
-            'color_secundario': '#2563EB',
-            'whatsapp_numero': '',
-            'mensaje_principal': 'Tienda oficial FULLTECH SRL',
-            'mensaje_secundario': 'Explora ofertas, productos y soluciones.',
-          };
-          _configLoaded = true;
-        });
-      }
-    }
+    });
 
     // ==========================================
     // PASO 3: Cargar banners (no crítico)
     // ==========================================
     Future.microtask(() async {
+      _perfLog('banners loading started');
       try {
         final bannersResponse = await StorefrontApiService.getBanners(widget.slug)
             .timeout(const Duration(seconds: 10));
@@ -136,6 +136,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     // PASO 4: Cargar categorías (no crítico)
     // ==========================================
     Future.microtask(() async {
+      _perfLog('categories loading started');
       try {
         final categoriesResponse = await StorefrontApiService.getCategories(widget.slug)
             .timeout(const Duration(seconds: 10));
@@ -159,6 +160,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     // PASO 5: Cargar productos (lo más pesado, al final)
     // ==========================================
     Future.microtask(() async {
+      _perfLog('products loading started');
       try {
         final productResults = await Future.wait([
           StorefrontApiService.getProducts(
@@ -457,7 +459,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
       );
     }
 
-    final config = _config!;
+    final config = _config ?? _fallbackConfig;
     final screenWidth = MediaQuery.sizeOf(context).width;
     final primaryColor = _getColor(
       config['color_principal']?.toString() ?? '#0F172A',

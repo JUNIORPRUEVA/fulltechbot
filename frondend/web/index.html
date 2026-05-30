@@ -283,18 +283,43 @@
         document.body.appendChild(script);
       }
 
+      function fetchVersionWithTimeout(timeoutMs) {
+        return new Promise(function(resolve, reject) {
+          var settled = false;
+          var timer = setTimeout(function() {
+            if (settled) return;
+            settled = true;
+            reject(new Error('version.json timeout'));
+          }, timeoutMs);
+
+          fetch('version.json?ts=' + Date.now(), {
+            cache: 'no-store'
+          })
+            .then(function(response) {
+              if (!response.ok) {
+                throw new Error('No se pudo cargar version.json');
+              }
+              return response.json();
+            })
+            .then(function(payload) {
+              if (settled) return;
+              settled = true;
+              clearTimeout(timer);
+              resolve(payload);
+            })
+            .catch(function(error) {
+              if (settled) return;
+              settled = true;
+              clearTimeout(timer);
+              reject(error);
+            });
+        });
+      }
+
       // ==========================================
       // 7. VERIFICAR VERSIÓN Y CARGAR
       // ==========================================
-      fetch('version.json?ts=' + Date.now(), {
-        cache: 'no-store'
-      })
-        .then(function(response) {
-          if (!response.ok) {
-            throw new Error('No se pudo cargar version.json');
-          }
-          return response.json();
-        })
+      fetchVersionWithTimeout(1500)
         .then(function(payload) {
           var currentVersion =
             BUILD_VERSION !== '__FULLTECH_BUILD_VERSION__'
@@ -314,10 +339,8 @@
           loadFlutter(currentVersion);
         })
         .catch(function(error) {
-          console.warn('[FULLTECH] version.json no disponible, cargando bootstrap directo.', error);
-          clearRuntimeCaches().finally(function() {
-            loadFlutter(Date.now().toString());
-          });
+          console.warn('[FULLTECH] version.json lento o no disponible, cargando bootstrap directo.', error);
+          loadFlutter(Date.now().toString());
         });
 
       // ==========================================
