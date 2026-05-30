@@ -40,39 +40,75 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 
-  <!-- Service Worker personalizado con estrategia de cache optimizada -->
+  <!-- 
+    FULLTECH STORE - Service Worker v3
+    Estrategia: Siempre red primero para navegación.
+    Si ves una versión anterior, haz Ctrl+F5 para forzar recarga.
+  -->
   <script>
-    if ('serviceWorker' in navigator) {
-      // Registrar service worker personalizado
-      navigator.serviceWorker.register('/service_worker.js')
-        .then((registration) => {
-          console.log('[PWA] Service Worker registrado correctamente');
-
-          // Detectar nueva versión del service worker
-          registration.addEventListener('updatefound', () => {
-            const newWorker = registration.installing;
-            newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                console.log('[PWA] Nueva versión disponible - actualizando automáticamente');
-                // Enviar mensaje para activar el nuevo SW inmediatamente
-                newWorker.postMessage('SKIP_WAITING');
-              }
-            });
-          });
-        })
-        .catch((error) => {
-          console.warn('[PWA] Error registrando Service Worker:', error);
+    (function() {
+      'use strict';
+      
+      if (!('serviceWorker' in navigator)) return;
+      
+      // ==========================================
+      // 1. Limpiar TODOS los caches existentes al cargar la página
+      //    Esto asegura que no se sirvan versiones antiguas
+      // ==========================================
+      if (window.caches) {
+        caches.keys().then(function(cacheNames) {
+          return Promise.all(
+            cacheNames.map(function(cacheName) {
+              console.log('[PWA] Limpiando cache:', cacheName);
+              return caches.delete(cacheName);
+            })
+          );
+        }).then(function() {
+          console.log('[PWA] Todos los caches antiguos eliminados');
+        }).catch(function(err) {
+          console.warn('[PWA] Error limpiando caches:', err);
         });
-
-      // Refrescar automáticamente cuando se active un nuevo service worker
-      let refreshing = false;
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (refreshing) return;
-        refreshing = true;
-        console.log('[PWA] Nuevo service worker activado, recargando para aplicar cambios...');
-        window.location.reload();
-      });
-    }
+      }
+      
+      // ==========================================
+      // 2. Dar tiempo para que se limpien los caches
+      //    y luego registrar el nuevo service worker
+      // ==========================================
+      setTimeout(function() {
+        navigator.serviceWorker.register('/service_worker.js?t=' + Date.now())
+          .then(function(registration) {
+            console.log('[PWA] Service Worker v3 registrado correctamente');
+            
+            // Si ya hay un SW activo, forzar actualización
+            if (registration.active) {
+              registration.update();
+            }
+            
+            // Detectar nueva versión del service worker
+            registration.addEventListener('updatefound', function() {
+              var newWorker = registration.installing;
+              newWorker.addEventListener('statechange', function() {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  console.log('[PWA] Nueva versión disponible - activando inmediatamente');
+                  newWorker.postMessage('SKIP_WAITING');
+                }
+              });
+            });
+          })
+          .catch(function(error) {
+            console.warn('[PWA] Error registrando Service Worker:', error);
+          });
+        
+        // Refrescar automáticamente cuando se active un nuevo service worker
+        var refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', function() {
+          if (refreshing) return;
+          refreshing = true;
+          console.log('[PWA] Nuevo service worker activado, recargando para aplicar cambios...');
+          window.location.reload();
+        });
+      }, 500); // Esperar 500ms para asegurar limpieza de caches
+    })();
   </script>
 </head>
 <body>

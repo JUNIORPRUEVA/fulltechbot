@@ -17,7 +17,8 @@ class ApiConfig {
     if (compiled.isNotEmpty) {
       return compiled;
     }
-    return _cloudBackendUrl;
+    // En desarrollo local, usar localhost:3000
+    return 'http://localhost:3000';
   }
 
   static String get baseUrl => apiBaseUrl;

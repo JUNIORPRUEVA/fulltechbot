@@ -129,3 +129,36 @@
 - ✅ Sin cambios en autenticación
 - ✅ Sin cambios en sincronización
 - ✅ Sin cambios en n8n
+
+---
+
+## 🔧 Fix: Service Worker - Cache de versión anterior
+
+### Problema
+Al entrar a la URL de la tienda (ej: `https://fulltech-bot-fulltechbot-app.gcdndd.easypanel.host`), se mostraba la versión anterior de la app (FullTech Bot admin) en lugar de la tienda. Solo funcionaba en modo incógnito porque ahí no hay cache del Service Worker.
+
+### Causa raíz
+El Service Worker anterior estaba cacheando el `index.html` y los assets de Flutter con una estrategia que priorizaba el cache sobre la red, sirviendo la versión anterior de la app.
+
+### Solución aplicada (3 archivos modificados)
+
+#### 1. `frondend/web/service_worker.js` - Service Worker reescrito
+- **Nueva versión**: `fulltech-sw-v3.0.0` con nombres de cache únicos (`fulltech-store-v3`)
+- **Estrategia de navegación**: `networkFirstNavigation()` - SIEMPRE va a la red primero, NUNCA cachea el HTML de navegación
+- **API dinámica**: `networkOnly()` - Las APIs de storefront nunca se cachean
+- **Imágenes**: `imageCacheStrategy()` - Cache-first con fallback a placeholder SVG
+- **Assets Flutter**: `staleWhileRevalidate()` - Sirve rápido del cache, actualiza en background
+- **Activación inmediata**: `skipWaiting()` + `clients.claim()` para tomar control de todas las pestañas
+- **Limpieza automática**: Elimina todos los caches viejos al activarse
+- **Mensajes**: Soporta `SKIP_WAITING`, `CLEAR_CACHES` y `CHECK_VERSION`
+
+#### 2. `frondend/web/index.html` - Bootstrap mejorado
+- **Limpieza de caches**: Al cargar la página, elimina TODOS los caches existentes del Service Worker
+- **Registro con cache busting**: Registra el SW con `?t=Date.now()` para evitar cache del navegador
+- **Forzar actualización**: Si ya hay un SW activo, llama a `registration.update()`
+- **Auto-recarga**: Cuando se activa un nuevo SW, recarga la página automáticamente
+
+#### 3. `frondend/nginx.conf` - Headers anti-cache
+- **index.html**: `Cache-Control: no-store, no-cache, must-revalidate, private` + `Pragma: no-cache` + `Expires: 0`
+- **service_worker.js**: Mismos headers anti-cache que index.html
+- **flutter_bootstrap.js y main.dart.js**: No cachear (cambian en cada build)

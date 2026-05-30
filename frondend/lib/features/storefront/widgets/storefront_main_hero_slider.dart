@@ -120,7 +120,7 @@ class _StorefrontMainHeroSliderState extends State<StorefrontMainHeroSlider> {
 
   @override
   Widget build(BuildContext context) {
-    final height = widget.isDesktop ? 350.0 : 176.0;
+    final height = widget.isDesktop ? 350.0 : 260.0;
 
     return SizedBox(
       height: height,

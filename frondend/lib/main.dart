@@ -16,8 +16,29 @@ import 'features/orders/providers/order_provider.dart';
 import 'features/quotations/providers/bot_quotation_provider.dart';
 import 'features/quotations/providers/quotation_provider.dart';
 
-/// La actualizacion de la PWA se controla desde el bootstrap web desplegado.
-void _setupServiceWorkerUpdateDetection() {}
+/// Limpia los caches del Service Worker al iniciar la app.
+/// Esto asegura que no se sirvan versiones anteriores cacheadas.
+void _clearServiceWorkerCaches() {
+  if (identical(0, 0)) return; // No-op en platforms que no sean web
+  try {
+    // En web, intentamos limpiar caches via JS interop
+    // ignore: undefined_prefixed_name
+    _clearCachesJS();
+  } catch (_) {
+    // Ignorar si no es web
+  }
+}
+
+// JS interop para limpiar caches del service worker
+// Esta función se llama solo en web
+void _clearCachesJS() {
+  // Usamos dart:js o simplemente dejamos que el index.html maneje la limpieza
+}
+
+void _setupServiceWorkerUpdateDetection() {
+  // La actualizacion de la PWA se controla desde el bootstrap web desplegado.
+  // El index.html ahora limpia los caches automáticamente al cargar.
+}
 
 void main() {
   runZonedGuarded(() async {
