@@ -25,18 +25,17 @@ RUN echo "{\"version\":\"${BUILD_VERSION}\",\"build\":\"fulltech-store\",\"gitSh
 
 # Build the web app en modo release
 # --pwa-strategy=none: No generar service worker automático de Flutter
-# --web-renderer html: Más rápido que canvaskit para tiendas con muchas imágenes
-#   Canvaskit es más pesado de descargar (2-3MB extra) y tarda más en renderizar
-#   HTML renderer carga más rápido y es mejor para contenido dinámico como tiendas
+# NOTA: --web-renderer fue eliminado en Flutter 3.29+
+# Ahora se usa el renderer por defecto (html para web, que es más rápido)
+# Canvaskit es más pesado de descargar (2-3MB extra) y tarda más en renderizar
+# HTML renderer carga más rápido y es mejor para contenido dinámico como tiendas
 RUN if [ -n "$API_BASE_URL" ]; then \
-      flutter build web --release --no-wasm-dry-run --pwa-strategy=none \
-        --web-renderer html \
+      flutter build web --release --pwa-strategy=none \
         --dart-define=API_BASE_URL="$API_BASE_URL" \
         --dart-define=STORAGE_PUBLIC_URL="$STORAGE_PUBLIC_URL" \
         $FLUTTER_BUILD_ARGS; \
     else \
-      flutter build web --release --no-wasm-dry-run --pwa-strategy=none \
-        --web-renderer html \
+      flutter build web --release --pwa-strategy=none \
         --dart-define=STORAGE_PUBLIC_URL="$STORAGE_PUBLIC_URL" \
         $FLUTTER_BUILD_ARGS; \
     fi
