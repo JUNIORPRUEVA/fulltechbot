@@ -182,7 +182,9 @@ class _StorefrontProductDetailScreenState
 
     if (response['ok'] == true) {
       if (goToCart) {
-        Navigator.pushNamed(context, '/tienda/${widget.slug}/carrito');
+        // Navegar directamente al checkout para que el cliente
+        // ingrese sus datos (nombre, teléfono, dirección) y cree el pedido
+        Navigator.pushNamed(context, '/tienda/${widget.slug}/checkout');
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
