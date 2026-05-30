@@ -1,6 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'storefront_image_resolver.dart';
-import '../../../core/utils/image_utils.dart';
 
 class StorefrontHelpers {
   /// Obtiene la versión (updatedAt) de un producto para versionado de imágenes.

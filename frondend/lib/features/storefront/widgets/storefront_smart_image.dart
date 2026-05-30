@@ -55,7 +55,7 @@ class StorefrontSmartImage extends StatelessWidget {
           ),
         );
 
-    final error = errorWidget ??
+    final errorWidgetLocal = errorWidget ??
         Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
@@ -81,7 +81,7 @@ class StorefrontSmartImage extends StatelessWidget {
         fit: fit,
         width: width,
         height: height,
-        errorBuilder: (_, __, ___) => error,
+        errorBuilder: (_, __, ___) => errorWidgetLocal,
       );
     } else {
       // Usar CachedNetworkImage para cache eficiente de imágenes
@@ -93,7 +93,7 @@ class StorefrontSmartImage extends StatelessWidget {
         width: width,
         height: height,
         placeholder: (context, url) => fallback,
-        errorWidget: (context, url, error) => this.errorWidget ?? error,
+        errorWidget: (context, url, error) => errorWidgetLocal,
 
         // Cache en disco para que las imágenes carguen rápido
         // incluso sin conexión (si ya se descargaron antes)

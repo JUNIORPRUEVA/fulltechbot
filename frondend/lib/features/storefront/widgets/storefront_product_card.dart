@@ -5,7 +5,6 @@ import '../services/storefront_helpers.dart';
 import '../theme/storefront_theme.dart';
 import 'storefront_price_widget.dart';
 import 'storefront_smart_image.dart';
-import '../../../core/utils/image_utils.dart';
 
 class StorefrontProductCard extends StatefulWidget {
   final Map<String, dynamic> product;
