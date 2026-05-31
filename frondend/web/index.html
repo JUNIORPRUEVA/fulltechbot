@@ -156,7 +156,7 @@
       </svg>
     </div>
     <div class="splash-title">FULLTECH</div>
-    <div class="splash-subtitle">Cargando tienda...</div>
+    <div class="splash-subtitle">Tienda oficial</div>
     <div class="splash-loader"></div>
     <div class="splash-message">Tecnología, seguridad y automatización</div>
   </div>
@@ -191,18 +191,17 @@
       // ==========================================
       // 3. DETECCIÓN AUTOMÁTICA DE FLUTTER
       //    Observa el DOM hasta que aparezca el canvas de Flutter
-      //    REDUCIDO: máximo 1 segundo para ocultar splash rápido
+      //    MÁXIMO 500ms para ocultar splash rápido
       // ==========================================
       function startFlutterDetection() {
         var checkCount = 0;
-        var maxChecks = 10; // ~1 segundo máximo
+        var maxChecks = 5; // ~500ms máximo
         
         var checkInterval = setInterval(function() {
           checkCount++;
           
           // Detectar el canvas de Flutter (flt-glass-pane o canvas)
           var fltCanvas = document.querySelector('flt-glass-pane') || 
-                          document.querySelector('canvas[style*="flt"]') ||
                           document.querySelector('canvas');
           
           // También detectar si el splash ya fue ocultado por Flutter
@@ -221,7 +220,15 @@
       }
 
       // ==========================================
-      // 4. REDIRECT INMEDIATO A LA TIENDA
+      // 4. LOG DE RENDIMIENTO INICIAL
+      // ==========================================
+      var perfStart = Date.now();
+      console.log('[PERF] index.html loaded - ' + perfStart);
+      
+      // ==========================================
+      // 5. NAVEGACIÓN POR HASH - SIN REDIRECT BLOQUEANTE
+      //    Si la URL es raíz, establecer hash sin recargar
+      //    para que Flutter pueda manejarlo internamente
       // ==========================================
       var path = window.location.pathname || "/";
       var hash = window.location.hash || "";
@@ -229,14 +236,17 @@
       var isEmptyHash = hash === "" || hash === "#" || hash === "#/";
       
       if (isRootPath && isEmptyHash) {
-        console.log('[FULLTECH] Redirigiendo a la tienda principal...');
-        window.location.replace("/#/tienda/fulltech");
-        return;
+        // NO hacer window.location.replace - eso DETIENE la carga de Flutter
+        // En su lugar, establecer el hash sin recargar la página
+        console.log('[FULLTECH] Ruta raíz - estableciendo hash para tienda');
+        window.location.hash = '#/tienda/fulltech';
+        // NO return - continuar con la carga de Flutter
       }
       
       // ==========================================
-      // 5. LIMPIEZA DE CACHE (solo si hay cambio de versión)
+      // 6. LIMPIEZA DE CACHE (solo si hay cambio de versión)
       // ==========================================
+
       function clearRuntimeCaches() {
         var tasks = [];
 
@@ -319,7 +329,8 @@
       // ==========================================
       // 7. VERIFICAR VERSIÓN Y CARGAR
       // ==========================================
-      fetchVersionWithTimeout(1500)
+      fetchVersionWithTimeout(800)
+
         .then(function(payload) {
           var currentVersion =
             BUILD_VERSION !== '__FULLTECH_BUILD_VERSION__'
@@ -344,21 +355,17 @@
         });
 
       // ==========================================
-      // 8. TIMEOUT DE SEGURIDAD
+      // 8. TIMEOUT DE SEGURIDAD - MÁXIMO 2 SEGUNDOS
+      //    Si Flutter no ha ocultado el splash en 2s,
+      //    lo ocultamos igual para que se vea el fondo
       // ==========================================
       setTimeout(function() {
         var splash = document.getElementById('splash-screen');
         if (splash && !splash.classList.contains('hidden')) {
-          splash.querySelector('.splash-message').textContent = 'La tienda está tardando más de lo esperado...';
-          
-          setTimeout(function() {
-            if (splash && !splash.classList.contains('hidden')) {
-              splash.querySelector('.splash-message').innerHTML = 
-                '¿La tienda no carga? <a href="#" onclick="location.reload()" style="color:#2563EB;text-decoration:underline;">Recargar página</a>';
-            }
-          }, 10000);
+          window.fulltechHideSplash();
+          console.log('[PERF] Splash ocultado por timeout de seguridad (2s)');
         }
-      }, 15000);
+      }, 2000);
     })();
   </script>
 </body>

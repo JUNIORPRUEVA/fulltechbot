@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:html' as html;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -164,23 +165,9 @@ void main() {
 }
 
 void _reloadPage() {
-  // Usar dart:js para recargar la página en web
   try {
-    // ignore: undefined_prefixed_name
-    _reloadPageJS();
-  } catch (_) {
-    // Fallback: usar window.location
-    try {
-      // ignore: undefined_prefixed_name
-      _reloadPageFallback();
-    } catch (_) {}
+    html.window.location.reload();
+  } catch (e) {
+    debugPrint('[PERF] Error recargando página: $e');
   }
-}
-
-void _reloadPageJS() {
-  // Esta función se reemplaza en web con dart:js
-}
-
-void _reloadPageFallback() {
-  // Fallback para recargar
 }

@@ -1,115 +1,61 @@
-# 🚀 Optimización Completa de Carga - FULLTECH BOT
+# PLAN DE OPTIMIZACIÓN - CARGA INSTANTÁNEA DE FULLTECH STORE
 
-## Estado del Proyecto
+## Diagnóstico Inicial
 
-### ✅ Completado
+### 🔴 BLOQUEOS CRÍTICOS IDENTIFICADOS
 
-#### 1. index.html - Splash Screen + Anti-cache + Service Worker
-- [x] Splash screen con logo FULLTECH SRL y fondo oscuro (#0F172A)
-- [x] Mensaje "Cargando tienda..." con spinner animado
-- [x] Meta tags anti-cache (no-cache, no-store, must-revalidate)
-- [x] Service Worker con control de versión y auto-actualización
-- [x] Timeout de 15s con fallback visual
-- [x] Ocultar splash cuando Flutter esté listo (vía JS bridge)
-- [x] **REDUCIDO: splash se oculta en máximo 1 segundo** (antes 3s)
-- [x] Manifest.json actualizado
+1. **index.html redirect bloquea Flutter** (Líneas 226-234): `window.location.replace("/#/tienda/fulltech")` + `return` detiene la carga de Flutter. El splash se queda visible hasta 15 segundos.
 
-#### 2. nginx.conf - Configuración optimizada
-- [x] gzip activado con tipos MIME correctos
-- [x] brotli activado (mejor compresión que gzip)
-- [x] Cache-Control correcto por tipo de archivo
-- [x] Fallback para rutas Flutter (try_files)
-- [x] Seguridad: X-Content-Type-Options, X-Frame-Options
+2. **PublicEntryScreen hace llamada API antes de mostrar Home**: Si no hay slug preferido, llama `_resolveStore()` que hace fetch a `/api/storefront/public/default` con timeout de 6 segundos.
 
-#### 3. Dockerfile - Multi-stage optimizado
-- [x] Stage 1: Build Flutter Web en release
-- [x] Stage 2: nginx:alpine liviano
-- [x] Solo copia build/web/
-- [x] Incluye nginx.conf personalizado
+3. **StorefrontHomeScreen `_loading = true` inicial**: El primer frame muestra skeleton en lugar del Home real.
 
-#### 4. Service Worker - Control de versión
-- [x] Versión dinámica desde version.json
-- [x] Cache de assets con hash (immutable)
-- [x] Estrategia Network-First para HTML, JS, CSS
-- [x] Auto-actualización al detectar nuevo service worker
-- [x] Limpieza de caches antiguos
-- [x] **NO cachea archivos críticos** (index.html, main.dart.js, etc.)
+4. **AppBar carga SharedPreferences de forma bloqueante**: `_loadCartCount()` usa `await SharedPreferences.getInstance()` que puede ser lento en web.
 
-#### 5. version.json - Versionado de build
-- [x] Archivo version.json con versión y build
-- [x] Versión semántica (YYYY.MM.DD.HH)
-- [x] Consultable por la app para detectar cambios
+### 🟡 PROBLEMAS SEVEROS
 
-#### 6. main.dart - Optimizado
-- [x] **Eliminado Google Fonts** - Usa system fonts nativos
-- [x] Logs de performance [PERF] en cada etapa
-- [x] ErrorWidget con diseño oscuro y botón de recarga
-- [x] Manejo de errores global con runZonedGuarded
-- [x] **NO bloquea con await** - providers se crean sin esperar
+5. No hay timeout de splash en index.html (solo se oculta cuando Flutter llama hideSplash)
+6. Service Worker no tiene control de versión efectivo
+7. nginx.conf no tiene brotli activado
+8. Faltan logs [PERF] completos
 
-#### 7. app.dart - Optimizado
-- [x] **Eliminado GoogleFonts.manropeTextTheme()** - Usa TextTheme nativo
-- [x] Ruta raíz "/" redirige DIRECTAMENTE a la tienda sin esperar API
-- [x] Sin dependencia de Google Fonts (descarga remota bloqueaba)
+## Plan de Corrección
 
-#### 8. storefront_home_screen.dart - Carga progresiva
-- [x] Carga progresiva: primero config, luego banners/categorías, luego productos
-- [x] Skeleton loading mientras carga
-- [x] addPostFrameCallback para no bloquear el primer frame
-- [x] **Timeout de 10-12 segundos en todas las llamadas API**
-- [x] Fallback local si API falla
-- [x] No espera productos para mostrar Home
+### Fase 1: index.html - Eliminar redirect bloqueante
+- [x] Eliminar `window.location.replace` que corta la carga de Flutter
+- [x] Usar solo hash navigation sin redirect
+- [x] Agregar timeout de splash máximo 2 segundos
+- [x] Agregar logs de rendimiento en JS
 
-#### 9. storefront_api_service.dart - Timeouts
-- [x] Timeout de 10 segundos en todas las llamadas GET
-- [x] Manejo de TimeoutException con mensaje elegante
-- [x] Fallback a datos locales si API falla
-- [x] Headers anti-cache en todas las requests
+### Fase 2: app.dart - Ruta raíz directa a Home
+- [x] Ruta "/" ya redirige directo a StorefrontHomeScreen (slug: 'fulltech')
+- [x] Verificar que no haya llamadas API antes
 
-#### 10. clear-cache.html - Herramienta de limpieza
-- [x] Página para limpiar caches manualmente
-- [x] Botón para recargar después de limpiar
+### Fase 3: StorefrontHomeScreen - Carga instantánea
+- [x] Eliminar `_loading = true` inicial, mostrar Home inmediatamente
+- [x] Mostrar skeletons solo para secciones sin datos
+- [x] Cargar todo en segundo plano después del primer frame
+- [x] Agregar logs [PERF] completos con Stopwatch
+- [x] Timeout en todas las llamadas API
+- [x] Manejo defensivo de datos vacíos/null
 
-#### 11. Build de Release
-- [x] `flutter clean` ejecutado
-- [x] `flutter pub get` ejecutado
-- [x] `flutter build web --release` exitoso
-- [x] main.dart.js: 3.6MB (compressed con gzip ~1.2MB)
-- [x] Build time: ~35s (primera vez), ~956ms (segunda vez)
+### Fase 4: StorefrontAppBar - Eliminar carga bloqueante
+- [x] No esperar SharedPreferences en initState
+- [x] Cargar contador de carrito en segundo plano
 
-### 🔄 Pendiente
+### Fase 5: Service Worker - Mejorar control de versión
+- [x] Forzar actualización inmediata en clientes existentes
+- [x] Mejorar limpieza de caches antiguos
 
-#### 12. Deploy y validación
-- [ ] Desplegar en servidor con Docker
-- [ ] Probar en modo incógnito
-- [ ] Probar en otro teléfono
-- [ ] Probar en datos móviles
-- [ ] Probar después de un deploy nuevo
-- [ ] Verificar que no hay errores 404
-- [ ] Verificar que no hay errores de service worker
-- [ ] Verificar que no hay errores en consola
+### Fase 6: nginx.conf - Activar brotli y optimizar
+- [x] Activar brotli
+- [x] Mejorar cache-control
 
-## Resumen de cambios realizados
+### Fase 7: Dockerfile - Mejorar build
+- [x] Asegurar --web-renderer html
+- [x] Mejorar versionado
 
-| Archivo | Cambio |
-|---------|--------|
-| `frondend/web/index.html` | Splash screen, anti-cache, SW con versión, timeout, **splash oculto en 1s** |
-| `frondend/web/service_worker.js` | Control de versión, cache de assets, auto-actualización |
-| `frondend/web/manifest.json` | Configuración PWA correcta |
-| `frondend/web/version.json` | Versionado de build |
-| `frondend/web/clear-cache.html` | Herramienta de limpieza de cache |
-| `frondend/nginx.conf` | Headers cache, gzip, brotli, MIME types, fallback |
-| `frondend/Dockerfile` | Multi-stage build optimizado |
-| `frondend/lib/main.dart` | **Eliminado Google Fonts**, logs [PERF], sin await en providers |
-| `frondend/lib/app.dart` | **Eliminado GoogleFonts.manropeTextTheme()**, ruta raíz directa |
-| `frondend/lib/features/storefront/screens/storefront_home_screen.dart` | Carga progresiva, timeouts, skeletons |
-| `frondend/lib/features/storefront/services/storefront_api_service.dart` | Timeouts de 10s, fallback local |
-
-## Tamaños de build
-
-| Archivo | Tamaño | Con gzip |
-|---------|--------|----------|
-| main.dart.js | 3.6 MB | ~1.2 MB |
-| flutter_bootstrap.js | 10 KB | ~3 KB |
-| index.html | 11.5 KB | ~4 KB |
-| **Total crítico** | **~3.6 MB** | **~1.2 MB** |
+### Fase 8: Pruebas y validación
+- [ ] flutter analyze
+- [ ] flutter build web --release
+- [ ] Verificar logs [PERF]

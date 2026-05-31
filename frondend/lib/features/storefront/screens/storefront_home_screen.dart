@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:js' as js;
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -37,12 +38,11 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
   };
 
   // ==========================================
-  // PERF LOGGING
+  // PERF LOGGING CON STOPWATCH
   // ==========================================
-  static final DateTime _appStart = DateTime.now();
+  final Stopwatch _perfSw = Stopwatch()..start();
   void _perfLog(String message) {
-    final elapsed = DateTime.now().difference(_appStart).inMilliseconds;
-    debugPrint('[PERF] ${elapsed}ms - $message');
+    debugPrint('[PERF] ${_perfSw.elapsedMilliseconds}ms - $message');
   }
 
   Map<String, dynamic>? _config;
@@ -51,10 +51,9 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
   List<dynamic> _featuredProducts = [];
   List<dynamic> _offerProducts = [];
   List<dynamic> _products = [];
-  bool _loading = true;
-  String? _error;
 
-  // Control de carga progresiva
+  // Control de carga progresiva - TODOS comienzan como false
+  // El Home se muestra con skeletons donde no hay datos
   bool _configLoaded = false;
   bool _bannersLoaded = false;
   bool _categoriesLoaded = false;
@@ -74,14 +73,23 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     // El skeleton se muestra en el primer frame porque _loading=true
     // ==========================================
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _perfLog('StorefrontHomeScreen.firstFrame - Home visible con skeleton');
-      // Liberar el skeleton inmediatamente para que se vea el layout base
-      setState(() {
-        _loading = false;
-      });
-      // Iniciar carga en segundo plano
+      _perfLog('StorefrontHomeScreen.firstFrame - Home visible');
+      
+      // Ocultar splash HTML de inmediato
+      _hideHtmlSplash();
+      
+      // Iniciar carga en segundo plano inmediatamente
       unawaited(_loadHomeDataInBackground());
     });
+  }
+
+  /// Oculta el splash HTML del index.html llamando a window.fulltechHideSplash()
+  void _hideHtmlSplash() {
+    try {
+      js.context.callMethod('fulltechHideSplash');
+    } catch (e) {
+      debugPrint('[PERF] Error ocultando splash HTML: $e');
+    }
   }
 
   /// Carga progresiva en segundo plano sin bloquear la UI
@@ -234,14 +242,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
       }
     });
 
-    // ==========================================
-    // PASO 6: Marcar loading como false para quitar skeleton
-    // (se hace inmediatamente después de iniciar las cargas)
-    // ==========================================
-    if (mounted) {
-      setState(() => _loading = false);
-      _perfLog('_loading=false - Home liberado');
-    }
+    _perfLog('_loadHomeDataInBackground finished - Home ya visible');
   }
 
   Color _getColor(String hex) {
@@ -442,23 +443,11 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const StorefrontHomeSkeleton();
-
-    if (_error != null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Tienda')),
-        body: StorefrontErrorState(message: _error!, onRetry: () {
-          setState(() {
-            _error = null;
-            _loading = true;
-          });
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _loadHomeDataInBackground();
-          });
-        }),
-      );
-    }
-
+    // ==========================================
+    // Home visible INMEDIATAMENTE con fallbacks
+    // No espera NADA: ni productos, ni banners, ni categorías, ni config
+    // Los datos se cargan en segundo plano y actualizan la UI progresivamente
+    // ==========================================
     final config = _config ?? _fallbackConfig;
     final screenWidth = MediaQuery.sizeOf(context).width;
     final primaryColor = _getColor(

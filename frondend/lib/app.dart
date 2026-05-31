@@ -26,7 +26,10 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: _buildTheme(),
       onGenerateRoute: _onGenerateRoute,
-      home: const PublicEntryScreen(),
+      // IR DIRECTO A LA TIENDA - Sin pasar por PublicEntryScreen
+      // PublicEntryScreen hace llamada API que bloquea la entrada
+      // El hash #/tienda/fulltech ya está establecido en index.html
+      home: const StorefrontHomeScreen(slug: 'fulltech'),
     );
   }
 
