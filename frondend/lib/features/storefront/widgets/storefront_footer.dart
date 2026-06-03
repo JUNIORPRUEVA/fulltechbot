@@ -1,15 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// Footer premium, compacto y profesional para FULLTECH SRL.
-///
-/// Diseño:
-/// - Desktop: 3 columnas (Marca + Contacto Grid + Ubicación/Mapa)
-/// - Móvil: 1 columna con políticas en copyright bar
-/// - Contacto en grid responsive de 2 columnas
-/// - Políticas reducidas: Envío · Garantía · Devoluciones
-/// - Mapa real de OpenStreetMap con clic para abrir Google Maps
-/// - Copyright © 2026 FULLTECH SRL
+import 'storefront_map_view.dart';
+
 class StorefrontFooter extends StatelessWidget {
   final String slug;
   final Color primaryColor;
@@ -20,45 +13,85 @@ class StorefrontFooter extends StatelessWidget {
     this.primaryColor = const Color(0xFF0F172A),
   });
 
+  static const String _instagramUrl =
+      'https://www.instagram.com/fulltech_srl?igsh=Z2V5NWY2MDJzNmdh';
+  static const String _facebookUrl = 'https://www.facebook.com/fulltechs/';
+
+  Future<void> _openUrl(String url) async {
+    await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.sizeOf(context).width >= 1024;
-    final isTablet = MediaQuery.sizeOf(context).width >= 600;
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final sidePadding = screenWidth >= 1320
-        ? ((screenWidth - 1240) / 2).clamp(18.0, 9999.0)
-        : screenWidth >= 700
+    final width = MediaQuery.sizeOf(context).width;
+    final isDesktop = width >= 1024;
+    final isTablet = width >= 700;
+    final sidePadding = width >= 1320
+        ? ((width - 1240) / 2).clamp(18.0, 9999.0)
+        : isTablet
         ? 20.0
         : 14.0;
 
     return Container(
-      color: const Color(0xFF0F172A),
+      margin: const EdgeInsets.only(top: 26),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF07192B), Color(0xFF0C243D), Color(0xFF11304F)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
       child: Column(
         children: [
-          // ==========================================
-          // CUERPO DEL FOOTER
-          // ==========================================
           Padding(
-            padding: EdgeInsets.fromLTRB(sidePadding, 28, sidePadding, 20),
+            padding: EdgeInsets.fromLTRB(
+              sidePadding,
+              22,
+              sidePadding,
+              isDesktop ? 18 : 14,
+            ),
             child: isDesktop
-                ? _DesktopLayout(slug: slug, primaryColor: primaryColor)
-                : _MobileLayout(
-                    slug: slug,
-                    primaryColor: primaryColor,
-                    isTablet: isTablet,
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 4,
+                        child: _BrandColumn(primaryColor: primaryColor),
+                      ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        flex: 5,
+                        child: _ContactColumn(openUrl: _openUrl),
+                      ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        flex: 5,
+                        child: _LocationColumn(slug: slug, openUrl: _openUrl),
+                      ),
+                    ],
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _BrandColumn(primaryColor: primaryColor),
+                      const SizedBox(height: 18),
+                      _LocationColumn(slug: slug, openUrl: _openUrl),
+                      const SizedBox(height: 18),
+                      _ContactColumn(openUrl: _openUrl),
+                    ],
                   ),
           ),
-
-          // ==========================================
-          // DIVISOR + COPYRIGHT + POLÍTICAS
-          // ==========================================
           Container(
-            padding: EdgeInsets.fromLTRB(sidePadding, 14, sidePadding, 14),
+            padding: EdgeInsets.fromLTRB(
+              sidePadding,
+              12,
+              sidePadding,
+              MediaQuery.viewPaddingOf(context).bottom + 12,
+            ),
             decoration: BoxDecoration(
               border: Border(
-                top: BorderSide(
-                  color: Colors.white.withValues(alpha: 0.08),
-                ),
+                top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
               ),
             ),
             child: isDesktop
@@ -72,7 +105,7 @@ class StorefrontFooter extends StatelessWidget {
                 : Column(
                     children: [
                       _PoliciesRow(slug: slug),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       const _CopyrightText(),
                     ],
                   ),
@@ -83,93 +116,29 @@ class StorefrontFooter extends StatelessWidget {
   }
 }
 
-// ==========================================
-// LAYOUT DESKTOP: 3 COLUMNAS
-// ==========================================
-class _DesktopLayout extends StatelessWidget {
-  final String slug;
-  final Color primaryColor;
-
-  const _DesktopLayout({
-    required this.slug,
-    required this.primaryColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Columna 1: Marca
-          const Expanded(child: _BrandColumn()),
-          const SizedBox(width: 40),
-
-          // Columna 2: Contacto en grid
-          const Expanded(child: _ContactGrid()),
-          const SizedBox(width: 40),
-
-          // Columna 3: Ubicación / Mapa
-          Expanded(child: _LocationColumn(slug: slug)),
-        ],
-      ),
-    );
-  }
-}
-
-// ==========================================
-// LAYOUT MÓVIL: 1 COLUMNA
-// ==========================================
-class _MobileLayout extends StatelessWidget {
-  final String slug;
-  final Color primaryColor;
-  final bool isTablet;
-
-  const _MobileLayout({
-    required this.slug,
-    required this.primaryColor,
-    required this.isTablet,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _BrandColumn(),
-        const SizedBox(height: 24),
-        const _ContactGrid(),
-        const SizedBox(height: 24),
-        _LocationColumn(slug: slug),
-      ],
-    );
-  }
-}
-
-// ==========================================
-// COLUMNA DE MARCA
-// ==========================================
 class _BrandColumn extends StatelessWidget {
-  const _BrandColumn();
+  final Color primaryColor;
+
+  const _BrandColumn({required this.primaryColor});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Logo real + Nombre
+        // Logo real de FULLTECH
         Row(
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Image.asset(
                 'assets/logo_principal.jpeg',
-                width: 32,
-                height: 32,
+                width: 36,
+                height: 36,
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) => Container(
-                  width: 32,
-                  height: 32,
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [Color(0xFF3B82F6), Color(0xFF60A5FA)],
@@ -183,7 +152,7 @@ class _BrandColumn extends StatelessWidget {
                     'F',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 16,
+                      fontSize: 18,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -192,7 +161,7 @@ class _BrandColumn extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             const Text(
-              'FULLTECH',
+              'FULLTECH SRL',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 18,
@@ -202,31 +171,34 @@ class _BrandColumn extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 10),
-        Text(
-          'Tecnología, innovación y confianza.\nTu tienda online de confianza.',
+        const SizedBox(height: 14),
+        const Text(
+          'Tecnologia, instalacion y soporte en un solo lugar.',
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.5),
-            fontSize: 13,
-            height: 1.5,
+            color: Colors.white,
+            fontSize: 24,
+            fontWeight: FontWeight.w900,
+            height: 1.08,
           ),
         ),
-        const SizedBox(height: 14),
-        // Redes sociales con iconos reales
-        Row(
-          children: [
-            _SocialIconImage(
-              asset: 'assets/facebook.png',
-              url: 'https://www.facebook.com/fulltechs/',
-              color: const Color(0xFF1877F2),
-            ),
-            const SizedBox(width: 10),
-            _SocialIconImage(
-              asset: 'assets/social.png',
-              url:
-                  'https://www.instagram.com/fulltech_srl?igsh=Z2V5NWY2MDJzNmdh',
-              color: const Color(0xFFE4405F),
-            ),
+        const SizedBox(height: 8),
+        Text(
+          'Compra online, contacta por WhatsApp y visita nuestra tienda con una ruta clara y rapida.',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.72),
+            fontSize: 13,
+            height: 1.55,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: const [
+            _ServiceChip(label: 'Seguridad'),
+            _ServiceChip(label: 'Camaras'),
+            _ServiceChip(label: 'Motores'),
+            _ServiceChip(label: 'Tecnologia'),
           ],
         ),
       ],
@@ -234,11 +206,10 @@ class _BrandColumn extends StatelessWidget {
   }
 }
 
-// ==========================================
-// CONTACTO EN GRID RESPONSIVE
-// ==========================================
-class _ContactGrid extends StatelessWidget {
-  const _ContactGrid();
+class _ContactColumn extends StatelessWidget {
+  final Future<void> Function(String url) openUrl;
+
+  const _ContactColumn({required this.openUrl});
 
   @override
   Widget build(BuildContext context) {
@@ -248,52 +219,53 @@ class _ContactGrid extends StatelessWidget {
         Text(
           'Contacto',
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.9),
+            color: Colors.white.withValues(alpha: 0.92),
             fontSize: 13,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.8,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.5,
           ),
         ),
         const SizedBox(height: 12),
         Wrap(
-          spacing: 8,
-          runSpacing: 8,
+          spacing: 10,
+          runSpacing: 10,
           children: [
-            _ContactItem(
+            _ContactCard(
               icon: Icons.chat_rounded,
-              label: 'WhatsApp',
-              value: '(849) 431-4070',
-              url: 'https://wa.me/18494314070',
-              iconColor: const Color(0xFF25D366),
+              title: 'WhatsApp',
+              value: storefrontWhatsapp,
+              color: const Color(0xFF25D366),
+              onTap: () => openUrl(
+                'https://wa.me/1$storefrontWhatsapp?text=${Uri.encodeComponent('Hola FULLTECH SRL, quiero informacion.')}',
+              ),
             ),
-            _ContactItem(
-              icon: Icons.phone_rounded,
-              label: 'Teléfono',
-              value: '(829) 531-9442',
-              url: 'tel:+18295319442',
-              iconColor: const Color(0xFF3B82F6),
+            _ContactCard(
+              icon: Icons.call_rounded,
+              title: 'Tel',
+              value: storefrontPhone,
+              color: const Color(0xFF3B82F6),
+              onTap: () => openUrl('tel:$storefrontPhone'),
             ),
-            _ContactItem(
+            _ContactCard(
               icon: Icons.email_rounded,
-              label: 'Email',
-              value: 'fulltechsd@gmail.com',
-              url: 'mailto:fulltechsd@gmail.com',
-              iconColor: const Color(0xFFEF4444),
+              title: 'Correo',
+              value: storefrontEmail,
+              color: const Color(0xFFF97316),
+              onTap: () => openUrl('mailto:$storefrontEmail'),
             ),
-            _ContactItem(
-              icon: Icons.facebook_rounded,
-              label: 'Facebook',
-              value: 'Fulltech SRL',
-              url: 'https://www.facebook.com/fulltechs/',
-              iconColor: const Color(0xFF1877F2),
-            ),
-            _ContactItem(
+            _ContactCard(
               icon: Icons.camera_alt_rounded,
-              label: 'Instagram',
-              value: '@fulltech_srl',
-              url:
-                  'https://www.instagram.com/fulltech_srl?igsh=Z2V5NWY2MDJzNmdh',
-              iconColor: const Color(0xFFE4405F),
+              title: 'Instagram',
+              value: '@$storefrontInstagramHandle',
+              color: const Color(0xFFE4405F),
+              onTap: () => openUrl(StorefrontFooter._instagramUrl),
+            ),
+            _ContactCard(
+              icon: Icons.thumb_up_alt_rounded,
+              title: 'Facebook',
+              value: storefrontFacebookLabel,
+              color: const Color(0xFF1877F2),
+              onTap: () => openUrl(StorefrontFooter._facebookUrl),
             ),
           ],
         ),
@@ -302,90 +274,11 @@ class _ContactGrid extends StatelessWidget {
   }
 }
 
-// ==========================================
-// ITEM DE CONTACTO COMPACTO
-// ==========================================
-class _ContactItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final String url;
-  final Color iconColor;
-
-  const _ContactItem({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.url,
-    required this.iconColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        onTap: () => launchUrl(Uri.parse(url)),
-        borderRadius: BorderRadius.circular(10),
-        splashColor: iconColor.withValues(alpha: 0.1),
-        highlightColor: iconColor.withValues(alpha: 0.05),
-        child: Container(
-          constraints: const BoxConstraints(minWidth: 140),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.04),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.06),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 16, color: iconColor),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      label,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.4),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      value,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.85),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ==========================================
-// COLUMNA DE UBICACIÓN CON MAPA REAL
-// ==========================================
 class _LocationColumn extends StatelessWidget {
   final String slug;
+  final Future<void> Function(String url) openUrl;
 
-  const _LocationColumn({required this.slug});
+  const _LocationColumn({required this.slug, required this.openUrl});
 
   @override
   Widget build(BuildContext context) {
@@ -393,138 +286,136 @@ class _LocationColumn extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Ubicación',
+          'Ubicacion',
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.9),
+            color: Colors.white.withValues(alpha: 0.92),
             fontSize: 13,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.8,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.5,
           ),
         ),
         const SizedBox(height: 12),
-        // Mapa real de OpenStreetMap como imagen estática
-        Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          child: InkWell(
-            onTap: () => launchUrl(
-              Uri.parse(
-                'https://www.google.com/maps/search/?api=1&query=FULLTECH+SRL+Santo+Domingo+Rep%C3%BAblica+Dominicana',
-              ),
-            ),
-            borderRadius: BorderRadius.circular(12),
-            splashColor: Colors.white.withValues(alpha: 0.08),
-            highlightColor: Colors.white.withValues(alpha: 0.04),
-            child: Container(
-              height: 100,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.1),
-                ),
-                image: DecorationImage(
-                  image: NetworkImage(
-                    'https://tile.openstreetmap.org/static/18/-69.93,18.48,12/600x300.png',
-                  ),
-                  fit: BoxFit.cover,
-                ),
-              ),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFF0F172A).withValues(alpha: 0.3),
-                      const Color(0xFF0F172A).withValues(alpha: 0.6),
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                ),
-                child: Center(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.location_on_rounded,
-                        color: const Color(0xFFEF4444),
-                        size: 18,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Ver en Google Maps',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+        SizedBox(
+          height: 190,
+          child: StorefrontMapView(
+            height: 190,
+            compact: true,
+            borderRadius: BorderRadius.circular(20),
+            onOpenExternal: StorefrontMapView.openStoreMap,
           ),
         ),
         const SizedBox(height: 10),
         Text(
-          'Santo Domingo, República Dominicana',
+          storefrontAddress,
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.5),
-            fontSize: 12,
+            color: Colors.white.withValues(alpha: 0.76),
+            fontSize: 12.5,
+            height: 1.45,
           ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            FilledButton.icon(
+              onPressed: () =>
+                  Navigator.pushNamed(context, '/tienda/$slug/ubicacion'),
+              icon: const Icon(Icons.map_rounded),
+              label: const Text('Ver ubicacion'),
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFF0F172A),
+              ),
+            ),
+            OutlinedButton.icon(
+              onPressed: StorefrontMapView.openStoreMap,
+              icon: const Icon(Icons.near_me_rounded),
+              label: const Text('Ir alla'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: BorderSide(color: Colors.white.withValues(alpha: 0.18)),
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 }
 
-// ==========================================
-// ICONO DE RED SOCIAL (Imagen PNG real)
-// ==========================================
-class _SocialIconImage extends StatelessWidget {
-  final String asset;
-  final String url;
+class _ContactCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String value;
   final Color color;
+  final VoidCallback onTap;
 
-  const _SocialIconImage({
-    required this.asset,
-    required this.url,
+  const _ContactCard({
+    required this.icon,
+    required this.title,
+    required this.value,
     required this.color,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
-      borderRadius: BorderRadius.circular(10),
       child: InkWell(
-        onTap: () => launchUrl(Uri.parse(url)),
-        borderRadius: BorderRadius.circular(10),
-        splashColor: color.withValues(alpha: 0.15),
-        highlightColor: color.withValues(alpha: 0.08),
-        child: Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: color.withValues(alpha: 0.2),
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 164),
+          child: Ink(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.07),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
             ),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.asset(
-              asset,
-              width: 22,
-              height: 22,
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) => Icon(
-                Icons.public_rounded,
-                size: 18,
-                color: color,
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: color, size: 18),
+                ),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.60),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        value,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -533,9 +424,35 @@ class _SocialIconImage extends StatelessWidget {
   }
 }
 
-// ==========================================
-// POLÍTICAS REDUCIDAS
-// ==========================================
+class _ServiceChip extends StatelessWidget {
+  final String label;
+
+  const _ServiceChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+          width: 0.6,
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.82),
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
 class _PoliciesRow extends StatelessWidget {
   final String slug;
 
@@ -544,8 +461,8 @@ class _PoliciesRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final policies = [
-      ('Envío', '/tienda/$slug/envios'),
-      ('Garantía', '/tienda/$slug/garantia'),
+      ('Envio', '/tienda/$slug/envios'),
+      ('Garantia', '/tienda/$slug/garantia'),
       ('Devoluciones', '/tienda/$slug/devoluciones'),
     ];
 
@@ -553,9 +470,9 @@ class _PoliciesRow extends StatelessWidget {
       spacing: 4,
       runSpacing: 4,
       alignment: WrapAlignment.center,
-      children: policies.map((policy) {
-        return _PolicyLink(label: policy.$1, route: policy.$2);
-      }).toList(),
+      children: policies
+          .map((policy) => _PolicyLink(label: policy.$1, route: policy.$2))
+          .toList(),
     );
   }
 }
@@ -564,10 +481,7 @@ class _PolicyLink extends StatelessWidget {
   final String label;
   final String route;
 
-  const _PolicyLink({
-    required this.label,
-    required this.route,
-  });
+  const _PolicyLink({required this.label, required this.route});
 
   @override
   Widget build(BuildContext context) {
@@ -575,16 +489,15 @@ class _PolicyLink extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: () => Navigator.pushNamed(context, route),
-        borderRadius: BorderRadius.circular(6),
-        splashColor: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(8),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           child: Text(
             label,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.5),
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+              color: Colors.white.withValues(alpha: 0.52),
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ),
@@ -593,20 +506,17 @@ class _PolicyLink extends StatelessWidget {
   }
 }
 
-// ==========================================
-// COPYRIGHT
-// ==========================================
 class _CopyrightText extends StatelessWidget {
   const _CopyrightText();
 
   @override
   Widget build(BuildContext context) {
     return Text(
-      '© 2026 FULLTECH SRL',
+      '© ${DateTime.now().year} FULLTECH SRL',
       style: TextStyle(
-        color: Colors.white.withValues(alpha: 0.35),
-        fontSize: 12,
-        fontWeight: FontWeight.w500,
+        color: Colors.white.withValues(alpha: 0.38),
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
       ),
     );
   }

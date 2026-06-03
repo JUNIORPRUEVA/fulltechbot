@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:js' as js;
 import 'dart:math' as math;
+import 'dart:ui' show PointerDeviceKind;
 
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -606,7 +607,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
         ],
 
         // ==========================================
-        // CATEGORÍAS (scroll horizontal)
+        // CATEGORÍAS (carrusel automático horizontal)
         // ==========================================
         if (_categories.isNotEmpty) ...[
           SliverToBoxAdapter(
@@ -628,27 +629,13 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
             ),
           ),
           SliverToBoxAdapter(
-            child: SizedBox(
-              height: isDesktop ? 164 : 144,
-              child: ListView.separated(
-                padding: EdgeInsets.symmetric(horizontal: contentPadding),
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                itemBuilder: (context, index) {
-                  final category = _categories[index] as Map<String, dynamic>;
-                  return _CategoryCard(
-                    width: isDesktop ? 162 : (isTablet ? 148 : 118),
-                    category: category,
-                    secondaryColor: secondaryColor,
-                    onTap: () => Navigator.pushNamed(
-                      context,
-                      '/tienda/${widget.slug}/categoria/${Uri.encodeComponent(category['nombre'].toString())}',
-                    ),
-                  );
-                },
-                separatorBuilder: (_, index) => const SizedBox(width: 12),
-                itemCount: _categories.length,
-              ),
+            child: _AutoScrollCategories(
+              categories: _categories,
+              slug: widget.slug,
+              secondaryColor: secondaryColor,
+              isDesktop: isDesktop,
+              isTablet: isTablet,
+              contentPadding: contentPadding,
             ),
           ),
         ],
@@ -1068,6 +1055,154 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     }
 
     return value;
+  }
+}
+
+// ==========================================
+// AUTO-SCROLL CATEGORIES (Carrusel automático)
+// ==========================================
+class _AutoScrollCategories extends StatefulWidget {
+  final List<dynamic> categories;
+  final String slug;
+  final Color secondaryColor;
+  final bool isDesktop;
+  final bool isTablet;
+  final double contentPadding;
+
+  const _AutoScrollCategories({
+    required this.categories,
+    required this.slug,
+    required this.secondaryColor,
+    required this.isDesktop,
+    required this.isTablet,
+    required this.contentPadding,
+  });
+
+  @override
+  State<_AutoScrollCategories> createState() => _AutoScrollCategoriesState();
+}
+
+class _AutoScrollCategoriesState extends State<_AutoScrollCategories>
+    with SingleTickerProviderStateMixin {
+  late final ScrollController _scrollController;
+  late final AnimationController _animController;
+  bool _isPaused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 30),
+    )..addListener(_onAnimationTick);
+
+    // Iniciar el scroll automático después del primer frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startAutoScroll();
+    });
+  }
+
+  @override
+  void dispose() {
+    _animController.removeListener(_onAnimationTick);
+    _animController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _startAutoScroll() {
+    if (!_scrollController.hasClients) return;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    if (maxScroll <= 0) return;
+
+    // Duración proporcional a la cantidad de contenido
+    final durationMs = (maxScroll / 0.5).round().clamp(15000, 45000);
+    final duration = Duration(milliseconds: durationMs);
+
+    _animController.duration = duration;
+    _animController.forward();
+  }
+
+  void _onAnimationTick() {
+    if (!_scrollController.hasClients || _isPaused) return;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    if (maxScroll <= 0) return;
+
+    final target = _animController.value * maxScroll;
+    _scrollController.jumpTo(target);
+  }
+
+  void _onPointerDown(PointerDownEvent event) {
+    setState(() => _isPaused = true);
+    _animController.stop();
+  }
+
+  void _onPointerUp(PointerUpEvent event) {
+    setState(() => _isPaused = false);
+    if (!_scrollController.hasClients) return;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    if (maxScroll <= 0) return;
+
+    // Reanudar desde la posición actual
+    final currentPos = _scrollController.offset;
+    final remaining = maxScroll - currentPos;
+    if (remaining <= 0) {
+      // Si llegó al final, reiniciar
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 800),
+        curve: Curves.easeInOut,
+      ).then((_) {
+        _animController.value = 0;
+        _animController.forward();
+      });
+      return;
+    }
+
+    final remainingMs = (remaining / 0.5).round().clamp(5000, 30000);
+    _animController.duration = Duration(milliseconds: remainingMs);
+    _animController.forward(from: _animController.value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final height = (widget.isDesktop ? 164.0 : 144.0);
+    final cardWidth = widget.isDesktop ? 162.0 : (widget.isTablet ? 148.0 : 118.0);
+
+    return Listener(
+      onPointerDown: _onPointerDown,
+      onPointerUp: _onPointerUp,
+      onPointerCancel: (_) => _onPointerUp(PointerUpEvent(
+        position: Offset.zero,
+        pointer: 0,
+        kind: PointerDeviceKind.values[0],
+      )),
+      child: SizedBox(
+        height: height,
+        child: ListView.separated(
+          controller: _scrollController,
+          padding: EdgeInsets.symmetric(horizontal: widget.contentPadding),
+          scrollDirection: Axis.horizontal,
+          physics: const NeverScrollableScrollPhysics(),
+          itemBuilder: (context, index) {
+            final category =
+                widget.categories[index] as Map<String, dynamic>;
+            return _CategoryCard(
+              width: cardWidth,
+              category: category,
+              secondaryColor: widget.secondaryColor,
+              onTap: () => Navigator.pushNamed(
+                context,
+                '/tienda/${widget.slug}/categoria/${Uri.encodeComponent(category['nombre'].toString())}',
+              ),
+            );
+          },
+          separatorBuilder: (_, index) => const SizedBox(width: 12),
+          itemCount: widget.categories.length,
+        ),
+      ),
+    );
   }
 }
 
