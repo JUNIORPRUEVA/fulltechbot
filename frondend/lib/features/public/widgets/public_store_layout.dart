@@ -51,7 +51,8 @@ class PublicStoreLayout extends StatelessWidget {
     this.floatingActionButton,
   });
 
-  bool _isDesktop(BuildContext context) => MediaQuery.sizeOf(context).width >= 1024;
+  bool _isDesktop(BuildContext context) =>
+      MediaQuery.sizeOf(context).width >= 1024;
 
   @override
   Widget build(BuildContext context) {
@@ -61,8 +62,8 @@ class PublicStoreLayout extends StatelessWidget {
     final sidePadding = width >= 1320
         ? ((width - 1240) / 2).clamp(18.0, 9999.0)
         : width >= 700
-            ? 20.0
-            : 14.0;
+        ? 20.0
+        : 14.0;
 
     return Scaffold(
       key: scaffoldKey,
@@ -110,7 +111,12 @@ class PublicStoreLayout extends StatelessWidget {
                     // HERO SLIDER PRINCIPAL
                     // ==========================================
                     SliverPadding(
-                      padding: EdgeInsets.fromLTRB(sidePadding, 10, sidePadding, 0),
+                      padding: EdgeInsets.fromLTRB(
+                        sidePadding,
+                        10,
+                        sidePadding,
+                        0,
+                      ),
                       sliver: SliverToBoxAdapter(
                         child: StorefrontHeroSlider(
                           slug: slug,
@@ -142,16 +148,20 @@ class PublicStoreLayout extends StatelessWidget {
           // ==========================================
           if (floatingActionButton != null)
             Positioned(
-              right: 16,
-              bottom: MediaQuery.viewPaddingOf(context).bottom + 16,
+              right: isDesktop ? 28 : 18,
+              bottom:
+                  MediaQuery.viewPaddingOf(context).bottom +
+                  (isDesktop ? 28 : 22),
               child: floatingActionButton!,
             )
           else if (onWhatsappTap != null)
             Positioned(
-              right: 16,
-              bottom: MediaQuery.viewPaddingOf(context).bottom + 16,
+              right: isDesktop ? 28 : 18,
+              bottom:
+                  MediaQuery.viewPaddingOf(context).bottom +
+                  (isDesktop ? 28 : 22),
               child: wa.StorefrontWhatsAppFloatingButton(
-                phoneNumber: '829-534-4286',
+                phoneNumber: '8494314070',
                 isDesktop: isDesktop,
               ),
             ),
@@ -291,10 +301,7 @@ class _DrawerTile extends StatelessWidget {
       onTap: onTap,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       leading: Icon(icon, color: const Color(0xFF0F172A)),
-      title: Text(
-        title,
-        style: const TextStyle(fontWeight: FontWeight.w700),
-      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
     );
   }
 }

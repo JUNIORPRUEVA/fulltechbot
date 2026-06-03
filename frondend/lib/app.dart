@@ -11,6 +11,7 @@ import 'features/storefront/screens/storefront_cart_screen.dart';
 import 'features/storefront/screens/storefront_category_screen.dart';
 import 'features/storefront/screens/storefront_checkout_screen.dart';
 import 'features/storefront/screens/storefront_home_screen.dart';
+import 'features/storefront/screens/storefront_location_screen.dart';
 import 'features/storefront/screens/storefront_product_detail_screen.dart';
 import 'features/storefront/screens/storefront_success_screen.dart';
 import 'features/storefront_admin/screens/storefront_admin_screen.dart';
@@ -46,9 +47,7 @@ class MyApp extends StatelessWidget {
     if (uri.path == '/tienda') {
       return _route(
         settings,
-        PublicEntryScreen(
-          preferredSlug: uri.queryParameters['slug'],
-        ),
+        PublicEntryScreen(preferredSlug: uri.queryParameters['slug']),
       );
     }
 
@@ -63,6 +62,15 @@ class MyApp extends StatelessWidget {
 
     if (uri.pathSegments.length == 2 && uri.pathSegments[0] == 'tienda') {
       return _route(settings, StorefrontHomeScreen(slug: uri.pathSegments[1]));
+    }
+
+    if (uri.pathSegments.length == 3 &&
+        uri.pathSegments[0] == 'tienda' &&
+        uri.pathSegments[2] == 'ubicacion') {
+      return _route(
+        settings,
+        StorefrontLocationScreen(slug: uri.pathSegments[1]),
+      );
     }
 
     if (uri.pathSegments.length == 4 &&

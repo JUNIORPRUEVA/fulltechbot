@@ -3,10 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// Botón flotante de WhatsApp premium y elegante.
-/// Se posiciona en la parte inferior derecha de la pantalla.
-/// Diseño circular con animación de pulso suave.
-/// Abre WhatsApp con el número 829-534-4286 y mensaje predefinido.
 class StorefrontWhatsAppFloatingButton extends StatefulWidget {
   final String phoneNumber;
   final bool isDesktop;
@@ -25,17 +21,17 @@ class StorefrontWhatsAppFloatingButton extends StatefulWidget {
 class _StorefrontWhatsAppFloatingButtonState
     extends State<StorefrontWhatsAppFloatingButton>
     with SingleTickerProviderStateMixin {
-  late AnimationController _pulseController;
-  late Animation<double> _pulseAnimation;
+  static const String _defaultPhone = '18494314070';
+  static const String _defaultMessage =
+      'Hola, estoy viendo la tienda de FULLTECH SRL y quiero mas informacion.';
+
+  late final AnimationController _pulseController;
+  late final Animation<double> _pulseAnimation;
   Timer? _initialDelay;
 
-  static const String defaultPhone = '18295344286';
-  static const String defaultMessage =
-      'Hola, estoy viendo la tienda de FULLTECH SRL y quiero más información.';
-
   String get _cleanNumber {
-    final num = widget.phoneNumber.replaceAll(RegExp(r'[^\d]'), '');
-    return num.isNotEmpty ? num : defaultPhone;
+    final number = widget.phoneNumber.replaceAll(RegExp(r'[^\d]'), '');
+    return number.isNotEmpty ? number : _defaultPhone;
   }
 
   @override
@@ -43,20 +39,18 @@ class _StorefrontWhatsAppFloatingButtonState
     super.initState();
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2500),
+      duration: const Duration(milliseconds: 2600),
     );
+    _pulseAnimation =
+        TweenSequence<double>([
+          TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.05), weight: 1),
+          TweenSequenceItem(tween: Tween(begin: 1.05, end: 1.0), weight: 1),
+          TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.0), weight: 3),
+        ]).animate(
+          CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+        );
 
-    _pulseAnimation = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.06), weight: 1),
-      TweenSequenceItem(tween: Tween(begin: 1.06, end: 1.0), weight: 1),
-      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.0), weight: 3),
-    ]).animate(CurvedAnimation(
-      parent: _pulseController,
-      curve: Curves.easeInOut,
-    ));
-
-    // Retraso inicial para que aparezca después de cargar la página
-    _initialDelay = Timer(const Duration(milliseconds: 800), () {
+    _initialDelay = Timer(const Duration(milliseconds: 900), () {
       if (mounted) {
         _pulseController.repeat();
       }
@@ -65,65 +59,131 @@ class _StorefrontWhatsAppFloatingButtonState
 
   @override
   void dispose() {
-    _pulseController.dispose();
     _initialDelay?.cancel();
+    _pulseController.dispose();
     super.dispose();
   }
 
   Future<void> _openWhatsApp() async {
-    final url =
-        'https://wa.me/$_cleanNumber?text=${Uri.encodeComponent(defaultMessage)}';
+    final uri = Uri.parse(
+      'https://wa.me/$_cleanNumber?text=${Uri.encodeComponent(_defaultMessage)}',
+    );
 
     try {
       final launched = await launchUrl(
-        Uri.parse(url),
+        uri,
         mode: LaunchMode.externalApplication,
       );
       if (!launched) {
-        // Fallback: abrir en navegador
-        await launchUrl(Uri.parse(url), mode: LaunchMode.platformDefault);
+        await launchUrl(uri, mode: LaunchMode.platformDefault);
       }
     } catch (_) {
-      // Último fallback
-      await launchUrl(Uri.parse(url), mode: LaunchMode.platformDefault);
+      await launchUrl(uri, mode: LaunchMode.platformDefault);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final bottomPadding = MediaQuery.viewPaddingOf(context).bottom;
+    final isWide = widget.isDesktop || MediaQuery.sizeOf(context).width >= 720;
+    final height = isWide ? 66.0 : 60.0;
+    final bubbleSize = isWide ? 42.0 : 38.0;
+    final iconSize = isWide ? 28.0 : 26.0;
 
-    return Padding(
-      padding: EdgeInsets.only(
-        right: widget.isDesktop ? 20 : 16,
-        bottom: bottomPadding + (widget.isDesktop ? 20 : 16),
-      ),
-      child: AnimatedBuilder(
-        animation: _pulseAnimation,
-        builder: (context, child) {
-          return Transform.scale(
-            scale: _pulseAnimation.value,
-            child: child,
-          );
-        },
-        child: Material(
-          color: const Color(0xFF25D366),
+    return AnimatedBuilder(
+      animation: _pulseAnimation,
+      builder: (context, child) {
+        return Transform.scale(scale: _pulseAnimation.value, child: child);
+      },
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(999),
+        child: InkWell(
+          onTap: _openWhatsApp,
           borderRadius: BorderRadius.circular(999),
-          elevation: 6,
-          shadowColor: const Color(0xFF25D366).withValues(alpha: 0.4),
-          child: InkWell(
-            onTap: _openWhatsApp,
-            borderRadius: BorderRadius.circular(999),
-            splashColor: Colors.white.withValues(alpha: 0.2),
-            child: Container(
-              width: widget.isDesktop ? 60 : 52,
-              height: widget.isDesktop ? 60 : 52,
-              alignment: Alignment.center,
-              child: Icon(
-                Icons.chat_rounded,
-                color: Colors.white,
-                size: widget.isDesktop ? 28 : 24,
+          splashColor: Colors.white.withValues(alpha: 0.12),
+          highlightColor: Colors.white.withValues(alpha: 0.06),
+          child: Ink(
+            height: height,
+            padding: EdgeInsets.symmetric(horizontal: isWide ? 14 : 12),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF25D366), Color(0xFF10B981)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.90),
+                width: 2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF25D366).withValues(alpha: 0.30),
+                  blurRadius: 24,
+                  offset: const Offset(0, 10),
+                ),
+                BoxShadow(
+                  color: const Color(0xFF0F172A).withValues(alpha: 0.12),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: bubbleSize,
+                  height: bubbleSize,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  alignment: Alignment.center,
+                  child: Image.asset(
+                    'assets/whatsappp.png',
+                    width: iconSize,
+                    height: iconSize,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                if (isWide)
+                  const Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'WhatsApp',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          height: 1,
+                        ),
+                      ),
+                      SizedBox(height: 3),
+                      Text(
+                        'Escribenos',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          height: 1,
+                        ),
+                      ),
+                    ],
+                  )
+                else
+                  const Text(
+                    'WhatsApp',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+              ],
             ),
           ),
         ),

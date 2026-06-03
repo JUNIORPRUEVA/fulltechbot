@@ -1,60 +1,54 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// Footer premium y compacto de FULLTECH SRL.
-/// Diseño elegante, moderno, tecnológico y profesional.
-/// Sin tarjetas internas pesadas, con estructura limpia y bien jerarquizada.
 class StorefrontFooter extends StatelessWidget {
   final Map<String, dynamic> config;
   final Color primaryColor;
   final Color secondaryColor;
+  final String slug;
 
   const StorefrontFooter({
     super.key,
     required this.config,
     required this.primaryColor,
     required this.secondaryColor,
+    required this.slug,
   });
+
+  static const String _address = 'Higuey centro, Beller 9 local 2';
+  static const String _mapUrl = 'https://maps.app.goo.gl/8ogwPYRF5gvkNEr3A';
+  static const String _whatsAppNumber = '8494314070';
+  static const String _phoneNumber = '8295319442';
+  static const String _email = 'fulltechsd@gmail.com';
+  static const String _instagramHandle = 'fulltechsrl';
+  static const String _facebookLabel = 'fulltech, srl';
+  static const String _instagramUrl = 'https://instagram.com/fulltechsrl';
+  static const String _facebookUrl =
+      'https://www.facebook.com/search/top/?q=fulltech%20srl';
+
+  Future<void> _openUrl(String url) async {
+    await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final whatsapp = config['whatsapp_numero']?.toString() ?? '';
-    final direccion =
-        config['direccion']?.toString().trim().isNotEmpty == true
-            ? config['direccion'].toString().trim()
-            : 'Higüey centro, Beller 9 local 2';
-    final telefono =
-        (config['telefono_contacto'] ?? config['telefono'])?.toString().trim();
-    final email = config['email']?.toString().trim();
-    final horario = config['horario']?.toString().trim();
-
-    const nombreTienda = 'FULLTECH SRL';
-    const businessLines = <String>[
-      'Seguridad',
-      'Cámaras',
-      'Motores',
-      'Software',
-      'Computadoras',
-      'Tecnología',
-    ];
+    final width = MediaQuery.sizeOf(context).width;
+    final isDesktop = width >= 900;
+    final isTablet = width >= 640;
 
     return Container(
       margin: const EdgeInsets.only(top: 24),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            const Color(0xFF061726),
-            const Color(0xFF0A1E33),
-            const Color(0xFF0D2440),
-          ],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
+        gradient: const LinearGradient(
+          colors: [Color(0xFF061726), Color(0xFF0B223A), Color(0xFF0E2A46)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 20,
+            color: Colors.black.withValues(alpha: 0.16),
+            blurRadius: 22,
             offset: const Offset(0, -4),
           ),
         ],
@@ -64,80 +58,177 @@ class StorefrontFooter extends StatelessWidget {
           20,
           24,
           20,
-          MediaQuery.of(context).padding.bottom + 16,
+          MediaQuery.of(context).padding.bottom + 18,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // === NOMBRE + DESCRIPCIÓN ===
-            const Text(
-              nombreTienda,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 0.5,
-                height: 1.1,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Soluciones tecnológicas para hogares, empresas y proyectos.',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.65),
-                fontSize: 12.5,
-                height: 1.4,
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-            const SizedBox(height: 18),
-
-            // === INFORMACIÓN COMPACTA (iconos pequeños) ===
-            _InfoRow(
-              icon: Icons.location_on_outlined,
-              text: direccion,
-            ),
-            if (telefono != null && telefono.isNotEmpty)
-              _InfoRow(
-                icon: Icons.phone_outlined,
-                text: telefono,
-                onTap: () => launchUrl(Uri.parse('tel:$telefono')),
-              ),
-            if (whatsapp.isNotEmpty)
-              _InfoRow(
-                icon: Icons.chat_outlined,
-                text: whatsapp,
-                onTap: () {
-                  final num = whatsapp.replaceAll(RegExp(r'[^\d]'), '');
-                  launchUrl(Uri.parse('https://wa.me/$num'));
-                },
-              ),
-            if (email != null && email.isNotEmpty)
-              _InfoRow(
-                icon: Icons.email_outlined,
-                text: email,
-                onTap: () => launchUrl(Uri.parse('mailto:$email')),
-              ),
-            if (horario != null && horario.isNotEmpty)
-              _InfoRow(
-                icon: Icons.access_time_rounded,
-                text: horario,
-              ),
-
-            const SizedBox(height: 16),
-
-            // === CHIPS DE SERVICIOS (finos, compactos) ===
             Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: businessLines
-                  .map((item) => _ServiceChip(label: item))
-                  .toList(),
+              spacing: 14,
+              runSpacing: 14,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: isDesktop ? 360 : double.infinity,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: const Text(
+                          'FULLTECH SRL',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Tecnologia, instalacion y soporte en un solo lugar.',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          height: 1.12,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Contactanos rapido, visita la tienda fisica o abre la ubicacion exacta en Google Maps.',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.72),
+                          fontSize: 13,
+                          height: 1.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  constraints: BoxConstraints(
+                    maxWidth: isDesktop ? 360 : double.infinity,
+                  ),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: secondaryColor.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.08),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Ubicacion',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _address,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.76),
+                          height: 1.45,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          FilledButton.icon(
+                            onPressed: () => Navigator.pushNamed(
+                              context,
+                              '/tienda/$slug/ubicacion',
+                            ),
+                            icon: const Icon(Icons.location_on_rounded),
+                            label: const Text('Ver ubicacion'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: primaryColor,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 13,
+                              ),
+                            ),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: () => _openUrl(_mapUrl),
+                            icon: const Icon(Icons.near_me_rounded),
+                            label: const Text('Ir alla'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              side: BorderSide(
+                                color: Colors.white.withValues(alpha: 0.18),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 13,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-
             const SizedBox(height: 18),
-
-            // === LÍNEA DIVISORIA FINA ===
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                _ContactPill(
+                  icon: Icons.chat_rounded,
+                  title: 'WhatsApp',
+                  value: _whatsAppNumber,
+                  onTap: () => _openUrl(
+                    'https://wa.me/1$_whatsAppNumber?text=${Uri.encodeComponent('Hola FULLTECH SRL, quiero informacion.')}',
+                  ),
+                ),
+                _ContactPill(
+                  icon: Icons.call_rounded,
+                  title: 'Tel',
+                  value: _phoneNumber,
+                  onTap: () => _openUrl('tel:$_phoneNumber'),
+                ),
+                _ContactPill(
+                  icon: Icons.email_rounded,
+                  title: 'Email',
+                  value: _email,
+                  onTap: () => _openUrl('mailto:$_email'),
+                ),
+                _ContactPill(
+                  icon: Icons.camera_alt_rounded,
+                  title: 'Instagram',
+                  value: '@$_instagramHandle',
+                  onTap: () => _openUrl(_instagramUrl),
+                ),
+                _ContactPill(
+                  icon: Icons.thumb_up_alt_rounded,
+                  title: 'Facebook',
+                  value: _facebookLabel,
+                  onTap: () => _openUrl(_facebookUrl),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
             Container(
               height: 1,
               width: double.infinity,
@@ -152,19 +243,25 @@ class StorefrontFooter extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 14),
-
-            // === COPYRIGHT ===
-            Center(
-              child: Text(
-                '© ${DateTime.now().year} $nombreTienda. Todos los derechos reservados.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.40),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w400,
-                  height: 1.3,
-                  letterSpacing: 0.2,
-                ),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: const [
+                _ServiceChip(label: 'Seguridad'),
+                _ServiceChip(label: 'Camaras'),
+                _ServiceChip(label: 'Motores'),
+                _ServiceChip(label: 'Software'),
+                _ServiceChip(label: 'Computadoras'),
+                _ServiceChip(label: 'Tecnologia'),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Text(
+              '© ${DateTime.now().year} FULLTECH SRL. Todos los derechos reservados.',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.42),
+                fontSize: isTablet ? 11.5 : 11,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ],
@@ -174,60 +271,77 @@ class StorefrontFooter extends StatelessWidget {
   }
 }
 
-/// Fila de información con icono pequeño y texto.
-class _InfoRow extends StatelessWidget {
+class _ContactPill extends StatelessWidget {
   final IconData icon;
-  final String text;
-  final VoidCallback? onTap;
+  final String title;
+  final String value;
+  final VoidCallback onTap;
 
-  const _InfoRow({
+  const _ContactPill({
     required this.icon,
-    required this.text,
-    this.onTap,
+    required this.title,
+    required this.value,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: GestureDetector(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
         onTap: onTap,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 26,
-              height: 26,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.07),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                icon,
-                size: 14,
-                color: Colors.white.withValues(alpha: 0.75),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Flexible(
-              child: Text(
-                text,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.80),
-                  fontSize: 12.5,
-                  height: 1.3,
-                  fontWeight: FontWeight.w400,
+        borderRadius: BorderRadius.circular(20),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.07),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(12),
                 ),
+                child: Icon(icon, color: Colors.white, size: 18),
               ),
-            ),
-          ],
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.66),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-/// Chip fino y elegante para servicios.
 class _ServiceChip extends StatelessWidget {
   final String label;
 
@@ -250,7 +364,7 @@ class _ServiceChip extends StatelessWidget {
         style: TextStyle(
           color: Colors.white.withValues(alpha: 0.82),
           fontSize: 11,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w600,
           letterSpacing: 0.2,
         ),
       ),

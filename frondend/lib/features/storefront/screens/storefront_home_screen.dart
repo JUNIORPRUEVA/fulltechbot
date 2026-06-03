@@ -9,10 +9,8 @@ import '../../public/widgets/public_store_layout.dart';
 import '../services/storefront_api_service.dart';
 import '../services/storefront_helpers.dart';
 import '../theme/storefront_theme.dart';
-import '../widgets/storefront_error_state.dart';
 import '../widgets/storefront_footer.dart';
 import '../widgets/storefront_product_card.dart';
-import '../widgets/storefront_skeleton.dart' hide StorefrontColors;
 import '../widgets/storefront_smart_image.dart';
 import '../widgets/storefront_trust_chips.dart';
 
@@ -473,13 +471,20 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
       onAdminTap: () => Navigator.pushNamed(context, '/login?redirect=/admin'),
       onCartTap: () =>
           Navigator.pushNamed(context, '/tienda/${widget.slug}/carrito'),
-      onWhatsappTap: whatsapp.isEmpty ? null : () => _openWhatsapp(whatsapp),
+      onWhatsappTap: () =>
+          _openWhatsapp(whatsapp.isEmpty ? '18494314070' : whatsapp),
       slivers: [
         // ==========================================
         // CHIPS DE CONFIANZA (Garantía, Tienda física, Soporte, Instalación, etc.)
         // ==========================================
         SliverToBoxAdapter(
-          child: StorefrontTrustChips(primaryColor: primaryColor),
+          child: StorefrontTrustChips(
+            primaryColor: primaryColor,
+            onLocationTap: () => Navigator.pushNamed(
+              context,
+              '/tienda/${widget.slug}/ubicacion',
+            ),
+          ),
         ),
 
         // ==========================================
@@ -763,6 +768,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
             config: config,
             primaryColor: primaryColor,
             secondaryColor: secondaryColor,
+            slug: widget.slug,
           ),
         ),
       ],

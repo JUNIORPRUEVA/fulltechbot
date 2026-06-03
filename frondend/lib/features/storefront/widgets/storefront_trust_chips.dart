@@ -2,14 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-/// Chips de confianza con animación automática tipo marquee/infinite scroll.
-/// Se desplaza suavemente hacia la izquierda para dar una impresión tecnológica.
 class StorefrontTrustChips extends StatefulWidget {
   final Color primaryColor;
+  final VoidCallback? onLocationTap;
 
   const StorefrontTrustChips({
     super.key,
     required this.primaryColor,
+    this.onLocationTap,
   });
 
   @override
@@ -17,7 +17,7 @@ class StorefrontTrustChips extends StatefulWidget {
 }
 
 class _StorefrontTrustChipsState extends State<StorefrontTrustChips> {
-  late ScrollController _scrollController;
+  late final ScrollController _scrollController;
   Timer? _scrollTimer;
   double _scrollPosition = 0;
   bool _isPaused = false;
@@ -38,15 +38,14 @@ class _StorefrontTrustChipsState extends State<StorefrontTrustChips> {
 
   void _startAutoScroll() {
     _scrollTimer = Timer.periodic(const Duration(milliseconds: 30), (timer) {
-      if (_isPaused || !mounted) return;
+      if (_isPaused || !mounted || !_scrollController.hasClients) return;
 
       final maxScroll = _scrollController.position.maxScrollExtent;
       if (maxScroll <= 0) return;
 
-      _scrollPosition += 0.8; // Velocidad suave y elegante
+      _scrollPosition += 0.8;
 
       if (_scrollPosition >= maxScroll) {
-        // Reinicio suave al inicio cuando llega al final
         _scrollPosition = 0;
         _scrollController.jumpTo(0);
       } else {
@@ -59,14 +58,16 @@ class _StorefrontTrustChipsState extends State<StorefrontTrustChips> {
     final chips = [
       _TrustChip(
         icon: Icons.verified_rounded,
-        label: 'Garantía',
+        label: 'Garantia',
         color: widget.primaryColor,
       ),
       const SizedBox(width: 8),
       _TrustChip(
         icon: Icons.store_rounded,
-        label: 'Tienda física',
+        label: 'Tienda fisica',
         color: widget.primaryColor,
+        onTap: widget.onLocationTap,
+        isHighlighted: widget.onLocationTap != null,
       ),
       const SizedBox(width: 8),
       _TrustChip(
@@ -77,7 +78,7 @@ class _StorefrontTrustChipsState extends State<StorefrontTrustChips> {
       const SizedBox(width: 8),
       _TrustChip(
         icon: Icons.build_circle_rounded,
-        label: 'Instalación',
+        label: 'Instalacion',
         color: widget.primaryColor,
       ),
       const SizedBox(width: 8),
@@ -94,12 +95,7 @@ class _StorefrontTrustChipsState extends State<StorefrontTrustChips> {
       ),
     ];
 
-    // Duplicamos los chips para que el scroll infinito se vea continuo
-    return [
-      ...chips,
-      const SizedBox(width: 16),
-      ...chips,
-    ];
+    return [...chips, const SizedBox(width: 16), ...chips];
   }
 
   @override
@@ -108,8 +104,8 @@ class _StorefrontTrustChipsState extends State<StorefrontTrustChips> {
     final contentPadding = screenWidth >= 1320
         ? ((screenWidth - 1240) / 2).clamp(16.0, 9999.0)
         : screenWidth >= 700
-            ? 20.0
-            : 14.0;
+        ? 20.0
+        : 14.0;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isPaused = true),
@@ -121,7 +117,7 @@ class _StorefrontTrustChipsState extends State<StorefrontTrustChips> {
         child: Padding(
           padding: EdgeInsets.fromLTRB(contentPadding, 8, contentPadding, 4),
           child: SizedBox(
-            height: 34,
+            height: 38,
             child: ListView(
               controller: _scrollController,
               scrollDirection: Axis.horizontal,
@@ -139,21 +135,30 @@ class _TrustChip extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
+  final VoidCallback? onTap;
+  final bool isHighlighted;
 
   const _TrustChip({
     required this.icon,
     required this.label,
     required this.color,
+    this.onTap,
+    this.isHighlighted = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    final chip = AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isHighlighted ? color.withValues(alpha: 0.10) : Colors.white,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFFE5EAF1)),
+        border: Border.all(
+          color: isHighlighted
+              ? color.withValues(alpha: 0.16)
+              : const Color(0xFFE5EAF1),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -176,6 +181,17 @@ class _TrustChip extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+
+    if (onTap == null) return chip;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: chip,
       ),
     );
   }
