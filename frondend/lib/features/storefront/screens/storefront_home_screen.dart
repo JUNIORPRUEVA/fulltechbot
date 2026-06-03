@@ -1094,7 +1094,7 @@ class _AutoScrollCategoriesState extends State<_AutoScrollCategories>
     _scrollController = ScrollController();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 30),
+      duration: const Duration(seconds: 12),
     )..addListener(_onAnimationTick);
 
     // Iniciar el scroll automático después del primer frame
@@ -1116,8 +1116,8 @@ class _AutoScrollCategoriesState extends State<_AutoScrollCategories>
     final maxScroll = _scrollController.position.maxScrollExtent;
     if (maxScroll <= 0) return;
 
-    // Duración proporcional a la cantidad de contenido
-    final durationMs = (maxScroll / 0.5).round().clamp(15000, 45000);
+    // Duración proporcional a la cantidad de contenido - más rápido
+    final durationMs = (maxScroll / 1.5).round().clamp(5000, 15000);
     final duration = Duration(milliseconds: durationMs);
 
     _animController.duration = duration;
@@ -1160,7 +1160,7 @@ class _AutoScrollCategoriesState extends State<_AutoScrollCategories>
       return;
     }
 
-    final remainingMs = (remaining / 0.5).round().clamp(5000, 30000);
+    final remainingMs = (remaining / 1.5).round().clamp(3000, 10000);
     _animController.duration = Duration(milliseconds: remainingMs);
     _animController.forward(from: _animController.value);
   }

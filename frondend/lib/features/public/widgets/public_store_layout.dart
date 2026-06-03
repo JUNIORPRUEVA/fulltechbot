@@ -5,13 +5,6 @@ import '../../storefront/widgets/storefront_app_bar.dart';
 import '../../storefront/widgets/storefront_hero_slider.dart';
 import '../../storefront/widgets/storefront_whatsapp_button.dart' as wa;
 
-/// Layout principal de la tienda pública FULLTECH SRL.
-/// Incluye AppBar superior fijo (fuera del scroll), slider hero,
-/// contenido (slivers) y WhatsApp flotante.
-///
-/// El AppBar está fuera del CustomScrollView para garantizar que
-/// los botones (menú, buscador, carrito) sean siempre presionables
-/// y no compitan con el gesto de scroll.
 class PublicStoreLayout extends StatelessWidget {
   final String slug;
   final String storeName;
@@ -52,10 +45,10 @@ class PublicStoreLayout extends StatelessWidget {
     this.floatingActionButton,
   });
 
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
   bool _isDesktop(BuildContext context) =>
       MediaQuery.sizeOf(context).width >= 1024;
-
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   Widget build(BuildContext context) {
@@ -70,48 +63,44 @@ class PublicStoreLayout extends StatelessWidget {
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: const Color(0xFFF5F7FA),
-      drawer: isDesktop
-          ? null
-          : _PublicMenuDrawer(
-              slug: slug,
-              onCategoriesTap: onCategoriesTap,
-              onOffersTap: onOffersTap,
-              onAdminTap: onAdminTap,
-              onCartTap: onCartTap,
-              onWhatsappTap: onWhatsappTap,
-            ),
+      drawerEnableOpenDragGesture: true,
+      drawerEdgeDragWidth: 34,
+      drawerScrimColor: Colors.black.withValues(alpha: 0.36),
+      drawer: _PublicMenuDrawer(
+        slug: slug,
+        onCategoriesTap: onCategoriesTap,
+        onOffersTap: onOffersTap,
+        onAdminTap: onAdminTap,
+        onCartTap: onCartTap,
+        onWhatsappTap: onWhatsappTap,
+      ),
       body: Stack(
         children: [
-          // ==========================================
-          // CONTENIDO PRINCIPAL
-          // ==========================================
           Column(
             children: [
-              // ==========================================
-              // APPBAR FIJO - FUERA DEL SCROLL
-              // ==========================================
               StorefrontAppBar(
                 slug: slug,
                 storeName: storeName,
                 primaryColor: primaryColor,
                 secondaryColor: secondaryColor,
-                onMenuTap: () => _scaffoldKey.currentState?.openDrawer(),
+                onMenuTap: () {
+                  final state = _scaffoldKey.currentState;
+                  if (state == null) return;
+                  if (state.isDrawerOpen) {
+                    Navigator.of(context).maybePop();
+                  } else {
+                    state.openDrawer();
+                  }
+                },
                 onSearchTap: onSearchTap,
                 onCartTap: onCartTap,
               ),
-
-              // ==========================================
-              // CONTENIDO SCROLLABLE
-              // ==========================================
               Expanded(
                 child: CustomScrollView(
                   physics: const BouncingScrollPhysics(
                     parent: AlwaysScrollableScrollPhysics(),
                   ),
                   slivers: [
-                    // ==========================================
-                    // HERO SLIDER PRINCIPAL
-                    // ==========================================
                     SliverPadding(
                       padding: EdgeInsets.fromLTRB(
                         sidePadding,
@@ -133,21 +122,12 @@ class PublicStoreLayout extends StatelessWidget {
                         ),
                       ),
                     ),
-
-                    // ==========================================
-                    // CONTENIDO ADICIONAL (categorías, productos, footer)
-                    // ==========================================
                     ...slivers,
                   ],
                 ),
               ),
             ],
           ),
-
-          // ==========================================
-          // BOTÓN FLOTANTE WHATSAPP
-          // Posicionado sobre el contenido, respeta SafeArea
-          // ==========================================
           if (floatingActionButton != null)
             Positioned(
               right: isDesktop ? 28 : 18,
@@ -167,14 +147,12 @@ class PublicStoreLayout extends StatelessWidget {
                 isDesktop: isDesktop,
               ),
             ),
-
-          // ==========================================
-          // PROMPT DE INSTALACIÓN PWA
-          // Aparece en la parte inferior sin tapar WhatsApp
-          // ==========================================
-          InstallPwaPrompt(
-            primaryColor: primaryColor,
-            secondaryColor: secondaryColor,
+          IgnorePointer(
+            ignoring: false,
+            child: InstallPwaPrompt(
+              primaryColor: primaryColor,
+              secondaryColor: secondaryColor,
+            ),
           ),
         ],
       ),
@@ -182,10 +160,6 @@ class PublicStoreLayout extends StatelessWidget {
   }
 }
 
-// ==========================================
-// PUBLIC MENU DRAWER
-// ==========================================
-/// Drawer lateral premium con diseño elegante y profesional.
 class _PublicMenuDrawer extends StatelessWidget {
   final String slug;
   final VoidCallback onCategoriesTap;
@@ -205,134 +179,153 @@ class _PublicMenuDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDesktop = MediaQuery.sizeOf(context).width >= 1024;
+
     return Drawer(
+      width: isDesktop ? 360 : null,
       backgroundColor: const Color(0xFFF8FAFC),
       child: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        child: Column(
           children: [
-            // Header premium
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF0F172A).withValues(alpha: 0.15),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.asset(
-                      'assets/logo_principal.jpeg',
-                      width: 40,
-                      height: 40,
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF3B82F6), Color(0xFF60A5FA)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        alignment: Alignment.center,
-                        child: const Text(
-                          'F',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(
+                            0xFF0F172A,
+                          ).withValues(alpha: 0.15),
+                          blurRadius: 16,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.asset(
+                                'assets/logo_principal.jpeg',
+                                width: 40,
+                                height: 40,
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    Container(
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          colors: [
+                                            Color(0xFF3B82F6),
+                                            Color(0xFF60A5FA),
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: const Text(
+                                        'F',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                    ),
+                              ),
+                            ),
+                            const Spacer(),
+                            IconButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              icon: const Icon(Icons.close_rounded),
+                              color: Colors.white,
+                              splashRadius: 20,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        const Text(
+                          'FULLTECH',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Tienda online premium',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.6),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  const Text(
-                    'FULLTECH',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                      letterSpacing: 0.5,
-                    ),
+                  const SizedBox(height: 20),
+                  _DrawerTile(
+                    icon: Icons.home_rounded,
+                    title: 'Inicio',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, '/tienda/$slug');
+                    },
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Tienda online premium',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.6),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
+                  _DrawerTile(
+                    icon: Icons.grid_view_rounded,
+                    title: 'Categorias',
+                    onTap: () {
+                      Navigator.pop(context);
+                      onCategoriesTap();
+                    },
                   ),
+                  _DrawerTile(
+                    icon: Icons.local_offer_rounded,
+                    title: 'Ofertas',
+                    onTap: () {
+                      Navigator.pop(context);
+                      onOffersTap();
+                    },
+                  ),
+                  _DrawerTile(
+                    icon: Icons.shopping_cart_rounded,
+                    title: 'Carrito',
+                    onTap: () {
+                      Navigator.pop(context);
+                      onCartTap();
+                    },
+                  ),
+                  if (onWhatsappTap != null)
+                    _DrawerTile(
+                      icon: Icons.chat_rounded,
+                      title: 'WhatsApp',
+                      iconColor: const Color(0xFF25D366),
+                      onTap: () {
+                        Navigator.pop(context);
+                        onWhatsappTap!.call();
+                      },
+                    ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
-
-            // Menú items
-            _DrawerTile(
-              icon: Icons.home_rounded,
-              title: 'Inicio',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/tienda/$slug');
-              },
-            ),
-            _DrawerTile(
-              icon: Icons.grid_view_rounded,
-              title: 'Categorías',
-              onTap: () {
-                Navigator.pop(context);
-                onCategoriesTap();
-              },
-            ),
-            _DrawerTile(
-              icon: Icons.local_offer_rounded,
-              title: 'Ofertas',
-              onTap: () {
-                Navigator.pop(context);
-                onOffersTap();
-              },
-            ),
-            _DrawerTile(
-              icon: Icons.shopping_cart_rounded,
-              title: 'Carrito',
-              onTap: () {
-                Navigator.pop(context);
-                onCartTap();
-              },
-            ),
-            if (onWhatsappTap != null)
-              _DrawerTile(
-                icon: Icons.chat_rounded,
-                title: 'WhatsApp',
-                iconColor: const Color(0xFF25D366),
-                onTap: () {
-                  Navigator.pop(context);
-                  onWhatsappTap!.call();
-                },
-              ),
-
-            const Spacer(),
-
-            // Admin / Login al final
             Container(
               decoration: BoxDecoration(
                 border: Border(
@@ -341,10 +334,10 @@ class _PublicMenuDrawer extends StatelessWidget {
                   ),
                 ),
               ),
-              padding: const EdgeInsets.only(top: 12),
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
               child: _DrawerTile(
                 icon: Icons.admin_panel_settings_rounded,
-                title: 'Iniciar sesión',
+                title: 'Iniciar sesion',
                 iconColor: const Color(0xFF64748B),
                 onTap: () {
                   Navigator.pop(context);
@@ -375,6 +368,7 @@ class _DrawerTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = iconColor ?? const Color(0xFF0F172A);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Material(
@@ -387,9 +381,7 @@ class _DrawerTile extends StatelessWidget {
           highlightColor: color.withValues(alpha: 0.03),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-            ),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(16)),
             child: Row(
               children: [
                 Container(

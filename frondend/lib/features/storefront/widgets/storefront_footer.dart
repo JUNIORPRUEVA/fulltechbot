@@ -231,20 +231,11 @@ class _ContactColumn extends StatelessWidget {
           runSpacing: 10,
           children: [
             _ContactCard(
-              icon: Icons.chat_rounded,
-              title: 'WhatsApp',
-              value: storefrontWhatsapp,
-              color: const Color(0xFF25D366),
-              onTap: () => openUrl(
-                'https://wa.me/1$storefrontWhatsapp?text=${Uri.encodeComponent('Hola FULLTECH SRL, quiero informacion.')}',
-              ),
-            ),
-            _ContactCard(
               icon: Icons.call_rounded,
               title: 'Tel',
               value: storefrontPhone,
               color: const Color(0xFF3B82F6),
-              onTap: () => openUrl('tel:$storefrontPhone'),
+              onTap: () => openUrl('tel:+1$storefrontPhone'),
             ),
             _ContactCard(
               icon: Icons.email_rounded,
@@ -252,6 +243,13 @@ class _ContactColumn extends StatelessWidget {
               value: storefrontEmail,
               color: const Color(0xFFF97316),
               onTap: () => openUrl('mailto:$storefrontEmail'),
+            ),
+            _ContactCard(
+              icon: Icons.location_on_rounded,
+              title: 'Ubicacion',
+              value: 'Ver mapa',
+              color: const Color(0xFFEF4444),
+              onTap: StorefrontMapView.openStoreMap,
             ),
             _ContactCard(
               icon: Icons.camera_alt_rounded,
