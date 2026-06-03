@@ -83,7 +83,7 @@ class StorefrontRelatedProductsSection extends StatelessWidget {
               crossAxisSpacing: 10,
               mainAxisSpacing: 10,
             ),
-            itemCount: products.length > 6 ? 6 : products.length,
+            itemCount: products.length > 4 ? 4 : products.length,
             itemBuilder: (context, index) {
               return StorefrontProductCard(
                 product: Map<String, dynamic>.from(

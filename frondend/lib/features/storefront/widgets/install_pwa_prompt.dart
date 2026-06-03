@@ -49,7 +49,7 @@ bool isPwaInstalled() {
 /// Helper para detectar si es iOS en general (cualquier browser)
 bool _isiOS() {
   try {
-    final userAgent = html.window.navigator.userAgent?.toLowerCase() ?? '';
+    final userAgent = html.window.navigator.userAgent.toLowerCase();
     return userAgent.contains('iphone') ||
         userAgent.contains('ipad') ||
         userAgent.contains('ipod');
@@ -63,6 +63,7 @@ const String _lsDismissedKey = 'fulltech_pwa_dismissed_at';
 const String _lsInstalledKey = 'fulltech_pwa_installed';
 const String _lsIOSDismissedKey = 'fulltech_pwa_ios_dismissed_at';
 const int _dismissHours = 24;
+const Duration _mobileInstallPromptDelay = Duration(minutes: 1);
 
 /// Widget principal para el prompt de instalación PWA
 class InstallPwaPrompt extends StatefulWidget {
@@ -100,6 +101,11 @@ class _InstallPwaPromptState extends State<InstallPwaPrompt>
 
   /// Si beforeinstallprompt está disponible (JS bridge)
   bool _pwaAvailable = false;
+
+  bool get _isMobileViewport {
+    if (!mounted) return false;
+    return MediaQuery.sizeOf(context).width < 700;
+  }
 
   @override
   void initState() {
@@ -179,10 +185,10 @@ class _InstallPwaPromptState extends State<InstallPwaPrompt>
         return;
       }
 
-      debugPrint('[PWA] iOS detectado - programando instrucciones manuales');
-      _showTimer = Timer(const Duration(seconds: 4), () {
+      debugPrint('[PWA] iOS detectado - programando boton de instalacion');
+      _showTimer = Timer(_mobileInstallPromptDelay, () {
         if (mounted) {
-          setState(() => _state = _PwaState.iosInstructions);
+          setState(() => _state = _PwaState.floatingButton);
           _animController.forward();
         }
       });
@@ -223,11 +229,19 @@ class _InstallPwaPromptState extends State<InstallPwaPrompt>
         timer.cancel();
         debugPrint('[PWA] beforeinstallprompt disponible después de ${attempts * 500}ms');
 
-        // Mostrar banner después de 3s desde que está disponible
-        _showTimer = Timer(const Duration(seconds: 3), () {
+        final delay = _isMobileViewport
+            ? _mobileInstallPromptDelay
+            : const Duration(seconds: 3);
+
+        // En movil mostramos primero el boton; en desktop dejamos el banner.
+        _showTimer = Timer(delay, () {
           if (mounted && _state == _PwaState.hidden) {
-            debugPrint('[PWA] Mostrando banner de instalación');
-            setState(() => _state = _PwaState.expandedBanner);
+            debugPrint('[PWA] Mostrando prompt de instalacion');
+            setState(
+              () => _state = _isMobileViewport
+                  ? _PwaState.floatingButton
+                  : _PwaState.expandedBanner,
+            );
             _animController.forward();
           }
         });
@@ -382,7 +396,11 @@ class _InstallPwaPromptState extends State<InstallPwaPrompt>
         borderRadius: BorderRadius.circular(999),
         child: InkWell(
           onTap: () {
-            setState(() => _state = _PwaState.expandedBanner);
+            setState(
+              () => _state = _isiOS()
+                  ? _PwaState.iosInstructions
+                  : _PwaState.expandedBanner,
+            );
           },
           borderRadius: BorderRadius.circular(999),
           child: Ink(

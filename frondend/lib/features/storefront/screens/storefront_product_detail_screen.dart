@@ -118,10 +118,12 @@ class _StorefrontProductDetailScreenState
 
   void _precacheProductImages(Map<String, dynamic> product) {
     if (!mounted) return;
-    final images = StorefrontHelpers.getProductImages(product);
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final maxImagesToPrecache = screenWidth < 768 ? 1 : 3;
-    for (final url in images.take(maxImagesToPrecache)) {
+    if (screenWidth < 768) {
+      return;
+    }
+    final images = StorefrontHelpers.getProductImages(product);
+    for (final url in images.take(2)) {
       if (url.startsWith('http')) {
         precacheImage(NetworkImage(url), context);
       }
@@ -277,6 +279,225 @@ class _StorefrontProductDetailScreenState
     );
     final video = product['video']?.toString().trim() ?? '';
     final category = product['categoria']?.toString().trim() ?? '';
+    final scrollContent = CustomScrollView(
+      physics: isDesktop
+          ? const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
+            )
+          : const ClampingScrollPhysics(),
+      slivers: [
+        SliverToBoxAdapter(
+          child: Column(
+            children: [
+              StorefrontProductDetailHeroImage(
+                product: product,
+                images: gallery,
+                slug: widget.slug,
+                accentColor: secondaryColor,
+                onBack: () => Navigator.pop(context),
+                onCart: () => Navigator.pushNamed(
+                  context,
+                  '/tienda/${widget.slug}/carrito',
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  isDesktop ? 32 : 16,
+                  20,
+                  isDesktop ? 32 : 16,
+                  isDesktop ? 40 : 120,
+                ),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 800),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                          if (category.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: primaryColor.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text(
+                                  category,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: primaryColor,
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          Text(
+                            product['titulo']?.toString() ?? '',
+                            maxLines: isDesktop ? 3 : 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: isDesktop ? 34 : 24,
+                              fontWeight: FontWeight.w900,
+                              height: 1.15,
+                              color: const Color(0xFF0F172A),
+                              letterSpacing: -0.8,
+                            ),
+                          ),
+                          if (description.isNotEmpty) ...[
+                            const SizedBox(height: 10),
+                            Text(
+                              description,
+                              maxLines: isDesktop ? 5 : 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Color(0xFF64748B),
+                                fontSize: 14.5,
+                                height: 1.55,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 16),
+                          StorefrontPriceWidget(
+                            precio: price,
+                            precioOriginal: originalPrice,
+                            large: true,
+                            primaryColor: primaryColor,
+                            currencyPrefix: 'RD\$',
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              _StatusChip(
+                                label: stock > 0 ? 'Disponible' : 'Agotado',
+                                color: stock > 0
+                                    ? const Color(0xFF16A34A)
+                                    : const Color(0xFFDC2626),
+                              ),
+                              if (originalPrice != null &&
+                                  price != null &&
+                                  originalPrice > price) ...[
+                                const SizedBox(width: 8),
+                                const _StatusChip(
+                                  label: 'Oferta',
+                                  color: Color(0xFFEA580C),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                          if (!isDesktop) ...[
+                            Row(
+                              children: [
+                                const Text(
+                                  'Cantidad',
+                                  style: TextStyle(
+                                    color: Color(0xFF64748B),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                StorefrontQuantitySelector(
+                                  quantity: _quantity,
+                                  onDecrease: () {
+                                    if (_quantity > 1) {
+                                      setState(() => _quantity--);
+                                    }
+                                  },
+                                  onIncrease: () => setState(() => _quantity++),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                          ],
+                          if (isDesktop) ...[
+                            StorefrontProductActionBar(
+                              isDesktop: true,
+                              canBuy: canBuy,
+                              canWhatsapp: whatsapp.isNotEmpty,
+                              quantity: _quantity,
+                              primaryColor: primaryColor,
+                              onDecrease: () {
+                                if (_quantity > 1) {
+                                  setState(() => _quantity--);
+                                }
+                              },
+                              onIncrease: () => setState(() => _quantity++),
+                              onAddToCart: canBuy ? () => _addToCart() : null,
+                              onBuyNow: canBuy
+                                  ? () => _addToCart(goToCart: true)
+                                  : null,
+                              onWhatsapp: whatsapp.isNotEmpty
+                                  ? () => _openWhatsApp(whatsapp)
+                                  : null,
+                            ),
+                            const SizedBox(height: 24),
+                          ],
+                          if (description.isNotEmpty) ...[
+                            StorefrontProductInfoSection(
+                              title: 'Descripcion del producto',
+                              content: description,
+                              accentColor: secondaryColor,
+                            ),
+                            const SizedBox(height: 20),
+                          ],
+                          if (video.isNotEmpty) ...[
+                            Container(
+                              height: 1,
+                              width: double.infinity,
+                              color: const Color(0xFFE8EEF4),
+                            ),
+                            const SizedBox(height: 20),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 50,
+                              child: FilledButton.icon(
+                                onPressed: () => launchUrl(Uri.parse(video)),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: StorefrontColors.primary,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                                icon: const Icon(
+                                  Icons.play_circle_outline_rounded,
+                                  size: 20,
+                                ),
+                                label: const Text(
+                                  'Ver video del producto',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                          ],
+                          if (isDesktop) ...[
+                            StorefrontRelatedProductsSection(
+                              products: _relatedProducts,
+                              slug: widget.slug,
+                              primaryColor: primaryColor,
+                              secondaryColor: secondaryColor,
+                              whatsapp: whatsapp,
+                            ),
+                            const SizedBox(height: 24),
+                          ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
@@ -295,224 +516,12 @@ class _StorefrontProductDetailScreenState
       body: SafeArea(
         top: false,
         bottom: false,
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: CustomScrollView(
-            physics: const BouncingScrollPhysics(
-              parent: AlwaysScrollableScrollPhysics(),
-            ),
-            slivers: [
-              SliverToBoxAdapter(
-                child: Column(
-                  children: [
-                    StorefrontProductDetailHeroImage(
-                      product: product,
-                      images: gallery,
-                      slug: widget.slug,
-                      accentColor: secondaryColor,
-                      onBack: () => Navigator.pop(context),
-                      onCart: () => Navigator.pushNamed(
-                        context,
-                        '/tienda/${widget.slug}/carrito',
-                      ),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        isDesktop ? 32 : 16,
-                        20,
-                        isDesktop ? 32 : 16,
-                        isDesktop ? 40 : 120,
-                      ),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 800),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                                if (category.isNotEmpty)
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 10),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 5,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: primaryColor.withValues(alpha: 0.08),
-                                        borderRadius: BorderRadius.circular(999),
-                                      ),
-                                      child: Text(
-                                        category,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          color: primaryColor,
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                Text(
-                                  product['titulo']?.toString() ?? '',
-                                  maxLines: isDesktop ? 3 : 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: isDesktop ? 34 : 24,
-                                    fontWeight: FontWeight.w900,
-                                    height: 1.15,
-                                    color: const Color(0xFF0F172A),
-                                    letterSpacing: -0.8,
-                                  ),
-                                ),
-                                if (description.isNotEmpty) ...[
-                                  const SizedBox(height: 10),
-                                  Text(
-                                    description,
-                                    maxLines: isDesktop ? 5 : 3,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: Color(0xFF64748B),
-                                      fontSize: 14.5,
-                                      height: 1.55,
-                                    ),
-                                  ),
-                                ],
-                                const SizedBox(height: 16),
-                                StorefrontPriceWidget(
-                                  precio: price,
-                                  precioOriginal: originalPrice,
-                                  large: true,
-                                  primaryColor: primaryColor,
-                                  currencyPrefix: 'RD\$',
-                                ),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    _StatusChip(
-                                      label: stock > 0 ? 'Disponible' : 'Agotado',
-                                      color: stock > 0
-                                          ? const Color(0xFF16A34A)
-                                          : const Color(0xFFDC2626),
-                                    ),
-                                    if (originalPrice != null &&
-                                        price != null &&
-                                        originalPrice > price) ...[
-                                      const SizedBox(width: 8),
-                                      const _StatusChip(
-                                        label: 'Oferta',
-                                        color: Color(0xFFEA580C),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                                const SizedBox(height: 20),
-                                if (!isDesktop) ...[
-                                  Row(
-                                    children: [
-                                      const Text(
-                                        'Cantidad',
-                                        style: TextStyle(
-                                          color: Color(0xFF64748B),
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      StorefrontQuantitySelector(
-                                        quantity: _quantity,
-                                        onDecrease: () {
-                                          if (_quantity > 1) {
-                                            setState(() => _quantity--);
-                                          }
-                                        },
-                                        onIncrease: () => setState(() => _quantity++),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 20),
-                                ],
-                                if (isDesktop) ...[
-                                  StorefrontProductActionBar(
-                                    isDesktop: true,
-                                    canBuy: canBuy,
-                                    canWhatsapp: whatsapp.isNotEmpty,
-                                    quantity: _quantity,
-                                    primaryColor: primaryColor,
-                                    onDecrease: () {
-                                      if (_quantity > 1) {
-                                        setState(() => _quantity--);
-                                      }
-                                    },
-                                    onIncrease: () => setState(() => _quantity++),
-                                    onAddToCart: canBuy ? () => _addToCart() : null,
-                                    onBuyNow: canBuy
-                                        ? () => _addToCart(goToCart: true)
-                                        : null,
-                                    onWhatsapp: whatsapp.isNotEmpty
-                                        ? () => _openWhatsApp(whatsapp)
-                                        : null,
-                                  ),
-                                  const SizedBox(height: 24),
-                                ],
-                                if (description.isNotEmpty) ...[
-                                  StorefrontProductInfoSection(
-                                    title: 'Descripcion del producto',
-                                    content: description,
-                                    accentColor: secondaryColor,
-                                  ),
-                                  const SizedBox(height: 20),
-                                ],
-                                if (video.isNotEmpty) ...[
-                                  Container(
-                                    height: 1,
-                                    width: double.infinity,
-                                    color: const Color(0xFFE8EEF4),
-                                  ),
-                                  const SizedBox(height: 20),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    height: 50,
-                                    child: FilledButton.icon(
-                                      onPressed: () => launchUrl(Uri.parse(video)),
-                                      style: FilledButton.styleFrom(
-                                        backgroundColor: StorefrontColors.primary,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(14),
-                                        ),
-                                      ),
-                                      icon: const Icon(
-                                        Icons.play_circle_outline_rounded,
-                                        size: 20,
-                                      ),
-                                      label: const Text(
-                                        'Ver video del producto',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 15,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 24),
-                                ],
-                                StorefrontRelatedProductsSection(
-                                  products: _relatedProducts,
-                                  slug: widget.slug,
-                                  primaryColor: primaryColor,
-                                  secondaryColor: secondaryColor,
-                                  whatsapp: whatsapp,
-                                ),
-                                const SizedBox(height: 24),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+        child: isDesktop
+            ? FadeTransition(
+                opacity: _fadeAnimation,
+                child: scrollContent,
+              )
+            : scrollContent,
       ),
     );
   }

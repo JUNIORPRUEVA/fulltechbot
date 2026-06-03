@@ -46,7 +46,6 @@ class _StorefrontProductDetailHeroImageState
 
   @override
   Widget build(BuildContext context) {
-    final hasImages = widget.images.isNotEmpty;
     final productId = widget.product['id']?.toString() ?? '';
     final version = StorefrontHelpers.getProductVersion(widget.product) ?? '';
     final mediaQuery = MediaQuery.of(context);
@@ -54,8 +53,16 @@ class _StorefrontProductDetailHeroImageState
     final topPadding = mediaQuery.padding.top;
     final heroHeight = mediaQuery.size.height * 0.42;
     final useSwipeGallery = screenWidth >= 768;
+    final requestWidth = screenWidth < 768 ? 900 : 1400;
+    final requestHeight = screenWidth < 768 ? 900 : 1400;
+    final gallery = _resolveGallery(
+      version: version,
+      width: requestWidth,
+      height: requestHeight,
+    );
+    final hasImages = gallery.isNotEmpty;
     final activeIndex = hasImages
-        ? _currentIndex.clamp(0, widget.images.length - 1)
+        ? _currentIndex.clamp(0, gallery.length - 1)
         : 0;
 
     return SizedBox(
@@ -77,17 +84,15 @@ class _StorefrontProductDetailHeroImageState
                           controller: _pageController,
                           onPageChanged: (index) =>
                               setState(() => _currentIndex = index),
-                          itemCount: widget.images.length,
+                          itemCount: gallery.length,
                           itemBuilder: (context, index) {
                             return _buildImage(
-                              widget.images[index],
-                              version: version,
+                              gallery[index],
                             );
                           },
                         )
                       : _buildImage(
-                          widget.images[activeIndex],
-                          version: version,
+                          gallery[activeIndex],
                         )
                   : _buildPlaceholder(),
             ),
@@ -132,7 +137,7 @@ class _StorefrontProductDetailHeroImageState
               right: 0,
               bottom: 16,
               child: _ImageIndicators(
-                count: widget.images.length,
+                count: gallery.length,
                 currentIndex: activeIndex,
                 accentColor: widget.accentColor,
                 compact: !useSwipeGallery,
@@ -150,8 +155,8 @@ class _StorefrontProductDetailHeroImageState
                 ),
                 child: Text(
                   useSwipeGallery
-                      ? '${activeIndex + 1}/${widget.images.length}'
-                      : '${widget.images.length} imagenes',
+                      ? '${activeIndex + 1}/${gallery.length}'
+                      : '${gallery.length} imagenes',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 12,
@@ -165,14 +170,54 @@ class _StorefrontProductDetailHeroImageState
     );
   }
 
-  Widget _buildImage(String source, {required String version}) {
-    final resolved = StorefrontImageResolver.resolve(
-      source,
-      version: version,
-    );
-    final imageUrl = resolved?.value ?? '';
+  List<String> _resolveGallery({
+    required String version,
+    required int width,
+    required int height,
+  }) {
+    final rawImages = <dynamic>[
+      widget.product['imagen_destacada_url'],
+      widget.product['imageUrl'],
+      widget.product['image'],
+      widget.product['foto'],
+      widget.product['imagen1'],
+      widget.product['imagen2'],
+      widget.product['imagen3'],
+    ];
 
-    if (imageUrl.isEmpty) {
+    final gallery = widget.product['gallery'];
+    if (gallery is Iterable) {
+      rawImages.addAll(gallery);
+    }
+
+    final images = widget.product['images'];
+    if (images is Iterable) {
+      rawImages.addAll(images);
+    }
+
+    final mediaUrls = widget.product['media_urls'];
+    if (mediaUrls is Iterable) {
+      rawImages.addAll(mediaUrls);
+    }
+
+    final resolved = StorefrontImageResolver.resolveGallery(
+      rawImages,
+      version: version,
+      width: width,
+      height: height,
+      quality: 68,
+      fit: 'inside',
+    );
+
+    if (resolved.isNotEmpty) {
+      return resolved;
+    }
+
+    return widget.images;
+  }
+
+  Widget _buildImage(String imageUrl) {
+    if (imageUrl.trim().isEmpty) {
       return _buildPlaceholder();
     }
 
