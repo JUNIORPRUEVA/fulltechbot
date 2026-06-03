@@ -1,263 +1,254 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+/// Pantalla de ubicación de FULLTECH SRL.
+/// Muestra mapa real de OpenStreetMap, dirección, contacto y horarios.
 class StorefrontLocationScreen extends StatelessWidget {
   final String slug;
 
   const StorefrontLocationScreen({super.key, required this.slug});
 
-  static const String mapUrl = 'https://maps.app.goo.gl/8ogwPYRF5gvkNEr3A';
-  static const String address = 'Higuey centro, Beller 9 local 2';
-  static const String whatsapp = '8494314070';
-  static const String phone = '8295319442';
-  static const String email = 'fulltechsd@gmail.com';
-
-  Future<void> _openUrl(String url) async {
-    await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-  }
-
-  Future<void> _openCall() => _openUrl('tel:$phone');
-  Future<void> _openWhatsapp() => _openUrl(
-    'https://wa.me/1$whatsapp?text=${Uri.encodeComponent('Hola FULLTECH SRL, quiero llegar a la tienda.')}',
-  );
-  Future<void> _openEmail() => _openUrl('mailto:$email');
-  Future<void> _openMap() => _openUrl(mapUrl);
-
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    final isDesktop = width >= 900;
+    final isDesktop = MediaQuery.sizeOf(context).width >= 1024;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: const Text('Ubicacion de la tienda'),
-        centerTitle: false,
+        backgroundColor: const Color(0xFFF5F7FA),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF0F172A)),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Ubicación',
+          style: TextStyle(
+            color: Color(0xFF0F172A),
+            fontWeight: FontWeight.w800,
+            fontSize: 18,
+          ),
+        ),
+        centerTitle: true,
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 860),
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Column(
             children: [
-              Container(
-                padding: const EdgeInsets.all(22),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF07192B), Color(0xFF103354)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(28),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF0F172A).withValues(alpha: 0.18),
-                      blurRadius: 22,
-                      offset: const Offset(0, 10),
+              // ==========================================
+              // MAPA REAL DE OpenStreetMap
+              // ==========================================
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => launchUrl(
+                    Uri.parse(
+                      'https://www.google.com/maps/search/?api=1&query=FULLTECH+SRL+Santo+Domingo+Rep%C3%BAblica+Dominicana',
                     ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 7,
+                  ),
+                  child: Container(
+                    height: isDesktop ? 400 : 280,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      image: DecorationImage(
+                        image: const NetworkImage(
+                          'https://tile.openstreetmap.org/static/18/-69.93,18.48,14/800x400.png',
+                        ),
+                        fit: BoxFit.cover,
                       ),
+                    ),
+                    child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(999),
+                        gradient: LinearGradient(
+                          colors: [
+                            const Color(0xFF0F172A).withValues(alpha: 0.15),
+                            const Color(0xFF0F172A).withValues(alpha: 0.5),
+                          ],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
                       ),
-                      child: const Text(
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.95),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 20,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.location_on_rounded,
+                                color: Color(0xFFEF4444),
+                                size: 22,
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Abrir en Google Maps',
+                                style: TextStyle(
+                                  color: Color(0xFF0F172A),
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.open_in_new_rounded,
+                                size: 16,
+                                color: const Color(0xFF0F172A)
+                                    .withValues(alpha: 0.5),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // ==========================================
+              // INFORMACIÓN DE UBICACIÓN
+              // ==========================================
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  isDesktop ? 40 : 16,
+                  24,
+                  isDesktop ? 40 : 16,
+                  32,
+                ),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 800),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Título
+                      const Text(
                         'FULLTECH SRL',
                         style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.3,
+                          color: Color(0xFF0F172A),
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 18),
-                    const Text(
-                      'Visitanos en nuestra tienda fisica',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.w900,
-                        height: 1.08,
+                      const SizedBox(height: 6),
+                      Text(
+                        'Tecnología, innovación y confianza',
+                        style: TextStyle(
+                          color: const Color(0xFF64748B)
+                              .withValues(alpha: 0.8),
+                          fontSize: 14,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Encuentra soporte, productos, instalacion y asesoria en una sola visita.',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.78),
-                        fontSize: 14,
-                        height: 1.5,
+
+                      const SizedBox(height: 24),
+                      const Divider(height: 1, color: Color(0xFFE8EEF4)),
+                      const SizedBox(height: 24),
+
+                      // Dirección
+                      _InfoRow(
+                        icon: Icons.location_on_rounded,
+                        iconColor: const Color(0xFFEF4444),
+                        title: 'Dirección',
+                        subtitle: 'Santo Domingo, República Dominicana',
                       ),
-                    ),
-                    const SizedBox(height: 18),
-                    _HeroLocationRow(
-                      icon: Icons.location_on_rounded,
-                      title: 'Direccion',
-                      value: address,
-                    ),
-                    const SizedBox(height: 12),
-                    _HeroLocationRow(
-                      icon: Icons.schedule_rounded,
-                      title: 'Atencion',
-                      value:
-                          'Contactanos por WhatsApp o llamada para coordinar tu visita.',
-                    ),
-                    const SizedBox(height: 22),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: [
-                        FilledButton.icon(
-                          onPressed: _openMap,
-                          icon: const Icon(Icons.near_me_rounded),
-                          label: const Text('Como llegar'),
+                      const SizedBox(height: 16),
+
+                      // Horario
+                      _InfoRow(
+                        icon: Icons.access_time_rounded,
+                        iconColor: const Color(0xFF3B82F6),
+                        title: 'Horario',
+                        subtitle: 'Lun - Vie: 8:00 AM - 6:00 PM\nSáb: 8:00 AM - 2:00 PM',
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Teléfono
+                      _InfoRow(
+                        icon: Icons.phone_rounded,
+                        iconColor: const Color(0xFF16A34A),
+                        title: 'Teléfono',
+                        subtitle: '(829) 531-9442',
+                        onTap: () => launchUrl(
+                          Uri.parse('tel:+18295319442'),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // WhatsApp
+                      _InfoRow(
+                        icon: Icons.chat_rounded,
+                        iconColor: const Color(0xFF25D366),
+                        title: 'WhatsApp',
+                        subtitle: '(849) 431-4070',
+                        onTap: () => launchUrl(
+                          Uri.parse('https://wa.me/18494314070'),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Email
+                      _InfoRow(
+                        icon: Icons.email_rounded,
+                        iconColor: const Color(0xFFEA580C),
+                        title: 'Email',
+                        subtitle: 'fulltechsd@gmail.com',
+                        onTap: () => launchUrl(
+                          Uri.parse('mailto:fulltechsd@gmail.com'),
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+                      const Divider(height: 1, color: Color(0xFFE8EEF4)),
+                      const SizedBox(height: 24),
+
+                      // Botón para abrir en Google Maps
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: FilledButton.icon(
+                          onPressed: () => launchUrl(
+                            Uri.parse(
+                              'https://www.google.com/maps/search/?api=1&query=FULLTECH+SRL+Santo+Domingo+Rep%C3%BAblica+Dominicana',
+                            ),
+                          ),
                           style: FilledButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: const Color(0xFF0F172A),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 18,
-                              vertical: 15,
+                            backgroundColor: const Color(0xFF0F172A),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
                             ),
                           ),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: _openWhatsapp,
-                          icon: const Icon(Icons.chat_rounded),
-                          label: const Text('WhatsApp'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            side: BorderSide(
-                              color: Colors.white.withValues(alpha: 0.25),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 18,
-                              vertical: 15,
-                            ),
+                          icon: const Icon(
+                            Icons.map_rounded,
+                            size: 20,
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 18),
-              Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: const Color(0xFFE7EDF5)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF0F172A).withValues(alpha: 0.04),
-                      blurRadius: 16,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    _ContactTile(
-                      icon: Icons.location_on_outlined,
-                      title: 'Ubicacion exacta',
-                      subtitle: address,
-                      actionLabel: 'Ver mapa',
-                      onTap: _openMap,
-                    ),
-                    _ContactTile(
-                      icon: Icons.phone_outlined,
-                      title: 'Telefono',
-                      subtitle: phone,
-                      actionLabel: 'Llamar',
-                      onTap: _openCall,
-                    ),
-                    _ContactTile(
-                      icon: Icons.chat_bubble_outline_rounded,
-                      title: 'WhatsApp',
-                      subtitle: whatsapp,
-                      actionLabel: 'Escribir',
-                      onTap: _openWhatsapp,
-                    ),
-                    _ContactTile(
-                      icon: Icons.mail_outline_rounded,
-                      title: 'Correo',
-                      subtitle: email,
-                      actionLabel: 'Enviar',
-                      onTap: _openEmail,
-                      showDivider: false,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 18),
-              Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF0F7FF),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: const Color(0xFFD9E9FF)),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2563EB),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(
-                        Icons.store_mall_directory_rounded,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Ve directo a la tienda',
+                          label: const Text(
+                            'Abrir en Google Maps',
                             style: TextStyle(
-                              fontSize: 16,
                               fontWeight: FontWeight.w800,
-                              color: Color(0xFF0F172A),
+                              fontSize: 15,
                             ),
                           ),
-                          const SizedBox(height: 6),
-                          const Text(
-                            'Cuando termines de revisar la ubicacion, vuelve a explorar productos y ofertas de FULLTECH.',
-                            style: TextStyle(
-                              color: Color(0xFF4B5563),
-                              height: 1.5,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: OutlinedButton.icon(
-                              onPressed: () =>
-                                  Navigator.pushNamed(context, '/tienda/$slug'),
-                              icon: const Icon(Icons.storefront_rounded),
-                              label: const Text('Ir a la tienda'),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-              if (isDesktop) const SizedBox(height: 12),
             ],
           ),
         ),
@@ -266,127 +257,81 @@ class StorefrontLocationScreen extends StatelessWidget {
   }
 }
 
-class _HeroLocationRow extends StatelessWidget {
+/// Fila de información con icono, título y subtítulo
+class _InfoRow extends StatelessWidget {
   final IconData icon;
+  final Color iconColor;
   final String title;
-  final String value;
+  final String subtitle;
+  final VoidCallback? onTap;
 
-  const _HeroLocationRow({
+  const _InfoRow({
     required this.icon,
+    required this.iconColor,
     required this.title,
-    required this.value,
+    required this.subtitle,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.11),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(icon, color: Colors.white, size: 20),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        splashColor: iconColor.withValues(alpha: 0.08),
+        highlightColor: iconColor.withValues(alpha: 0.04),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+          child: Row(
             children: [
-              Text(
-                title,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.74),
-                  fontWeight: FontWeight.w600,
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, size: 22, color: iconColor),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: const Color(0xFF64748B)
+                            .withValues(alpha: 0.8),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: Color(0xFF0F172A),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  height: 1.4,
+              if (onTap != null)
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 20,
+                  color: const Color(0xFF94A3B8),
                 ),
-              ),
             ],
           ),
         ),
-      ],
-    );
-  }
-}
-
-class _ContactTile extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final String actionLabel;
-  final VoidCallback onTap;
-  final bool showDivider;
-
-  const _ContactTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.actionLabel,
-    required this.onTap,
-    this.showDivider = true,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3F7FB),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(icon, color: const Color(0xFF0F172A)),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Color(0xFF64748B),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      color: Color(0xFF0F172A),
-                      fontWeight: FontWeight.w800,
-                      height: 1.4,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            TextButton(onPressed: onTap, child: Text(actionLabel)),
-          ],
-        ),
-        if (showDivider)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 14),
-            child: Divider(height: 1),
-          ),
-      ],
+      ),
     );
   }
 }

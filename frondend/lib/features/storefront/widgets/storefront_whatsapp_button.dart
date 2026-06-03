@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// Botón flotante de WhatsApp minimalista y elegante.
-/// Solo ícono, sin texto, tamaño compacto.
+/// Botón flotante de WhatsApp premium, más grande y resaltante.
+/// Área táctil amplia con animación de pulso mejorada.
 class StorefrontWhatsAppFloatingButton extends StatefulWidget {
   final String phoneNumber;
   final bool isDesktop;
@@ -45,8 +45,8 @@ class _StorefrontWhatsAppFloatingButtonState
     );
     _pulseAnimation =
         TweenSequence<double>([
-          TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.08), weight: 1),
-          TweenSequenceItem(tween: Tween(begin: 1.08, end: 1.0), weight: 1),
+          TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.1), weight: 1),
+          TweenSequenceItem(tween: Tween(begin: 1.1, end: 1.0), weight: 1),
           TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.0), weight: 3),
         ]).animate(
           CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
@@ -86,8 +86,9 @@ class _StorefrontWhatsAppFloatingButtonState
 
   @override
   Widget build(BuildContext context) {
-    final size = widget.isDesktop ? 52.0 : 48.0;
-    final iconSize = widget.isDesktop ? 26.0 : 24.0;
+    // Tamaño más grande y profesional
+    final size = widget.isDesktop ? 64.0 : 58.0;
+    final iconSize = widget.isDesktop ? 32.0 : 28.0;
 
     return AnimatedBuilder(
       animation: _pulseAnimation,
@@ -97,11 +98,13 @@ class _StorefrontWhatsAppFloatingButtonState
       child: Material(
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(999),
+        elevation: 8,
+        shadowColor: const Color(0xFF25D366).withValues(alpha: 0.4),
         child: InkWell(
           onTap: _openWhatsApp,
           borderRadius: BorderRadius.circular(999),
-          splashColor: Colors.white.withValues(alpha: 0.12),
-          highlightColor: Colors.white.withValues(alpha: 0.06),
+          splashColor: Colors.white.withValues(alpha: 0.15),
+          highlightColor: Colors.white.withValues(alpha: 0.08),
           child: Ink(
             height: size,
             width: size,
@@ -113,19 +116,19 @@ class _StorefrontWhatsAppFloatingButtonState
               ),
               borderRadius: BorderRadius.circular(999),
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.85),
-                width: 2,
+                color: Colors.white.withValues(alpha: 0.9),
+                width: 2.5,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF25D366).withValues(alpha: 0.30),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
+                  color: const Color(0xFF25D366).withValues(alpha: 0.35),
+                  blurRadius: 24,
+                  offset: const Offset(0, 10),
                 ),
                 BoxShadow(
-                  color: const Color(0xFF0F172A).withValues(alpha: 0.10),
+                  color: const Color(0xFF0F172A).withValues(alpha: 0.12),
                   blurRadius: 8,
-                  offset: const Offset(0, 2),
+                  offset: const Offset(0, 3),
                 ),
               ],
             ),

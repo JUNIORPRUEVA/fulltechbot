@@ -3,7 +3,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 /// AppBar superior profesional, fino, moderno y fijo.
-/// Contiene: menú (drawer), nombre FULLTECH SRL, buscador compacto y carrito.
+/// Buscador: solo icono que al tocarlo se expande en el AppBar.
+/// Carrito: más grande con animación de rebote.
+/// Menú: más elegante y amplio.
 class StorefrontAppBar extends StatefulWidget {
   final String slug;
   final String storeName;
@@ -28,13 +30,36 @@ class StorefrontAppBar extends StatefulWidget {
   State<StorefrontAppBar> createState() => _StorefrontAppBarState();
 }
 
-class _StorefrontAppBarState extends State<StorefrontAppBar> {
+class _StorefrontAppBarState extends State<StorefrontAppBar>
+    with SingleTickerProviderStateMixin {
   int _cartItemCount = 0;
+  bool _searchExpanded = false;
+  late final AnimationController _cartBounceController;
+  late final Animation<double> _cartBounceAnimation;
+  int _previousCartCount = 0;
 
   @override
   void initState() {
     super.initState();
     _loadCartCount();
+
+    _cartBounceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _cartBounceAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.25), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 1.25, end: 0.95), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 0.95, end: 1.0), weight: 1),
+    ]).animate(
+      CurvedAnimation(parent: _cartBounceController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _cartBounceController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadCartCount() async {
@@ -64,8 +89,14 @@ class _StorefrontAppBarState extends State<StorefrontAppBar> {
         final map = item as Map<String, dynamic>;
         return sum + (int.tryParse(map['cantidad']?.toString() ?? '0') ?? 0);
       });
-      if (mounted && count != _cartItemCount) {
-        setState(() => _cartItemCount = count);
+      if (mounted) {
+        if (count != _cartItemCount) {
+          setState(() => _cartItemCount = count);
+          if (count > _previousCartCount) {
+            _cartBounceController.forward(from: 0);
+          }
+          _previousCartCount = count;
+        }
       }
     } catch (_) {}
   }
@@ -92,28 +123,29 @@ class _StorefrontAppBarState extends State<StorefrontAppBar> {
         top: false,
         bottom: false,
         child: Container(
-          height: isDesktop ? 56 : 52,
+          height: isDesktop ? 58 : 54,
           padding: EdgeInsets.symmetric(
             horizontal: isDesktop ? 24 : (isSmallScreen ? 8 : 12),
           ),
           child: Row(
             children: [
-              // Botón menú (drawer)
+              // Botón menú (drawer) - más grande y elegante
               _AppBarIconButton(
                 icon: Icons.menu_rounded,
                 onTap: widget.onMenuTap,
-                size: isSmallScreen ? 34 : 38,
+                size: isSmallScreen ? 40 : 44,
+                iconSize: 22,
               ),
-              if (!isSmallScreen) const SizedBox(width: 6),
+              if (!isSmallScreen) const SizedBox(width: 8),
 
               // Nombre de la empresa
-              if (!isSmallScreen)
+              if (!isSmallScreen && !_searchExpanded)
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: Text(
                     widget.storeName,
                     style: TextStyle(
-                      fontSize: isDesktop ? 17 : (isSmallScreen ? 14 : 15),
+                      fontSize: isDesktop ? 18 : (isSmallScreen ? 14 : 16),
                       fontWeight: FontWeight.w900,
                       color: widget.primaryColor,
                       letterSpacing: -0.3,
@@ -121,52 +153,92 @@ class _StorefrontAppBarState extends State<StorefrontAppBar> {
                   ),
                 ),
 
-              // Buscador compacto
-              Expanded(
-                child: GestureDetector(
-                  onTap: widget.onSearchTap,
+              // Buscador: solo icono que se expande
+              if (_searchExpanded)
+                Expanded(
                   child: Container(
-                    height: 36,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    height: 40,
+                    margin: const EdgeInsets.only(right: 8),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(999),
+                      borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: const Color(0xFFE5EAF1).withValues(alpha: 0.5),
+                        color: widget.primaryColor.withValues(alpha: 0.3),
+                        width: 1.5,
                       ),
                     ),
                     child: Row(
                       children: [
+                        const SizedBox(width: 12),
                         Icon(
                           Icons.search_rounded,
-                          size: 16,
-                          color: const Color(0xFF94A3B8),
+                          size: 18,
+                          color: widget.primaryColor,
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 8),
                         Expanded(
-                          child: Text(
-                            isSmallScreen ? 'Buscar...' : 'Buscar productos...',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Color(0xFF94A3B8),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
+                          child: TextField(
+                            autofocus: true,
+                            decoration: const InputDecoration(
+                              hintText: 'Buscar productos...',
+                              border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: EdgeInsets.zero,
+                              hintStyle: TextStyle(
+                                color: Color(0xFF94A3B8),
+                                fontSize: 14,
+                              ),
                             ),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF0F172A),
+                            ),
+                            textInputAction: TextInputAction.search,
+                            onSubmitted: (value) {
+                              setState(() => _searchExpanded = false);
+                              widget.onSearchTap();
+                            },
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () {
+                            setState(() => _searchExpanded = false);
+                          },
+                          icon: const Icon(Icons.close_rounded, size: 18),
+                          color: const Color(0xFF94A3B8),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 6),
+                )
+              else
+                const Spacer(),
 
-              // Carrito
+              // Botón buscar (solo icono)
+              if (!_searchExpanded)
+                _AppBarIconButton(
+                  icon: Icons.search_rounded,
+                  onTap: () {
+                    setState(() => _searchExpanded = true);
+                  },
+                  size: isSmallScreen ? 40 : 44,
+                  iconSize: 22,
+                ),
+
+              if (!_searchExpanded) const SizedBox(width: 4),
+
+              // Carrito - más grande con animación
               _CartIconButton(
                 itemCount: _cartItemCount,
                 onTap: widget.onCartTap,
-                size: isSmallScreen ? 34 : 38,
+                size: isSmallScreen ? 40 : 44,
+                bounceAnimation: _cartBounceAnimation,
               ),
             ],
           ),
@@ -180,27 +252,38 @@ class _AppBarIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
   final double size;
+  final double iconSize;
 
   const _AppBarIconButton({
     required this.icon,
     required this.onTap,
-    this.size = 38,
+    this.size = 44,
+    this.iconSize = 22,
   });
 
   @override
   Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: SizedBox(
+        borderRadius: BorderRadius.circular(14),
+        splashColor: const Color(0xFF0F172A).withValues(alpha: 0.06),
+        highlightColor: const Color(0xFF0F172A).withValues(alpha: 0.03),
+        child: Container(
           width: size,
           height: size,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: const Color(0xFFE5EAF1).withValues(alpha: 0.5),
+            ),
+          ),
           child: Icon(
             icon,
-            size: 20,
+            size: iconSize,
             color: const Color(0xFF0F172A),
           ),
         ),
@@ -213,59 +296,83 @@ class _CartIconButton extends StatelessWidget {
   final int itemCount;
   final VoidCallback onTap;
   final double size;
+  final Animation<double> bounceAnimation;
 
   const _CartIconButton({
     required this.itemCount,
     required this.onTap,
-    this.size = 38,
+    this.size = 44,
+    required this.bounceAnimation,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: SizedBox(
-          width: size,
-          height: size,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              const Icon(
-                Icons.shopping_cart_outlined,
-                size: 20,
-                color: Color(0xFF0F172A),
+    return AnimatedBuilder(
+      animation: bounceAnimation,
+      builder: (context, child) {
+        return Transform.scale(scale: bounceAnimation.value, child: child);
+      },
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          splashColor: const Color(0xFF0F172A).withValues(alpha: 0.06),
+          highlightColor: const Color(0xFF0F172A).withValues(alpha: 0.03),
+          child: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: const Color(0xFFE5EAF1).withValues(alpha: 0.5),
               ),
-              if (itemCount > 0)
-                Positioned(
-                  top: 4,
-                  right: 2,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFEF4444),
-                      shape: BoxShape.circle,
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 16,
-                      minHeight: 16,
-                    ),
-                    child: Text(
-                      itemCount > 99 ? '99+' : itemCount.toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        height: 1,
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                const Icon(
+                  Icons.shopping_cart_outlined,
+                  size: 22,
+                  color: Color(0xFF0F172A),
+                ),
+                if (itemCount > 0)
+                  Positioned(
+                    top: 4,
+                    right: 2,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEF4444),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFEF4444).withValues(alpha: 0.4),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                      textAlign: TextAlign.center,
+                      constraints: const BoxConstraints(
+                        minWidth: 18,
+                        minHeight: 18,
+                      ),
+                      child: Text(
+                        itemCount > 99 ? '99+' : itemCount.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          height: 1,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

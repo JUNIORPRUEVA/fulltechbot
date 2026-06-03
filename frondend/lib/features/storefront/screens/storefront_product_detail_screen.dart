@@ -214,8 +214,24 @@ class _StorefrontProductDetailScreenState
     final product = _product!;
     final productName = product['titulo']?.toString() ?? 'Producto';
     final number = whatsapp.replaceAll(RegExp(r'[^\d]'), '');
+    final price = StorefrontHelpers.getDisplayPrice(product);
+    final imageUrl = StorefrontHelpers.getPrimaryImage(product) ?? '';
+    final description =
+        StorefrontHelpers.getShortDescription(
+          product,
+          fallback: '',
+        );
+
+    final priceText = price != null ? 'RD\$$price' : 'Consultar precio';
+    final imageText = imageUrl.isNotEmpty ? '\n📷 $imageUrl' : '';
+
     final message =
-        'Hola, estoy interesado en este producto: $productName. Quiero más información.';
+        'Hola, estoy interesado en este producto:\n\n'
+        '*$productName*\n'
+        '💰 $priceText'
+        '$imageText'
+        '${description.isNotEmpty ? '\n📄 $description' : ''}'
+        '\n\nQuedo atento a su respuesta. Gracias.';
 
     await launchUrl(
       Uri.parse('https://wa.me/$number?text=${Uri.encodeComponent(message)}'),

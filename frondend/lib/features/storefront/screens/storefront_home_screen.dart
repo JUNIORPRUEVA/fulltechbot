@@ -765,10 +765,8 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
         // ==========================================
         SliverToBoxAdapter(
           child: StorefrontFooter(
-            config: config,
-            primaryColor: primaryColor,
-            secondaryColor: secondaryColor,
             slug: widget.slug,
+            primaryColor: primaryColor,
           ),
         ),
       ],

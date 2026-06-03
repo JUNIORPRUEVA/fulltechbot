@@ -184,6 +184,7 @@ class PublicStoreLayout extends StatelessWidget {
 // ==========================================
 // PUBLIC MENU DRAWER
 // ==========================================
+/// Drawer lateral premium con diseño elegante y profesional.
 class _PublicMenuDrawer extends StatelessWidget {
   final String slug;
   final VoidCallback onCategoriesTap;
@@ -207,39 +208,77 @@ class _PublicMenuDrawer extends StatelessWidget {
       backgroundColor: const Color(0xFFF8FAFC),
       child: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(14, 10, 14, 20),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
+            // Header premium
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 12,
-                    offset: const Offset(0, 2),
+                    color: const Color(0xFF0F172A).withValues(alpha: 0.15),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
                   ),
                 ],
               ),
-              child: const Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'FULLTECH',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF3B82F6), Color(0xFF60A5FA)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Text(
+                      'F',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'FULLTECH',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
                   Text(
                     'Tienda online premium',
-                    style: TextStyle(color: Color(0xFF64748B)),
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 20),
+
+            // Menú items
             _DrawerTile(
-              icon: Icons.home_outlined,
+              icon: Icons.home_rounded,
               title: 'Inicio',
               onTap: () {
                 Navigator.pop(context);
@@ -255,7 +294,7 @@ class _PublicMenuDrawer extends StatelessWidget {
               },
             ),
             _DrawerTile(
-              icon: Icons.local_offer_outlined,
+              icon: Icons.local_offer_rounded,
               title: 'Ofertas',
               onTap: () {
                 Navigator.pop(context);
@@ -263,7 +302,7 @@ class _PublicMenuDrawer extends StatelessWidget {
               },
             ),
             _DrawerTile(
-              icon: Icons.shopping_cart_outlined,
+              icon: Icons.shopping_cart_rounded,
               title: 'Carrito',
               onTap: () {
                 Navigator.pop(context);
@@ -272,20 +311,36 @@ class _PublicMenuDrawer extends StatelessWidget {
             ),
             if (onWhatsappTap != null)
               _DrawerTile(
-                icon: Icons.chat_outlined,
+                icon: Icons.chat_rounded,
                 title: 'WhatsApp',
+                iconColor: const Color(0xFF25D366),
                 onTap: () {
                   Navigator.pop(context);
                   onWhatsappTap!.call();
                 },
               ),
-            _DrawerTile(
-              icon: Icons.admin_panel_settings_outlined,
-              title: 'Iniciar sesión',
-              onTap: () {
-                Navigator.pop(context);
-                onAdminTap();
-              },
+
+            const Spacer(),
+
+            // Admin / Login al final
+            Container(
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(
+                    color: const Color(0xFFE5EAF1).withValues(alpha: 0.5),
+                  ),
+                ),
+              ),
+              padding: const EdgeInsets.only(top: 12),
+              child: _DrawerTile(
+                icon: Icons.admin_panel_settings_rounded,
+                title: 'Iniciar sesión',
+                iconColor: const Color(0xFF64748B),
+                onTap: () {
+                  Navigator.pop(context);
+                  onAdminTap();
+                },
+              ),
             ),
           ],
         ),
@@ -298,20 +353,58 @@ class _DrawerTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final VoidCallback onTap;
+  final Color? iconColor;
 
   const _DrawerTile({
     required this.icon,
     required this.title,
     required this.onTap,
+    this.iconColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      onTap: onTap,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      leading: Icon(icon, color: const Color(0xFF0F172A)),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+    final color = iconColor ?? const Color(0xFF0F172A);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          splashColor: color.withValues(alpha: 0.06),
+          highlightColor: color.withValues(alpha: 0.03),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, size: 22, color: color),
+                ),
+                const SizedBox(width: 14),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
