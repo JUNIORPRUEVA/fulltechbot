@@ -1,14 +1,14 @@
 /**
  * AUTH CONTROLLER
- * 
- * Controlador de autenticación.
+ *
+ * Controlador de autenticacion.
  */
 
 const authService = require('../services/auth.service');
 
 /**
  * POST /api/auth/login
- * Iniciar sesión
+ * Iniciar sesion
  */
 async function login(req, res) {
   try {
@@ -17,7 +17,7 @@ async function login(req, res) {
     if (!email || !password) {
       return res.status(400).json({
         ok: false,
-        message: 'Email y contraseña son requeridos',
+        message: 'Email y contrasena son requeridos',
       });
     }
 
@@ -25,14 +25,17 @@ async function login(req, res) {
 
     return res.json({
       ok: true,
-      message: 'Inicio de sesión exitoso',
+      message: 'Inicio de sesion exitoso',
       data: result,
     });
   } catch (error) {
-    if (error.message === 'Credenciales inválidas') {
+    if (
+      error.message === 'Credenciales invalidas' ||
+      error.message === 'Credenciales invÃ¡lidas'
+    ) {
       return res.status(401).json({
         ok: false,
-        message: 'Credenciales inválidas',
+        message: 'Credenciales invalidas',
       });
     }
 
@@ -74,7 +77,7 @@ async function getPerfil(req, res) {
 
 /**
  * POST /api/auth/verificar
- * Verificar si un token es válido
+ * Verificar si un token es valido
  */
 async function verificarToken(req, res) {
   try {
@@ -92,7 +95,7 @@ async function verificarToken(req, res) {
     if (!payload) {
       return res.json({
         ok: false,
-        message: 'Token inválido o expirado',
+        message: 'Token invalido o expirado',
         valido: false,
       });
     }

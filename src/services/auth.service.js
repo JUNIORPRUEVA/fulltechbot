@@ -1,8 +1,8 @@
 /**
  * AUTH SERVICE
- * 
- * Servicio de autenticación con JWT.
- * Usa la tabla 'usuarios' creada directamente en PostgreSQL.
+ *
+ * Servicio de autenticacion con JWT.
+ * Compatible con tablas `usuarios` antiguas y nuevas.
  */
 
 const bcrypt = require('bcryptjs');
@@ -13,37 +13,41 @@ const JWT_SECRET = process.env.JWT_SECRET || 'fulltech-bot-jwt-secret-2026';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
 
 /**
- * Iniciar sesión
+ * Iniciar sesion
  * @param {string} email
  * @param {string} password
  * @returns {Object} { token, usuario }
  */
 async function login(email, password) {
-  // Buscar usuario por email
   const rows = await prisma.$queryRawUnsafe(
-    `SELECT * FROM usuarios WHERE email = $1 AND activo = true LIMIT 1`,
+    'SELECT * FROM usuarios WHERE email = $1 LIMIT 1',
     email.toLowerCase().trim()
   );
 
   if (!rows || rows.length === 0) {
-    throw new Error('Credenciales inválidas');
+    throw new Error('Credenciales invalidas');
   }
 
   const usuario = rows[0];
+  const activo = usuario.activo ?? true;
+  const passwordHash = usuario.password_hash ?? usuario.password ?? null;
 
-  // Verificar contraseña
-  const passwordValido = await bcrypt.compare(password, usuario.password_hash);
-  if (!passwordValido) {
-    throw new Error('Credenciales inválidas');
+  if (!activo || !passwordHash) {
+    throw new Error('Credenciales invalidas');
   }
 
-  // Actualizar último acceso
-  await prisma.$executeRawUnsafe(
-    `UPDATE usuarios SET ultimo_acceso = NOW() WHERE id = $1`,
-    usuario.id
-  );
+  const passwordValido = await bcrypt.compare(password, passwordHash);
+  if (!passwordValido) {
+    throw new Error('Credenciales invalidas');
+  }
 
-  // Generar token JWT
+  if (Object.prototype.hasOwnProperty.call(usuario, 'ultimo_acceso')) {
+    await prisma.$executeRawUnsafe(
+      'UPDATE usuarios SET ultimo_acceso = NOW() WHERE id = $1',
+      usuario.id
+    );
+  }
+
   const token = jwt.sign(
     {
       id: usuario.id,
@@ -69,7 +73,7 @@ async function login(email, password) {
 /**
  * Verificar token JWT
  * @param {string} token
- * @returns {Object|null} payload del token o null
+ * @returns {Object|null}
  */
 function verificarToken(token) {
   try {
@@ -88,7 +92,7 @@ function authMiddleware(req, res, next) {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({
       ok: false,
-      message: 'Token de autenticación requerido',
+      message: 'Token de autenticacion requerido',
     });
   }
 
@@ -98,7 +102,7 @@ function authMiddleware(req, res, next) {
   if (!payload) {
     return res.status(401).json({
       ok: false,
-      message: 'Token inválido o expirado',
+      message: 'Token invalido o expirado',
     });
   }
 
@@ -124,11 +128,25 @@ function adminMiddleware(req, res, next) {
  */
 async function getPerfil(usuarioId) {
   const rows = await prisma.$queryRawUnsafe(
-    `SELECT id, nombre, email, rol, activo, ultimo_acceso, creado_en, actualizado_en
-     FROM usuarios WHERE id = $1 LIMIT 1`,
+    'SELECT * FROM usuarios WHERE id = $1 LIMIT 1',
     usuarioId
   );
-  return rows[0] || null;
+
+  if (!rows[0]) {
+    return null;
+  }
+
+  const usuario = rows[0];
+  return {
+    id: usuario.id,
+    nombre: usuario.nombre,
+    email: usuario.email,
+    rol: usuario.rol,
+    activo: usuario.activo ?? true,
+    ultimo_acceso: usuario.ultimo_acceso ?? null,
+    creado_en: usuario.creado_en ?? usuario.created_at ?? null,
+    actualizado_en: usuario.actualizado_en ?? usuario.updated_at ?? null,
+  };
 }
 
 module.exports = {
