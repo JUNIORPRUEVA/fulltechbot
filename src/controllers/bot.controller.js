@@ -86,6 +86,9 @@ class BotController {
       if (error.message === 'Bot no encontrado') {
         return res.status(404).json({ ok: false, message: error.message });
       }
+      if (error.message.includes('No se puede eliminar')) {
+        return res.status(400).json({ ok: false, message: error.message });
+      }
       res.status(500).json({ ok: false, message: error.message });
     }
   }

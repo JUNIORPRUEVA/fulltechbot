@@ -20,6 +20,15 @@ class BotProvider extends ChangeNotifier {
     _setLoading(true);
     try {
       _bots = await _apiService.listarBots();
+      if (_bots.isNotEmpty) {
+        final selectedId = _botSeleccionado?.id;
+        _botSeleccionado = _bots.firstWhere(
+          (bot) => bot.id == selectedId,
+          orElse: () => _bots.first,
+        );
+      } else {
+        _botSeleccionado = null;
+      }
       _error = null;
     } catch (e) {
       _error = e.toString();

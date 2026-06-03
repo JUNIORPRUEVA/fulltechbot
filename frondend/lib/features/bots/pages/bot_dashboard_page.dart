@@ -3,8 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../models/bot_model.dart';
-import '../providers/bot_provider.dart';
+import '../../auth/services/admin_session_service.dart';
 import '../../campaigns/pages/bot_campaigns_page.dart';
 import '../../campaigns/providers/bot_campaign_provider.dart';
 import '../../catalogo/pages/catalogo_page.dart';
@@ -13,15 +12,15 @@ import '../../clientes/pages/clientes_page.dart';
 import '../../clientes/providers/clientes_provider.dart';
 import '../../conversaciones/pages/conversaciones_page.dart';
 import '../../conversaciones/providers/conversaciones_provider.dart';
-import '../../followups/presentation/screens/scheduled_followups_screen.dart';
 import '../../followups/presentation/screens/conversation_recovery_screen.dart';
+import '../../followups/presentation/screens/scheduled_followups_screen.dart';
 import '../../orders/pages/orders_page.dart';
 import '../../orders/providers/order_provider.dart';
 import '../../quotations/pages/quotations_page.dart';
 import '../../quotations/providers/quotation_provider.dart';
-import '../../auth/services/admin_session_service.dart';
+import '../models/bot_model.dart';
+import '../providers/bot_provider.dart';
 import 'bot_form_page.dart';
-import 'bot_selector_page.dart';
 
 class BotDashboardPage extends StatefulWidget {
   final int initialIndex;
@@ -53,7 +52,7 @@ class _BotDashboardPageState extends State<BotDashboardPage>
     _NavItem(
       icon: Icons.inventory_2_outlined,
       activeIcon: Icons.inventory_2,
-      label: 'Catálogo',
+      label: 'Catalogo',
     ),
     _NavItem(
       icon: Icons.receipt_long_outlined,
@@ -71,7 +70,7 @@ class _BotDashboardPageState extends State<BotDashboardPage>
     _NavItem(
       icon: Icons.inventory_2_outlined,
       activeIcon: Icons.inventory_2,
-      label: 'Catálogo',
+      label: 'Catalogo',
     ),
     _NavItem(
       icon: Icons.receipt_long_outlined,
@@ -96,7 +95,7 @@ class _BotDashboardPageState extends State<BotDashboardPage>
     _NavItem(
       icon: Icons.campaign_outlined,
       activeIcon: Icons.campaign,
-      label: 'Campañas',
+      label: 'Campanas',
     ),
   ];
 
@@ -163,12 +162,17 @@ class _BotDashboardPageState extends State<BotDashboardPage>
         ),
         actions: [
           IconButton(
+            tooltip: 'Editar configuracion de FULLTECH SRL',
+            onPressed: () => _editarBot(context),
+            icon: const Icon(Icons.settings_outlined),
+          ),
+          IconButton(
             tooltip: 'Cerrar sesion admin',
             onPressed: () => _cerrarSesionAdmin(context),
             icon: const Icon(Icons.logout_rounded),
           ),
           Container(
-            margin: const EdgeInsets.only(right: 4),
+            margin: const EdgeInsets.only(right: 8),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
               color: isActive ? Colors.green.shade50 : Colors.red.shade50,
@@ -185,12 +189,6 @@ class _BotDashboardPageState extends State<BotDashboardPage>
                 color: isActive ? Colors.green.shade700 : Colors.red.shade700,
               ),
             ),
-          ),
-          const SizedBox(width: 4),
-          IconButton(
-            tooltip: 'Cambiar bot',
-            onPressed: () => _cambiarBot(context),
-            icon: const Icon(Icons.swap_horiz_rounded),
           ),
         ],
       ),
@@ -375,7 +373,7 @@ class _BotDashboardPageState extends State<BotDashboardPage>
                   ),
                   ListTile(
                     leading: const Icon(Icons.restore_page_rounded),
-                    title: const Text('Recuperación'),
+                    title: const Text('Recuperacion'),
                     onTap: () {
                       Navigator.pop(context);
                       _abrirRecuperacion(context);
@@ -383,27 +381,19 @@ class _BotDashboardPageState extends State<BotDashboardPage>
                   ),
                   const Divider(height: 1),
                   ListTile(
-                    leading: const Icon(Icons.logout_rounded),
-                    title: const Text('Cerrar sesion admin'),
-                    onTap: () async {
-                      Navigator.pop(context);
-                      await _cerrarSesionAdmin(context);
-                    },
-                  ),
-                  ListTile(
                     leading: const Icon(Icons.edit_outlined),
-                    title: const Text('Editar bot'),
+                    title: const Text('Editar configuracion'),
                     onTap: () {
                       Navigator.pop(context);
                       _editarBot(context);
                     },
                   ),
                   ListTile(
-                    leading: const Icon(Icons.swap_horiz_rounded),
-                    title: const Text('Cambiar bot'),
-                    onTap: () {
+                    leading: const Icon(Icons.logout_rounded),
+                    title: const Text('Cerrar sesion admin'),
+                    onTap: () async {
                       Navigator.pop(context);
-                      _cambiarBot(context);
+                      await _cerrarSesionAdmin(context);
                     },
                   ),
                 ],
@@ -423,7 +413,7 @@ class _BotDashboardPageState extends State<BotDashboardPage>
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    'FullTech Bot',
+                    'FULLTECH SRL',
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                   ),
                 ],
@@ -569,7 +559,7 @@ class _BotDashboardPageState extends State<BotDashboardPage>
                   child: ListTile(
                     dense: true,
                     leading: Icon(Icons.restore_page_rounded, size: 20, color: Colors.grey.shade600),
-                    title: Text('Recuperación', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.grey.shade700)),
+                    title: Text('Recuperacion', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.grey.shade700)),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     onTap: () => _abrirRecuperacion(context),
                   ),
@@ -582,45 +572,45 @@ class _BotDashboardPageState extends State<BotDashboardPage>
             decoration: BoxDecoration(
               border: Border(top: BorderSide(color: Colors.grey.shade200)),
             ),
-          child: SizedBox(
-            width: double.infinity,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: () => _cambiarBot(context),
-                  icon: const Icon(Icons.swap_horiz_rounded, size: 18),
-                  label: const Text(
-                    'Cambiar bot',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+            child: SizedBox(
+              width: double.infinity,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => _editarBot(context),
+                    icon: const Icon(Icons.settings_outlined, size: 18),
+                    label: const Text(
+                      'Configuracion',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: () => _cerrarSesionAdmin(context),
-                  icon: const Icon(Icons.logout_rounded, size: 18),
-                  label: const Text(
-                    'Cerrar sesion',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: () => _cerrarSesionAdmin(context),
+                    icon: const Icon(Icons.logout_rounded, size: 18),
+                    label: const Text(
+                      'Cerrar sesion',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
-      ],
+        ],
       ),
     );
   }
@@ -658,18 +648,6 @@ class _BotDashboardPageState extends State<BotDashboardPage>
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => BotFormPage(bot: bot)),
-    );
-  }
-
-  Future<void> _cambiarBot(BuildContext context) async {
-    final botProvider = context.read<BotProvider>();
-    await botProvider.cargarBots();
-
-    if (!context.mounted) return;
-
-    await Navigator.push<dynamic>(
-      context,
-      MaterialPageRoute(builder: (_) => const BotSelectorPage()),
     );
   }
 
@@ -758,12 +736,12 @@ class _SinBotSeleccionado extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               const Text(
-                'Selecciona un bot',
+                'No se pudo cargar FULLTECH SRL',
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 8),
               Text(
-                'Para empezar, selecciona o crea un bot.\nCada bot tiene su propio catálogo, clientes, conversaciones y campañas.',
+                'La plataforma ahora trabaja con un unico bot.\nRecarga la pagina o verifica la conexion del backend si este estado persiste.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
@@ -773,9 +751,9 @@ class _SinBotSeleccionado extends StatelessWidget {
               ),
               const SizedBox(height: 28),
               FilledButton.icon(
-                onPressed: () => _irASelector(context),
-                icon: const Icon(Icons.touch_app_rounded, size: 20),
-                label: const Text('Seleccionar bot'),
+                onPressed: () => _reintentar(context),
+                icon: const Icon(Icons.refresh_rounded, size: 20),
+                label: const Text('Reintentar'),
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 24,
@@ -790,16 +768,8 @@ class _SinBotSeleccionado extends StatelessWidget {
     );
   }
 
-  Future<void> _irASelector(BuildContext context) async {
-    final botProvider = context.read<BotProvider>();
-    await botProvider.cargarBots();
-
-    if (!context.mounted) return;
-
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const BotSelectorPage()),
-    );
+  Future<void> _reintentar(BuildContext context) async {
+    await context.read<BotProvider>().cargarBots();
   }
 }
 

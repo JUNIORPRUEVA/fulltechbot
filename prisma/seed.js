@@ -9,7 +9,7 @@ async function main() {
   console.log('🌱 Iniciando seed...');
 
   // 1. Crear o verificar el bot por defecto
-  const slug = 'fulltech-seguridad';
+  const slug = 'fulltech';
   let bot = await prisma.bot.findUnique({ where: { slug } });
 
   if (!bot) {

@@ -9,7 +9,7 @@ async function main() {
   console.log('🌱 Sembrando datos storefront...');
 
   // Obtener el bot
-  const bot = await prisma.bot.findUnique({ where: { slug: 'fulltech-seguridad' } });
+  const bot = await prisma.bot.findFirst({ where: { slug: { in: ['fulltech', 'fulltech-seguridad'] } } });
   if (!bot) {
     console.error('❌ Bot no encontrado');
     return;
@@ -27,7 +27,7 @@ async function main() {
       `INSERT INTO storefront_config (bot_id, slug, nombre_tienda, descripcion, color_principal, color_secundario, whatsapp_numero, mensaje_principal, mensaje_secundario, activo)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)`,
       bot.id,
-      'fulltech-seguridad',
+      'fulltech',
       'FULLTECH',
       'Soluciones en seguridad y tecnología',
       '#0F172A',

@@ -14,6 +14,7 @@
 const prisma = require('../lib/prisma');
 const orderService = require('./order.service');
 const botClientService = require('./botClient.service');
+const { PRIMARY_BOT_ALIASES, getPrimaryBot } = require('./botScope.service');
 
 // ============================================
 // HELPERS
@@ -148,17 +149,37 @@ function mapStorefrontProduct(row) {
 // ============================================
 
 async function getConfigBySlug(slug) {
+  const normalizedSlug = String(slug || '').trim().toLowerCase();
+  const candidateSlugs = Array.from(
+    new Set([
+      normalizedSlug,
+      ...PRIMARY_BOT_ALIASES,
+    ].filter(Boolean))
+  );
+
   const rows = await prisma.$queryRawUnsafe(
-    `SELECT * FROM storefront_config WHERE slug = $1 AND activo = true LIMIT 1`,
-    slug
+    `SELECT * FROM storefront_config WHERE slug = ANY($1::text[]) AND activo = true
+     ORDER BY CASE WHEN slug = $2 THEN 0 ELSE 1 END, actualizado_en DESC NULLS LAST
+     LIMIT 1`,
+    candidateSlugs,
+    normalizedSlug
   );
   if (rows[0]) {
     return serializeRow(rows[0]);
   }
 
-  const bot = await prisma.bot.findUnique({
-    where: { slug },
+  let bot = await prisma.bot.findFirst({
+    where: {
+      slug: {
+        in: candidateSlugs,
+      },
+    },
+    orderBy: { actualizadoEn: 'desc' },
   });
+
+  if (!bot && PRIMARY_BOT_ALIASES.includes(normalizedSlug)) {
+    bot = await getPrimaryBot();
+  }
 
   if (!bot || bot.estado !== 'activo') {
     return null;
@@ -167,7 +188,7 @@ async function getConfigBySlug(slug) {
   return {
     id: `fallback-${bot.id}`,
     bot_id: bot.id,
-    slug: bot.slug,
+    slug: PRIMARY_BOT_ALIASES.includes(normalizedSlug) ? normalizedSlug || bot.slug : bot.slug,
     nombre_tienda: bot.nombre || 'FULLTECH SRL',
     descripcion: bot.descripcion || null,
     logo_url: null,

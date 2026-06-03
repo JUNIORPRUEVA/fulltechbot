@@ -61,7 +61,7 @@ class _StorefrontAdminScreenState extends State<StorefrontAdminScreen> {
     if (_botId.isEmpty) {
       setState(() {
         _loading = false;
-        _error = 'Selecciona un bot antes de administrar la tienda.';
+        _error = 'No se pudo resolver el bot principal para administrar la tienda.';
       });
       return;
     }
@@ -265,11 +265,8 @@ class _StorefrontAdminScreenState extends State<StorefrontAdminScreen> {
                       ),
                       const SizedBox(height: 16),
                       FilledButton(
-                        onPressed: () => Navigator.pushNamed(
-                          context,
-                          '/admin/bots',
-                        ),
-                        child: const Text('Seleccionar bot'),
+                        onPressed: _loadConfig,
+                        child: const Text('Reintentar'),
                       ),
                     ],
                   ),

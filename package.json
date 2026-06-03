@@ -8,7 +8,8 @@
     "start": "node src/server.js",
     "prisma:generate": "prisma generate",
     "prisma:studio": "prisma studio",
-    "prisma:seed": "node prisma/seed.js"
+    "prisma:seed": "node prisma/seed.js",
+    "single-bot:consolidate": "node scripts/consolidate_single_bot.js"
   },
   "keywords": [],
   "author": "",

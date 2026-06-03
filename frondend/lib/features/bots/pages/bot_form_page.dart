@@ -98,7 +98,7 @@ class _BotFormPageState extends State<BotFormPage> {
                           controller: _slugController,
                           label: 'Slug (identificador único)',
                           requiredField: true,
-                          helperText: 'Ej: fulltech-seguridad, emagryfit-rd',
+                          helperText: 'Ej: fulltech',
                           onChanged: _onSlugChanged,
                           validator: _validarSlug,
                         ),

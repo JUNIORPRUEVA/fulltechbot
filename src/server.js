@@ -27,6 +27,7 @@ const quotationRoutes = require('./routes/quotation.routes');
 const syncRoutes = require('./routes/sync.routes');
 const storefrontRoutes = require('./routes/storefront.routes');
 const authRoutes = require('./routes/auth.routes');
+const { normalizeBotParam } = require('./middleware/singleBot.middleware');
 
 const app = express();
 const BACKEND_VERSION = 'campaign-module-005-force-rebuild';
@@ -89,13 +90,13 @@ app.use('/api/bot/conversations', botConversationRoutes);
 app.use('/api/bot/quotations', botQuotationRoutes);
 
 app.use('/api/bots', botRoutes);
-app.use('/api/bots/:botId/catalogo', botCatalogoRoutes);
-app.use('/api/bots/:botId/clients', botClientNestedRoutes);
-app.use('/api/bots/:botId/conversations', botConversationNestedRoutes);
-app.use('/api/bots/:botId/quotations', botQuotationNestedRoutes);
-app.use('/api/bots/:botId/orders', botOrderRoutes);
-app.use('/api/bots/:botId/campaigns', botCampaignRoutes);
-app.use('/api/bots/:botId/followups', followupRoutes);
+app.use('/api/bots/:botId/catalogo', normalizeBotParam, botCatalogoRoutes);
+app.use('/api/bots/:botId/clients', normalizeBotParam, botClientNestedRoutes);
+app.use('/api/bots/:botId/conversations', normalizeBotParam, botConversationNestedRoutes);
+app.use('/api/bots/:botId/quotations', normalizeBotParam, botQuotationNestedRoutes);
+app.use('/api/bots/:botId/orders', normalizeBotParam, botOrderRoutes);
+app.use('/api/bots/:botId/campaigns', normalizeBotParam, botCampaignRoutes);
+app.use('/api/bots/:botId/followups', normalizeBotParam, followupRoutes);
 app.use('/api', campaignContextRoutes);
 
 app.use('/api/orders', (req, res, next) => {

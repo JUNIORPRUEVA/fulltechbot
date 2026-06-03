@@ -14,7 +14,7 @@ import '../../../core/constants/api_config.dart';
 class StorefrontApiService {
   static final String _baseUrl = '${ApiConfig.baseUrl}/api/storefront';
   static const Map<String, String> _slugAliases = {
-    'fulltech': 'fulltech-seguridad',
+    'fulltech-seguridad': 'fulltech',
   };
   
   // Headers anti-cache para todas las requests

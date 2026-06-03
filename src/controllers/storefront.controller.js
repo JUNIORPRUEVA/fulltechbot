@@ -6,6 +6,7 @@
  */
 
 const storefrontService = require('../services/storefront.service');
+const { resolveScopedBotId } = require('../services/botScope.service');
 
 async function getDefaultStore(req, res) {
   try {
@@ -67,6 +68,10 @@ function setImageCacheHeaders(res) {
     'Cache-Control': 'public, max-age=31536000, immutable',
     'Expires': new Date(Date.now() + 31536000000).toUTCString(),
   });
+}
+
+async function getAdminBotId(req) {
+  return resolveScopedBotId(req.params.botId, { createIfMissing: true });
 }
 
 async function getConfig(req, res) {
@@ -413,7 +418,7 @@ async function capturePaypalOrder(req, res) {
 
 async function getAdminConfig(req, res) {
   try {
-    const { botId } = req.params;
+    const botId = await getAdminBotId(req);
     const config = await storefrontService.getConfigByBotId(botId);
 
     if (!config) {
@@ -428,7 +433,7 @@ async function getAdminConfig(req, res) {
 
 async function updateAdminConfig(req, res) {
   try {
-    const { botId } = req.params;
+    const botId = await getAdminBotId(req);
     const config = await storefrontService.upsertConfig(botId, req.body);
 
     res.json({
@@ -443,7 +448,7 @@ async function updateAdminConfig(req, res) {
 
 async function getAdminBanners(req, res) {
   try {
-    const { botId } = req.params;
+    const botId = await getAdminBotId(req);
     const banners = await storefrontService.getBanners(botId, false);
     res.json({ ok: true, data: banners });
   } catch (error) {
@@ -453,7 +458,7 @@ async function getAdminBanners(req, res) {
 
 async function createAdminBanner(req, res) {
   try {
-    const { botId } = req.params;
+    const botId = await getAdminBotId(req);
     const banner = await storefrontService.createBanner(botId, req.body);
     res.status(201).json({ ok: true, data: banner });
   } catch (error) {
@@ -463,7 +468,7 @@ async function createAdminBanner(req, res) {
 
 async function updateAdminBanner(req, res) {
   try {
-    const { botId, id } = req.params;
+    const { id } = req.params;
     const banner = await storefrontService.updateBanner(parseInt(id), req.body);
 
     if (!banner) {
@@ -478,7 +483,7 @@ async function updateAdminBanner(req, res) {
 
 async function deleteAdminBanner(req, res) {
   try {
-    const { botId, id } = req.params;
+    const { id } = req.params;
     const banner = await storefrontService.deleteBanner(parseInt(id));
 
     if (!banner) {
@@ -493,7 +498,7 @@ async function deleteAdminBanner(req, res) {
 
 async function getAdminProductSettings(req, res) {
   try {
-    const { botId } = req.params;
+    const botId = await getAdminBotId(req);
     const settings = await storefrontService.getProductSettings(botId);
     res.json({ ok: true, data: settings });
   } catch (error) {
@@ -503,7 +508,8 @@ async function getAdminProductSettings(req, res) {
 
 async function updateAdminProductSetting(req, res) {
   try {
-    const { botId, productoId } = req.params;
+    const botId = await getAdminBotId(req);
+    const { productoId } = req.params;
     const setting = await storefrontService.upsertProductSetting(botId, productoId, req.body);
     res.json({ ok: true, data: setting });
   } catch (error) {
@@ -513,7 +519,7 @@ async function updateAdminProductSetting(req, res) {
 
 async function getAdminCarts(req, res) {
   try {
-    const { botId } = req.params;
+    const botId = await getAdminBotId(req);
     const { estado } = req.query;
     const carts = await storefrontService.getCarts(botId, estado || null);
     res.json({ ok: true, data: carts });
@@ -524,7 +530,7 @@ async function getAdminCarts(req, res) {
 
 async function getAdminPayments(req, res) {
   try {
-    const { botId } = req.params;
+    const botId = await getAdminBotId(req);
     const payments = await storefrontService.getPayments(botId);
     res.json({ ok: true, data: payments });
   } catch (error) {
@@ -534,7 +540,7 @@ async function getAdminPayments(req, res) {
 
 async function getAdminDeliveryZones(req, res) {
   try {
-    const { botId } = req.params;
+    const botId = await getAdminBotId(req);
     const zones = await storefrontService.getDeliveryZones(botId, false);
     res.json({ ok: true, data: zones });
   } catch (error) {
@@ -544,7 +550,7 @@ async function getAdminDeliveryZones(req, res) {
 
 async function createAdminDeliveryZone(req, res) {
   try {
-    const { botId } = req.params;
+    const botId = await getAdminBotId(req);
     const zone = await storefrontService.createDeliveryZone(botId, req.body);
     res.status(201).json({ ok: true, data: zone });
   } catch (error) {
@@ -554,7 +560,7 @@ async function createAdminDeliveryZone(req, res) {
 
 async function updateAdminDeliveryZone(req, res) {
   try {
-    const { botId, id } = req.params;
+    const { id } = req.params;
     const zone = await storefrontService.updateDeliveryZone(parseInt(id), req.body);
 
     if (!zone) {
@@ -569,7 +575,7 @@ async function updateAdminDeliveryZone(req, res) {
 
 async function deleteAdminDeliveryZone(req, res) {
   try {
-    const { botId, id } = req.params;
+    const { id } = req.params;
     const zone = await storefrontService.deleteDeliveryZone(parseInt(id));
 
     if (!zone) {

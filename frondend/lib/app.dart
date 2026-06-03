@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import 'features/auth/screens/admin_login_screen.dart';
 import 'features/auth/widgets/admin_route_guard.dart';
 import 'features/bots/pages/bot_dashboard_page.dart';
-import 'features/bots/pages/bot_selector_page.dart';
 import 'features/bots/providers/bot_provider.dart';
 import 'features/public/screens/public_entry_screen.dart';
 import 'features/public/screens/public_store_redirect_screen.dart';
@@ -197,7 +196,7 @@ class MyApp extends StatelessWidget {
         child = const MainNavigation(initialIndex: 2);
         break;
       case '/admin/bots':
-        child = const MainNavigation(openBotSelectorOnStart: true);
+        child = const MainNavigation();
         break;
       case '/admin/tienda':
         child = const StorefrontAdminScreen();
@@ -370,12 +369,10 @@ class MyApp extends StatelessWidget {
 
 class MainNavigation extends StatefulWidget {
   final int initialIndex;
-  final bool openBotSelectorOnStart;
 
   const MainNavigation({
     super.key,
     this.initialIndex = 0,
-    this.openBotSelectorOnStart = false,
   });
 
   @override
@@ -384,7 +381,6 @@ class MainNavigation extends StatefulWidget {
 
 class _MainNavigationState extends State<MainNavigation> {
   bool _checkingBot = true;
-  bool _navigating = false;
   late int _currentIndex;
 
   @override
@@ -397,37 +393,15 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 
   Future<void> _verificarBotInicial() async {
-    if (_navigating) return;
-    _navigating = true;
-
     try {
       final botProvider = context.read<BotProvider>();
       await botProvider.cargarBots();
-
-      if (!mounted) return;
-
-      if (!botProvider.hayBotSeleccionado) {
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const BotSelectorPage(),
-          ),
-        );
-      } else if (widget.openBotSelectorOnStart) {
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const BotSelectorPage(),
-          ),
-        );
-      }
     } catch (e) {
       debugPrint('[MainNavigation] Error en verificacion inicial: $e');
     } finally {
       if (mounted) {
         setState(() {
           _checkingBot = false;
-          _navigating = false;
         });
       }
     }
@@ -482,7 +456,7 @@ class _MainNavigationState extends State<MainNavigation> {
                 ),
                 const SizedBox(height: 20),
                 const Text(
-                  'Selecciona un bot',
+                  'No se pudo cargar FULLTECH SRL',
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w800,
@@ -490,7 +464,7 @@ class _MainNavigationState extends State<MainNavigation> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Para empezar, selecciona o crea un bot.\nCada bot tiene su propio catalogo, clientes y conversaciones.',
+                  'La aplicacion ahora trabaja con un solo bot unificado.\nRecarga la pagina o verifica la configuracion del backend.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
@@ -500,26 +474,9 @@ class _MainNavigationState extends State<MainNavigation> {
                 ),
                 const SizedBox(height: 28),
                 FilledButton.icon(
-                  onPressed: () async {
-                    if (_navigating) return;
-                    _navigating = true;
-                    try {
-                      await botProvider.cargarBots();
-                      if (!mounted) return;
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const BotSelectorPage(),
-                        ),
-                      );
-                    } finally {
-                      if (mounted) {
-                        _navigating = false;
-                      }
-                    }
-                  },
-                  icon: const Icon(Icons.touch_app_rounded, size: 20),
-                  label: const Text('Seleccionar bot'),
+                  onPressed: () => _verificarBotInicial(),
+                  icon: const Icon(Icons.refresh_rounded, size: 20),
+                  label: const Text('Reintentar'),
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                   ),
