@@ -429,29 +429,6 @@ class _StorefrontProductDetailScreenState
                                   ),
                                   const SizedBox(height: 20),
                                 ],
-                            if (!isDesktop) ...[
-                              StorefrontProductActionBar(
-                                isDesktop: false,
-                                canBuy: canBuy,
-                                canWhatsapp: whatsapp.isNotEmpty,
-                                quantity: _quantity,
-                                primaryColor: primaryColor,
-                                onDecrease: () {
-                                  if (_quantity > 1) {
-                                    setState(() => _quantity--);
-                                  }
-                                },
-                                onIncrease: () => setState(() => _quantity++),
-                                onAddToCart: canBuy ? () => _addToCart() : null,
-                                onBuyNow: canBuy
-                                    ? () => _addToCart(goToCart: true)
-                                    : null,
-                                onWhatsapp: whatsapp.isNotEmpty
-                                    ? () => _openWhatsApp(whatsapp)
-                                    : null,
-                              ),
-                              const SizedBox(height: 24),
-                            ],
                                 if (isDesktop) ...[
                                   StorefrontProductActionBar(
                                     isDesktop: true,

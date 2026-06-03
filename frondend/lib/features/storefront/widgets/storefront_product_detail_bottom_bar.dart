@@ -21,7 +21,7 @@ class StorefrontProductDetailBottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.98),
         border: const Border(top: BorderSide(color: Color(0xFFE5E7EB))),
@@ -35,96 +35,97 @@ class StorefrontProductDetailBottomBar extends StatelessWidget {
       ),
       child: SafeArea(
         top: false,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final compact = constraints.maxWidth < 360;
-            final spacing = compact ? 6.0 : 8.0;
-            final fontSize = compact ? 11.0 : 12.0;
-            final iconSize = compact ? 16.0 : 18.0;
-            final verticalPadding = compact ? 12.0 : 13.0;
-
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: canWhatsapp ? onWhatsapp : null,
-                    icon: Image.asset(
-                      'assets/whatsappp.png',
-                      width: iconSize,
-                      height: iconSize,
-                      fit: BoxFit.contain,
-                    ),
-                    label: Text(
-                      'WhatsApp',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: fontSize,
-                      ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFF25D366)),
-                      foregroundColor: const Color(0xFF25D366),
-                      disabledForegroundColor: const Color(0xFF94A3B8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      padding: EdgeInsets.symmetric(vertical: verticalPadding),
-                    ),
+        child: Row(
+          children: [
+            _CompactActionIcon(
+              onTap: canWhatsapp ? onWhatsapp : null,
+              borderColor: const Color(0xFF25D366),
+              foregroundColor: const Color(0xFF25D366),
+              child: Image.asset(
+                'assets/whatsappp.png',
+                width: 18,
+                height: 18,
+                fit: BoxFit.contain,
+              ),
+            ),
+            const SizedBox(width: 8),
+            _CompactActionIcon(
+              onTap: canBuy ? onAddToCart : null,
+              borderColor: const Color(0xFFE2E8F0),
+              foregroundColor: const Color(0xFF0F172A),
+              child: const Icon(Icons.add_shopping_cart_outlined, size: 20),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: canBuy ? onBuyNow : null,
+                style: FilledButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  disabledBackgroundColor: const Color(0xFFCBD5E1),
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(50),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 14,
                   ),
                 ),
-                SizedBox(width: spacing),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: canBuy ? onAddToCart : null,
-                    icon: Icon(Icons.add_shopping_cart_outlined, size: iconSize),
-                    label: Text(
-                      'Agregar',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: fontSize,
-                      ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      padding: EdgeInsets.symmetric(vertical: verticalPadding),
-                    ),
+                icon: const Icon(Icons.shopping_bag_outlined, size: 18),
+                label: const Text(
+                  'Comprar',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
                   ),
                 ),
-                SizedBox(width: spacing),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: canBuy ? onBuyNow : null,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: primaryColor,
-                      disabledBackgroundColor: const Color(0xFFCBD5E1),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      padding: EdgeInsets.symmetric(vertical: verticalPadding),
-                    ),
-                    icon: Icon(Icons.shopping_bag_outlined, size: iconSize),
-                    label: Text(
-                      'Comprar',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: fontSize,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
+              ),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+}
+
+class _CompactActionIcon extends StatelessWidget {
+  final VoidCallback? onTap;
+  final Color borderColor;
+  final Color foregroundColor;
+  final Widget child;
+
+  const _CompactActionIcon({
+    required this.onTap,
+    required this.borderColor,
+    required this.foregroundColor,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isEnabled = onTap != null;
+
+    return SizedBox(
+      width: 50,
+      height: 50,
+      child: OutlinedButton(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          padding: EdgeInsets.zero,
+          side: BorderSide(
+            color: isEnabled ? borderColor : const Color(0xFFE2E8F0),
+          ),
+          foregroundColor: isEnabled
+              ? foregroundColor
+              : const Color(0xFF94A3B8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+        ),
+        child: child,
       ),
     );
   }
