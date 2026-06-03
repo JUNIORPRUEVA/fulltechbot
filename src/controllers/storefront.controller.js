@@ -686,6 +686,80 @@ async function deleteAdminDeliveryZone(req, res) {
 }
 
 // ============================================
+// POLICIES (admin)
+// ============================================
+
+async function getAdminPolicies(req, res) {
+  try {
+    const botId = await getAdminBotId(req);
+    const policies = await storefrontService.getPolicies(botId, false);
+    res.json({ ok: true, data: policies });
+  } catch (error) {
+    handleError(res, error, 'Error al obtener políticas');
+  }
+}
+
+async function upsertAdminPolicy(req, res) {
+  try {
+    const botId = await getAdminBotId(req);
+    const { tipo } = req.params;
+    const policy = await storefrontService.upsertPolicy(botId, tipo, req.body);
+    res.json({ ok: true, data: policy });
+  } catch (error) {
+    handleError(res, error, 'Error al guardar política');
+  }
+}
+
+async function deleteAdminPolicy(req, res) {
+  try {
+    const botId = await getAdminBotId(req);
+    const { tipo } = req.params;
+    const policy = await storefrontService.deletePolicy(botId, tipo);
+    if (!policy) {
+      return res.status(404).json({ ok: false, message: 'Política no encontrada' });
+    }
+    res.json({ ok: true, message: 'Política eliminada exitosamente' });
+  } catch (error) {
+    handleError(res, error, 'Error al eliminar política');
+  }
+}
+
+// ============================================
+// POLICIES (públicas)
+// ============================================
+
+async function getPublicPolicies(req, res) {
+  try {
+    const { slug } = req.params;
+    const config = await storefrontService.getConfigBySlug(slug);
+    if (!config) {
+      return res.status(404).json({ ok: false, message: 'Tienda no encontrada' });
+    }
+    const policies = await storefrontService.getPolicies(config.bot_id, true);
+    res.json({ ok: true, data: policies });
+  } catch (error) {
+    handleError(res, error, 'Error al obtener políticas públicas');
+  }
+}
+
+async function getPublicPolicyByType(req, res) {
+  try {
+    const { slug, tipo } = req.params;
+    const config = await storefrontService.getConfigBySlug(slug);
+    if (!config) {
+      return res.status(404).json({ ok: false, message: 'Tienda no encontrada' });
+    }
+    const policy = await storefrontService.getPolicyByType(config.bot_id, tipo);
+    if (!policy) {
+      return res.status(404).json({ ok: false, message: 'Política no encontrada' });
+    }
+    res.json({ ok: true, data: policy });
+  } catch (error) {
+    handleError(res, error, 'Error al obtener política');
+  }
+}
+
+// ============================================
 // EXPORTS
 // ============================================
 
@@ -736,4 +810,15 @@ module.exports = {
   createAdminDeliveryZone,
   updateAdminDeliveryZone,
   deleteAdminDeliveryZone,
+
+  // Admin - Policies
+  getAdminPolicies,
+  upsertAdminPolicy,
+  deleteAdminPolicy,
+
+  // Public - Policies
+  getPublicPolicies,
+  getPublicPolicyByType,
 };
+
+

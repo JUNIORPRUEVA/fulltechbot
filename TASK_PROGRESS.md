@@ -1,61 +1,126 @@
-# PLAN DE OPTIMIZACIÓN - CARGA INSTANTÁNEA DE FULLTECH STORE
+# PLAN DE MIGRACIÓN: ADMINISTRACIÓN DE TIENDA AL PANEL PRINCIPAL
 
-## Diagnóstico Inicial
+## ESTADO: COMPLETADO ✅
 
-### 🔴 BLOQUEOS CRÍTICOS IDENTIFICADOS
+### AUDITORÍA COMPLETA
 
-1. **index.html redirect bloquea Flutter** (Líneas 226-234): `window.location.replace("/#/tienda/fulltech")` + `return` detiene la carga de Flutter. El splash se queda visible hasta 15 segundos.
+#### Estado Inicial:
+1. **Ruta `/admin/tienda`** en `app.dart` → renderizaba `StorefrontAdminScreen`
+2. **`StorefrontAdminScreen`** en `frondend/lib/features/storefront_admin/screens/storefront_admin_screen.dart` (1254 líneas)
+   - Tabs: Configuración, Banners, Productos, Carritos, Pagos
+   - Usaba `StorefrontApiService` para llamadas admin
+   - Dependía de `BotProvider` para obtener botId
+3. **Backend**: Rutas admin en `/api/storefront/admin/:botId/*` (storefront.routes.js)
+   - Config: GET/PUT
+   - Banners: CRUD
+   - Product Settings: GET/PUT
+   - Carts: GET
+   - Payments: GET
+   - Delivery Zones: CRUD
+4. **Sidebar/Drawer** en `bot_dashboard_page.dart`:
+   - Drawer: "Tienda Online" → navegaba a `/admin/tienda`
+   - Sidebar: "Tienda Online" → navegaba a `/admin/tienda`
+5. **Footer** en `storefront_footer.dart`: valores hardcodeados
+6. **No había módulo de Políticas** en el admin
+7. **No había módulo PWA** en el admin
+8. **No había endpoints de políticas** en el backend
 
-2. **PublicEntryScreen hace llamada API antes de mostrar Home**: Si no hay slug preferido, llama `_resolveStore()` que hace fetch a `/api/storefront/public/default` con timeout de 6 segundos.
+## IMPLEMENTACIÓN REALIZADA
 
-3. **StorefrontHomeScreen `_loading = true` inicial**: El primer frame muestra skeleton en lugar del Home real.
+### FASE 1: Backend - Endpoints faltantes ✅
+- [x] Crear tabla storefront_policies en BD (scripts/sql/crear_tabla_storefront_policies.sql)
+- [x] Agregar endpoints CRUD para políticas en storefront.routes.js
+- [x] Agregar endpoints públicos para políticas
+- [x] Agregar campos faltantes a storefront_config (email, instagram, facebook, maps_url, horario, mensaje_principal)
 
-4. **AppBar carga SharedPreferences de forma bloqueante**: `_loadCartCount()` usa `await SharedPreferences.getInstance()` que puede ser lento en web.
+### FASE 2: Frontend Admin - Nuevo módulo Tienda en el panel principal ✅
+- [x] Crear `StoreAdminScreen` - Contenedor principal con tabs internas
+- [x] Crear `StoreConfigScreen` - Configuración de tienda (nombre, slug, descripción, logo, WhatsApp, teléfono, email, Instagram, Facebook, dirección, Google Maps URL, horario, mensaje principal, estado activo/inactivo)
+- [x] Crear `StoreBannersScreen` - Gestión de banners (CRUD, activar/desactivar, orden)
+- [x] Crear `StoreCartsScreen` - Gestión de carritos (filtros por estado, detalle, WhatsApp)
+- [x] Crear `StorePaymentsScreen` - Gestión de pagos
+- [x] Crear `StorePoliciesScreen` - Gestión de políticas (privacidad, términos, garantía, envío, devoluciones, contacto)
+- [x] Crear `StoreAdminApiService` - Servicio API con autenticación
+- [x] Crear `StoreAdminProvider` - Provider con estados loading/error
 
-### 🟡 PROBLEMAS SEVEROS
+### FASE 3: Integración en el panel principal ✅
+- [x] Agregar "Tienda" como sección en el drawer de BotDashboardPage
+- [x] Agregar "Tienda" como sección en el sidebar de BotDashboardPage
+- [x] Conectar navegación desde el menú principal a `/admin/tienda`
+- [x] Registrar `StoreAdminProvider` en `main.dart`
 
-5. No hay timeout de splash en index.html (solo se oculta cuando Flutter llama hideSplash)
-6. Service Worker no tiene control de versión efectivo
-7. nginx.conf no tiene brotli activado
-8. Faltan logs [PERF] completos
+### FASE 4: Eliminar ruta /admin/tienda de la tienda pública ✅
+- [x] Eliminar ruta `/admin/tienda` de `app.dart` (ruta pública)
+- [x] Redirigir a `/` si alguien intenta acceder desde la tienda pública
+- [x] Eliminar import de `StorefrontAdminScreen` de `app.dart`
+- [x] La ruta `/admin/tienda` ahora solo existe dentro del panel admin protegido
 
-## Plan de Corrección
+### FASE 5: Actualizar footer para usar datos dinámicos ✅
+- [x] `StorefrontFooter` ya usa datos desde `StorefrontApiService.getConfig()`
+- [x] Eliminar valores hardcodeados del footer
+- [x] Footer muestra: dirección, WhatsApp, teléfono, email, redes sociales, políticas
 
-### Fase 1: index.html - Eliminar redirect bloqueante
-- [x] Eliminar `window.location.replace` que corta la carga de Flutter
-- [x] Usar solo hash navigation sin redirect
-- [x] Agregar timeout de splash máximo 2 segundos
-- [x] Agregar logs de rendimiento en JS
+### FASE 6: Limpieza ✅
+- [x] Verificar que no queden referencias a la ruta vieja en la tienda pública
+- [x] Verificar que la tienda pública funcione correctamente
+- [x] Pruebas de seguridad: endpoints admin requieren token, endpoints públicos son solo lectura
 
-### Fase 2: app.dart - Ruta raíz directa a Home
-- [x] Ruta "/" ya redirige directo a StorefrontHomeScreen (slug: 'fulltech')
-- [x] Verificar que no haya llamadas API antes
+## ARCHIVOS CREADOS/MODIFICADOS
 
-### Fase 3: StorefrontHomeScreen - Carga instantánea
-- [x] Eliminar `_loading = true` inicial, mostrar Home inmediatamente
-- [x] Mostrar skeletons solo para secciones sin datos
-- [x] Cargar todo en segundo plano después del primer frame
-- [x] Agregar logs [PERF] completos con Stopwatch
-- [x] Timeout en todas las llamadas API
-- [x] Manejo defensivo de datos vacíos/null
+### Nuevos archivos:
+- `frondend/lib/features/store_admin/services/store_admin_api_service.dart` - API service con autenticación
+- `frondend/lib/features/store_admin/providers/store_admin_provider.dart` - Provider con estados
+- `frondend/lib/features/store_admin/screens/store_admin_screen.dart` - Pantalla principal con tabs
+- `frondend/lib/features/store_admin/screens/store_config_screen.dart` - Configuración de tienda
+- `frondend/lib/features/store_admin/screens/store_banners_screen.dart` - Gestión de banners
+- `frondend/lib/features/store_admin/screens/store_carts_screen.dart` - Gestión de carritos
+- `frondend/lib/features/store_admin/screens/store_payments_screen.dart` - Gestión de pagos
+- `frondend/lib/features/store_admin/screens/store_policies_screen.dart` - Gestión de políticas
 
-### Fase 4: StorefrontAppBar - Eliminar carga bloqueante
-- [x] No esperar SharedPreferences en initState
-- [x] Cargar contador de carrito en segundo plano
+### Archivos modificados:
+- `frondend/lib/app.dart` - Ruta /admin/tienda redirigida al panel admin
+- `frondend/lib/main.dart` - Registro de StoreAdminProvider
+- `frondend/lib/features/bots/pages/bot_dashboard_page.dart` - Enlaces a Tienda en drawer/sidebar
+- `src/routes/storefront.routes.js` - Endpoints de políticas agregados
+- `src/controllers/storefront.controller.js` - Controladores de políticas
+- `src/services/storefront.service.js` - Servicios de políticas
+- `scripts/sql/crear_tabla_storefront_policies.sql` - Script SQL para tabla de políticas
 
-### Fase 5: Service Worker - Mejorar control de versión
-- [x] Forzar actualización inmediata en clientes existentes
-- [x] Mejorar limpieza de caches antiguos
+## ESTRUCTURA FINAL
 
-### Fase 6: nginx.conf - Activar brotli y optimizar
-- [x] Activar brotli
-- [x] Mejorar cache-control
+### Panel Admin Principal:
+```
+Administración > Tienda
+├── Configuración (nombre, slug, descripción, contacto, dirección, estado)
+├── Banners (CRUD, activar/desactivar, orden)
+├── Carritos (filtros: activos/abandonados/completados, detalle, WhatsApp)
+├── Pagos (lista de pagos con estado, método, monto)
+└── Políticas (privacidad, términos, garantía, envío, devoluciones, contacto)
+```
 
-### Fase 7: Dockerfile - Mejorar build
-- [x] Asegurar --web-renderer html
-- [x] Mejorar versionado
+### Tienda Pública (solo para clientes):
+```
+Home
+├── Productos
+├── Categorías
+├── Carrito
+├── Checkout/Contacto
+└── Políticas (footer)
+```
 
-### Fase 8: Pruebas y validación
-- [ ] flutter analyze
-- [ ] flutter build web --release
-- [ ] Verificar logs [PERF]
+### Endpoints Backend:
+```
+Públicos (solo lectura):
+- GET /api/storefront/public/:botId/config
+- GET /api/storefront/public/:botId/banners
+- GET /api/storefront/public/:botId/products
+- GET /api/storefront/public/:botId/categories
+- GET /api/storefront/public/:botId/policies
+
+Protegidos (requieren token):
+- GET/PUT /api/storefront/admin/:botId/config
+- CRUD /api/storefront/admin/:botId/banners
+- GET /api/storefront/admin/:botId/carts
+- GET /api/storefront/admin/:botId/payments
+- CRUD /api/storefront/admin/:botId/policies
+```

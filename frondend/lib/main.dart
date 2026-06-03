@@ -12,6 +12,7 @@ import 'features/catalogo/providers/catalogo_provider.dart';
 import 'features/clientes/providers/clientes_provider.dart';
 import 'features/conversaciones/providers/conversaciones_provider.dart';
 import 'features/followups/providers/followups_provider.dart';
+import 'features/store_admin/providers/store_admin_provider.dart';
 import 'features/orders/providers/bot_order_provider.dart';
 import 'features/orders/providers/order_provider.dart';
 import 'features/quotations/providers/bot_quotation_provider.dart';
@@ -147,6 +148,9 @@ void main() {
           ),
           ChangeNotifierProvider(
             create: (_) => FollowupsProvider(),
+          ),
+          ChangeNotifierProvider(
+            create: (_) => StoreAdminProvider(),
           ),
         ],
         child: const MyApp(),

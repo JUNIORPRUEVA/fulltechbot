@@ -97,4 +97,29 @@ router.post('/admin/:botId/delivery-zones', controller.createAdminDeliveryZone);
 router.put('/admin/:botId/delivery-zones/:id', controller.updateAdminDeliveryZone);
 router.delete('/admin/:botId/delivery-zones/:id', controller.deleteAdminDeliveryZone);
 
+// ============================================
+// RUTAS ADMIN - POLÍTICAS
+// ============================================
+
+// Obtener todas las políticas
+router.get('/admin/:botId/policies', controller.getAdminPolicies);
+
+// Crear o actualizar una política por tipo
+router.put('/admin/:botId/policies/:tipo', controller.upsertAdminPolicy);
+
+// Eliminar una política por tipo
+router.delete('/admin/:botId/policies/:tipo', controller.deleteAdminPolicy);
+
+// ============================================
+// RUTAS PÚBLICAS - POLÍTICAS
+// ============================================
+
+// Obtener todas las políticas activas de una tienda
+router.get('/:slug/policies', controller.getPublicPolicies);
+
+// Obtener una política específica por tipo
+router.get('/:slug/policies/:tipo', controller.getPublicPolicyByType);
+
 module.exports = router;
+
+

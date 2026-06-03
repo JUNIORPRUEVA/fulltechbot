@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../auth/services/admin_session_service.dart';
 import '../../campaigns/pages/bot_campaigns_page.dart';
+import '../../store_admin/screens/store_admin_screen.dart';
 import '../../campaigns/providers/bot_campaign_provider.dart';
 import '../../catalogo/pages/catalogo_page.dart';
 import '../../catalogo/providers/catalogo_provider.dart';
@@ -616,7 +617,10 @@ class _BotDashboardPageState extends State<BotDashboardPage>
   }
 
   void _abrirTiendaAdmin(BuildContext context) {
-    Navigator.pushNamed(context, '/admin/tienda');
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const StoreAdminScreen()),
+    );
   }
 
   void _abrirSeguimientos(BuildContext context) {

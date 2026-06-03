@@ -14,7 +14,8 @@ import 'features/storefront/screens/storefront_home_screen.dart';
 import 'features/storefront/screens/storefront_location_screen.dart';
 import 'features/storefront/screens/storefront_product_detail_screen.dart';
 import 'features/storefront/screens/storefront_success_screen.dart';
-import 'features/storefront_admin/screens/storefront_admin_screen.dart';
+import 'features/store_admin/providers/store_admin_provider.dart';
+import 'features/store_admin/screens/store_admin_screen.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -192,13 +193,11 @@ class MyApp extends StatelessWidget {
         child = const MainNavigation();
         break;
       case '/admin/tienda':
-        child = const StorefrontAdminScreen();
-        break;
       case '/admin/banners':
-        child = const StorefrontAdminScreen(initialTabIndex: 1);
-        break;
       case '/admin/pagos':
-        child = const StorefrontAdminScreen(initialTabIndex: 4);
+        // Redirigir a la tienda pública - la administración de tienda
+        // ahora se maneja desde el panel admin principal (BotDashboardPage)
+        child = const StorefrontHomeScreen(slug: 'fulltech');
         break;
       default:
         child = const MainNavigation();

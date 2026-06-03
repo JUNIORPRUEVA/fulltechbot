@@ -349,7 +349,9 @@ async function upsertConfig(botId, data) {
       'mensaje_principal', 'mensaje_secundario', 'activo',
       'permitir_paypal', 'permitir_whatsapp', 'permitir_retiro_tienda',
       'permitir_delivery',
+      'email', 'instagram', 'facebook', 'maps_url', 'is_active',
     ];
+
 
     for (const field of allowedFields) {
       if (data[field] !== undefined) {
@@ -1366,6 +1368,72 @@ async function getCarts(botId, estado = null) {
 }
 
 // ============================================
+// POLICIES (admin + public)
+// ============================================
+
+async function getPolicies(botId, soloActivas = false) {
+  const whereActivo = soloActivas ? 'AND activo = true' : '';
+  const rows = await prisma.$queryRawUnsafe(
+    `SELECT * FROM storefront_policies WHERE bot_id = $1 ${whereActivo} ORDER BY tipo ASC`,
+    botId
+  );
+  return serializeRows(rows);
+}
+
+async function getPolicyByType(botId, tipo) {
+  const rows = await prisma.$queryRawUnsafe(
+    `SELECT * FROM storefront_policies WHERE bot_id = $1 AND tipo = $2 LIMIT 1`,
+    botId, tipo
+  );
+  return rows[0] ? serializeRow(rows[0]) : null;
+}
+
+async function upsertPolicy(botId, tipo, data) {
+  const { titulo, contenido, activo } = data;
+  
+  // Verificar si existe
+  const existing = await prisma.$queryRawUnsafe(
+    `SELECT id FROM storefront_policies WHERE bot_id = $1 AND tipo = $2 LIMIT 1`,
+    botId, tipo
+  );
+
+  if (existing.length > 0) {
+    const assignments = [];
+    const values = [];
+    
+    if (titulo !== undefined) { values.push(titulo); assignments.push(`titulo = $${values.length}`); }
+    if (contenido !== undefined) { values.push(contenido); assignments.push(`contenido = $${values.length}`); }
+    if (activo !== undefined) { values.push(activo); assignments.push(`activo = $${values.length}`); }
+    
+    if (assignments.length > 0) {
+      assignments.push(`actualizado_en = NOW()`);
+      values.push(existing[0].id);
+      await prisma.$executeRawUnsafe(
+        `UPDATE storefront_policies SET ${assignments.join(', ')} WHERE id = $${values.length}`,
+        ...values
+      );
+    }
+  } else {
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO storefront_policies (bot_id, tipo, titulo, contenido, activo) VALUES ($1, $2, $3, $4, $5)`,
+      botId, tipo, titulo || tipo, contenido || null, activo !== undefined ? activo : true
+    );
+  }
+
+  return getPolicyByType(botId, tipo);
+}
+
+async function deletePolicy(botId, tipo) {
+  const existing = await getPolicyByType(botId, tipo);
+  if (!existing) return null;
+  await prisma.$executeRawUnsafe(
+    `DELETE FROM storefront_policies WHERE bot_id = $1 AND tipo = $2`,
+    botId, tipo
+  );
+  return existing;
+}
+
+// ============================================
 // EXPORTS
 // ============================================
 
@@ -1421,4 +1489,12 @@ module.exports = {
   // Admin
   getPayments,
   getCarts,
+
+  // Policies
+  getPolicies,
+  getPolicyByType,
+  upsertPolicy,
+  deletePolicy,
 };
+
+
