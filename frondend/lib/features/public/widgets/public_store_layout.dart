@@ -31,7 +31,7 @@ class PublicStoreLayout extends StatelessWidget {
   final List<Widget> slivers;
   final Widget? floatingActionButton;
 
-  const PublicStoreLayout({
+  PublicStoreLayout({
     super.key,
     required this.slug,
     required this.storeName,
@@ -55,9 +55,10 @@ class PublicStoreLayout extends StatelessWidget {
   bool _isDesktop(BuildContext context) =>
       MediaQuery.sizeOf(context).width >= 1024;
 
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
   @override
   Widget build(BuildContext context) {
-    final scaffoldKey = GlobalKey<ScaffoldState>();
     final isDesktop = _isDesktop(context);
     final width = MediaQuery.sizeOf(context).width;
     final sidePadding = width >= 1320
@@ -67,7 +68,7 @@ class PublicStoreLayout extends StatelessWidget {
         : 14.0;
 
     return Scaffold(
-      key: scaffoldKey,
+      key: _scaffoldKey,
       backgroundColor: const Color(0xFFF5F7FA),
       drawer: isDesktop
           ? null
@@ -94,7 +95,7 @@ class PublicStoreLayout extends StatelessWidget {
                 storeName: storeName,
                 primaryColor: primaryColor,
                 secondaryColor: secondaryColor,
-                onMenuTap: () => scaffoldKey.currentState?.openDrawer(),
+                onMenuTap: () => _scaffoldKey.currentState?.openDrawer(),
                 onSearchTap: onSearchTap,
                 onCartTap: onCartTap,
               ),
@@ -231,24 +232,33 @@ class _PublicMenuDrawer extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF3B82F6), Color(0xFF60A5FA)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    alignment: Alignment.center,
-                    child: const Text(
-                      'F',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.asset(
+                      'assets/logo_principal.jpeg',
+                      width: 40,
+                      height: 40,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF3B82F6), Color(0xFF60A5FA)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        alignment: Alignment.center,
+                        child: const Text(
+                          'F',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
                       ),
                     ),
                   ),
