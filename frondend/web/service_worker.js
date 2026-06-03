@@ -9,8 +9,8 @@
  * - Auto-desregistra versiones anteriores
  */
 
-const CACHE_NAME = 'fulltech-store-v3';
-const SW_VERSION = '2026.05.30.03';
+const CACHE_NAME = 'fulltech-store-v4';
+const SW_VERSION = '2026.06.02.01';
 
 // Archivos que NUNCA deben cachearse
 const NEVER_CACHE = [

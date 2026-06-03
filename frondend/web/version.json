@@ -1,6 +1,6 @@
 {
-  "version": "2026.05.30.03",
-  "build": "fulltech-store-instant-load",
-  "description": "FULLTECH SRL - Tienda Oficial - Carga instantánea optimizada v3",
-  "updatedAt": "2026-05-30T18:55:00-04:00"
+  "version": "2026.06.02.01",
+  "build": "fulltech-store-pwa-v1",
+  "description": "FULLTECH SRL - Tienda Oficial - PWA con instalación inteligente v1",
+  "updatedAt": "2026-06-02T23:00:00-04:00"
 }

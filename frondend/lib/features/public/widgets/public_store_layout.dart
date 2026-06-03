@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../storefront/widgets/install_pwa_prompt.dart';
 import '../../storefront/widgets/storefront_app_bar.dart';
 import '../../storefront/widgets/storefront_hero_slider.dart';
 import '../../storefront/widgets/storefront_whatsapp_button.dart' as wa;
@@ -165,6 +166,15 @@ class PublicStoreLayout extends StatelessWidget {
                 isDesktop: isDesktop,
               ),
             ),
+
+          // ==========================================
+          // PROMPT DE INSTALACIÓN PWA
+          // Aparece en la parte inferior sin tapar WhatsApp
+          // ==========================================
+          InstallPwaPrompt(
+            primaryColor: primaryColor,
+            secondaryColor: secondaryColor,
+          ),
         ],
       ),
     );

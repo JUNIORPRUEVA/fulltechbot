@@ -244,7 +244,44 @@
       }
       
       // ==========================================
-      // 6. LIMPIEZA DE CACHE (solo si hay cambio de versión)
+      // 6. PWA INSTALL PROMPT BRIDGE
+      //    Expone funciones para que Flutter (dart:js) pueda
+      //    interactuar con el evento beforeinstallprompt
+      // ==========================================
+      window.fulltechPwaDeferredPrompt = null;
+
+      // Escuchar beforeinstallprompt y guardarlo
+      window.addEventListener('beforeinstallprompt', function(e) {
+        // Prevenir el prompt automático
+        e.preventDefault();
+        // Guardar el evento para uso posterior
+        window.fulltechPwaDeferredPrompt = e;
+        console.log('[PWA] beforeinstallprompt capturado y guardado');
+      });
+
+      // Función para que Flutter llame deferredPrompt.prompt()
+      window.fulltechPwaPromptInstall = function() {
+        var prompt = window.fulltechPwaDeferredPrompt;
+        if (!prompt) {
+          console.warn('[PWA] No hay deferredPrompt disponible');
+          return Promise.resolve({ outcome: 'not_available' });
+        }
+        return prompt.prompt().then(function() {
+          return prompt.userChoice.then(function(choiceResult) {
+            console.log('[PWA] userChoice:', choiceResult.outcome);
+            window.fulltechPwaDeferredPrompt = null;
+            return { outcome: choiceResult.outcome };
+          });
+        });
+      };
+
+      // Función para verificar si beforeinstallprompt está disponible
+      window.fulltechPwaIsAvailable = function() {
+        return window.fulltechPwaDeferredPrompt !== null;
+      };
+
+      // ==========================================
+      // 7. LIMPIEZA DE CACHE (solo si hay cambio de versión)
       // ==========================================
 
       function clearRuntimeCaches() {
