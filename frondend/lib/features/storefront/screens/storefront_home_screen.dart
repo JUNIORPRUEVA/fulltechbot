@@ -1087,6 +1087,7 @@ class _AutoScrollCategoriesState extends State<_AutoScrollCategories>
   late final ScrollController _scrollController;
   late final AnimationController _animController;
   bool _isPaused = false;
+  bool _isRestarting = false;
 
   @override
   void initState() {
@@ -1095,7 +1096,9 @@ class _AutoScrollCategoriesState extends State<_AutoScrollCategories>
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 12),
-    )..addListener(_onAnimationTick);
+    )
+      ..addListener(_onAnimationTick)
+      ..addStatusListener(_onAnimationStatusChanged);
 
     // Iniciar el scroll automático después del primer frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1106,6 +1109,7 @@ class _AutoScrollCategoriesState extends State<_AutoScrollCategories>
   @override
   void dispose() {
     _animController.removeListener(_onAnimationTick);
+    _animController.removeStatusListener(_onAnimationStatusChanged);
     _animController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -1125,12 +1129,36 @@ class _AutoScrollCategoriesState extends State<_AutoScrollCategories>
   }
 
   void _onAnimationTick() {
-    if (!_scrollController.hasClients || _isPaused) return;
+    if (!_scrollController.hasClients || _isPaused || _isRestarting) return;
     final maxScroll = _scrollController.position.maxScrollExtent;
     if (maxScroll <= 0) return;
 
     final target = _animController.value * maxScroll;
     _scrollController.jumpTo(target);
+  }
+
+  void _onAnimationStatusChanged(AnimationStatus status) {
+    if (status != AnimationStatus.completed || _isPaused || _isRestarting) {
+      return;
+    }
+
+    if (!_scrollController.hasClients) return;
+
+    _isRestarting = true;
+    _scrollController
+        .animateTo(
+          0,
+          duration: const Duration(milliseconds: 700),
+          curve: Curves.easeInOutCubic,
+        )
+        .whenComplete(() {
+          if (!mounted) return;
+          _animController.value = 0;
+          _isRestarting = false;
+          if (!_isPaused) {
+            _animController.forward();
+          }
+        });
   }
 
   void _onPointerDown(PointerDownEvent event) {
@@ -1144,19 +1172,12 @@ class _AutoScrollCategoriesState extends State<_AutoScrollCategories>
     final maxScroll = _scrollController.position.maxScrollExtent;
     if (maxScroll <= 0) return;
 
-    // Reanudar desde la posición actual
     final currentPos = _scrollController.offset;
     final remaining = maxScroll - currentPos;
     if (remaining <= 0) {
-      // Si llegó al final, reiniciar
-      _scrollController.animateTo(
-        0,
-        duration: const Duration(milliseconds: 800),
-        curve: Curves.easeInOut,
-      ).then((_) {
-        _animController.value = 0;
-        _animController.forward();
-      });
+      _animController.value = 0;
+      _scrollController.jumpTo(0);
+      _animController.forward();
       return;
     }
 
@@ -1934,3 +1955,4 @@ class _StorefrontSearchSheetState extends State<_StorefrontSearchSheet> {
     );
   }
 }
+

@@ -71,20 +71,20 @@ class StorefrontLocationScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'Encuentranos facil y llega directo a la tienda.',
+                    'Llega directo a FULLTECH sin pasos repetidos.',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 28,
+                      fontSize: 26,
                       fontWeight: FontWeight.w900,
-                      height: 1.06,
+                      height: 1.08,
                     ),
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Mapa interactivo, direccion exacta y acceso rapido por llamada o WhatsApp.',
+                    'Aqui tienes el mapa, la direccion exacta y los canales de contacto mas utiles para llegar o escribirnos.',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.78),
-                      fontSize: 14,
+                      fontSize: 13,
                       height: 1.5,
                     ),
                   ),
@@ -119,9 +119,9 @@ class StorefrontLocationScreen extends StatelessWidget {
                 children: [
                   _ContactTile(
                     icon: Icons.location_on_outlined,
-                    title: 'Ubicacion exacta',
+                    title: 'Direccion',
                     subtitle: storefrontAddress,
-                    actionLabel: 'Ver mapa',
+                    actionLabel: 'Abrir mapa',
                     onTap: StorefrontMapView.openStoreMap,
                   ),
                   _ContactTile(
@@ -141,80 +141,12 @@ class StorefrontLocationScreen extends StatelessWidget {
                     ),
                   ),
                   _ContactTile(
-                    icon: Icons.mail_outline_rounded,
-                    title: 'Correo',
-                    subtitle: storefrontEmail,
-                    actionLabel: 'Enviar',
-                    onTap: () => _openUrl('mailto:$storefrontEmail'),
+                    icon: Icons.storefront_outlined,
+                    title: 'Tienda online',
+                    subtitle: 'Explora productos y ofertas',
+                    actionLabel: 'Ir a la tienda',
+                    onTap: () => Navigator.pushNamed(context, '/tienda/$slug'),
                     showDivider: false,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 18),
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF0F7FF),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: const Color(0xFFD9E9FF)),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2563EB),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Icon(
-                      Icons.store_mall_directory_rounded,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Ve directo a la tienda',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF0F172A),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'Cuando termines de revisar la ubicacion, vuelve a explorar productos y ofertas de FULLTECH.',
-                          style: TextStyle(
-                            color: Color(0xFF4B5563),
-                            height: 1.5,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
-                          children: [
-                            OutlinedButton.icon(
-                              onPressed: () =>
-                                  Navigator.pushNamed(context, '/tienda/$slug'),
-                              icon: const Icon(Icons.storefront_rounded),
-                              label: const Text('Ir a la tienda'),
-                            ),
-                            FilledButton.icon(
-                              onPressed: StorefrontMapView.openStoreMap,
-                              icon: const Icon(Icons.near_me_rounded),
-                              label: const Text('Como llegar'),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
                   ),
                 ],
               ),

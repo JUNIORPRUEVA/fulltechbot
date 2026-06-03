@@ -6,6 +6,7 @@ import '../services/storefront_helpers.dart';
 import '../theme/storefront_theme.dart';
 import '../widgets/storefront_error_state.dart';
 import '../widgets/storefront_price_widget.dart';
+import '../widgets/storefront_product_action_bar.dart';
 import '../widgets/storefront_product_detail_bottom_bar.dart';
 import '../widgets/storefront_product_detail_hero_image.dart';
 import '../widgets/storefront_product_detail_skeleton.dart';
@@ -13,16 +14,6 @@ import '../widgets/storefront_product_info_section.dart';
 import '../widgets/storefront_quantity_selector.dart';
 import '../widgets/storefront_related_products_section.dart';
 
-/// Pantalla de detalle de producto rediseñada con enfoque premium.
-/// 
-/// Características:
-/// - Imagen hero grande (~42% altura) con Hero animation
-/// - Botones de regresar y carrito dentro de la imagen
-/// - Contenido limpio sin tarjetas internas pesadas
-/// - Selector de cantidad compacto
-/// - Barra inferior fija con acciones principales
-/// - Productos relacionados en grid
-/// - Optimizado para móvil con SafeArea
 class StorefrontProductDetailScreen extends StatefulWidget {
   final String slug;
   final String productId;
@@ -95,8 +86,7 @@ class _StorefrontProductDetailScreenState
 
       if (configResponse['ok'] != true || productResponse['ok'] != true) {
         setState(() {
-          _error =
-              productResponse['message']?.toString() ??
+          _error = productResponse['message']?.toString() ??
               'No se pudo cargar el producto.';
           _loading = false;
         });
@@ -104,10 +94,7 @@ class _StorefrontProductDetailScreenState
       }
 
       final fetched = Map<String, dynamic>.from(productResponse['data'] as Map);
-      final mergedProduct = {
-        ...?_product,
-        ...fetched,
-      };
+      final mergedProduct = {...?_product, ...fetched};
 
       _fadeController.reset();
       setState(() {
@@ -120,8 +107,6 @@ class _StorefrontProductDetailScreenState
         _loading = false;
       });
       _fadeController.forward();
-
-      // Precargar imágenes del producto
       _precacheProductImages(mergedProduct);
     } catch (e) {
       setState(() {
@@ -165,6 +150,7 @@ class _StorefrontProductDetailScreenState
       }
       return;
     }
+
     final sessionId = await StorefrontHelpers.ensureSessionId(widget.slug);
     await StorefrontApiService.createCart(widget.slug, sessionId);
 
@@ -182,8 +168,6 @@ class _StorefrontProductDetailScreenState
 
     if (response['ok'] == true) {
       if (goToCart) {
-        // Navegar directamente al checkout para que el cliente
-        // ingrese sus datos (nombre, teléfono, dirección) y cree el pedido
         Navigator.pushNamed(context, '/tienda/${widget.slug}/checkout');
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -216,21 +200,33 @@ class _StorefrontProductDetailScreenState
     final number = whatsapp.replaceAll(RegExp(r'[^\d]'), '');
     final price = StorefrontHelpers.getDisplayPrice(product);
     final imageUrl = StorefrontHelpers.getPrimaryImage(product) ?? '';
-    final description =
-        StorefrontHelpers.getShortDescription(
-          product,
-          fallback: '',
-        );
+    final description = StorefrontHelpers.getShortDescription(
+      product,
+      fallback: '',
+    );
+    final category = product['categoria']?.toString().trim() ?? '';
+    final includeInfo = product['incluye']?.toString().trim() ?? '';
+    final extraInfo = product['informacion']?.toString().trim() ?? '';
+    final stock = int.tryParse(product['stock']?.toString() ?? '0') ?? 0;
+    final priceText = price != null
+        ? 'RD\$${price.toStringAsFixed(2)}'
+        : 'Consultar precio';
 
-    final priceText = price != null ? 'RD\$$price' : 'Consultar precio';
-    final imageText = imageUrl.isNotEmpty ? '\n📷 $imageUrl' : '';
+    final specs = <String>[
+      if (category.isNotEmpty) '- Categoria: $category',
+      '- Cantidad solicitada: $_quantity',
+      '- Disponibilidad: ${stock > 0 ? 'Disponible' : 'Agotado'}',
+      '- Precio: $priceText',
+      if (description.isNotEmpty) '- Descripcion: $description',
+      if (includeInfo.isNotEmpty) '- Incluye: $includeInfo',
+      if (extraInfo.isNotEmpty) '- Especificaciones: $extraInfo',
+      if (imageUrl.isNotEmpty) '- Imagen: $imageUrl',
+    ];
 
     final message =
-        'Hola, estoy interesado en este producto:\n\n'
+        'Hola FULLTECH, quiero informacion sobre este producto:\n\n'
         '*$productName*\n'
-        '💰 $priceText'
-        '$imageText'
-        '${description.isNotEmpty ? '\n📄 $description' : ''}'
+        '${specs.join('\n')}'
         '\n\nQuedo atento a su respuesta. Gracias.';
 
     await launchUrl(
@@ -273,14 +269,12 @@ class _StorefrontProductDetailScreenState
     final stock = int.tryParse(product['stock']?.toString() ?? '0') ?? 0;
     final canBuy = stock > 0 && price != null && price > 0;
     final isDesktop = MediaQuery.sizeOf(context).width >= 1000;
-    final description =
-        StorefrontHelpers.getShortDescription(
-          product,
-          fallback: 'Producto disponible en tienda',
-        );
+    final description = StorefrontHelpers.getShortDescription(
+      product,
+      fallback: 'Producto disponible en tienda',
+    );
     final video = product['video']?.toString().trim() ?? '';
-    final category =
-        product['categoria']?.toString().trim() ?? '';
+    final category = product['categoria']?.toString().trim() ?? '';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
@@ -291,7 +285,6 @@ class _StorefrontProductDetailScreenState
           opacity: _fadeAnimation,
           child: Stack(
             children: [
-              // Contenido principal scrolleable
               CustomScrollView(
                 physics: const BouncingScrollPhysics(
                   parent: AlwaysScrollableScrollPhysics(),
@@ -300,7 +293,6 @@ class _StorefrontProductDetailScreenState
                   SliverToBoxAdapter(
                     child: Column(
                       children: [
-                        // A. Imagen principal hero
                         StorefrontProductDetailHeroImage(
                           product: product,
                           images: gallery,
@@ -312,14 +304,11 @@ class _StorefrontProductDetailScreenState
                             '/tienda/${widget.slug}/carrito',
                           ),
                         ),
-
-                        // B. Contenido principal
                         Padding(
                           padding: EdgeInsets.fromLTRB(
                             isDesktop ? 32 : 16,
                             20,
                             isDesktop ? 32 : 16,
-                            // Padding inferior suficiente para no quedar detrás de la barra fija
                             isDesktop ? 40 : 100,
                           ),
                           child: ConstrainedBox(
@@ -327,7 +316,6 @@ class _StorefrontProductDetailScreenState
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Categoría
                                 if (category.isNotEmpty)
                                   Padding(
                                     padding: const EdgeInsets.only(bottom: 10),
@@ -352,8 +340,6 @@ class _StorefrontProductDetailScreenState
                                       ),
                                     ),
                                   ),
-
-                                // Nombre del producto
                                 Text(
                                   product['titulo']?.toString() ?? '',
                                   maxLines: isDesktop ? 3 : 2,
@@ -366,8 +352,6 @@ class _StorefrontProductDetailScreenState
                                     letterSpacing: -0.8,
                                   ),
                                 ),
-
-                                // Descripción corta
                                 if (description.isNotEmpty) ...[
                                   const SizedBox(height: 10),
                                   Text(
@@ -381,10 +365,7 @@ class _StorefrontProductDetailScreenState
                                     ),
                                   ),
                                 ],
-
                                 const SizedBox(height: 16),
-
-                                // Precio
                                 StorefrontPriceWidget(
                                   precio: price,
                                   precioOriginal: originalPrice,
@@ -392,34 +373,27 @@ class _StorefrontProductDetailScreenState
                                   primaryColor: primaryColor,
                                   currencyPrefix: 'RD\$',
                                 ),
-
                                 const SizedBox(height: 12),
-
-                                // Estado disponible
                                 Row(
                                   children: [
                                     _StatusChip(
-                                      label: stock > 0
-                                          ? 'Disponible'
-                                          : 'Agotado',
+                                      label: stock > 0 ? 'Disponible' : 'Agotado',
                                       color: stock > 0
                                           ? const Color(0xFF16A34A)
                                           : const Color(0xFFDC2626),
                                     ),
-                                    if (originalPrice != null && price != null &&
+                                    if (originalPrice != null &&
+                                        price != null &&
                                         originalPrice > price) ...[
                                       const SizedBox(width: 8),
-                                      _StatusChip(
+                                      const _StatusChip(
                                         label: 'Oferta',
-                                        color: const Color(0xFFEA580C),
+                                        color: Color(0xFFEA580C),
                                       ),
                                     ],
                                   ],
                                 ),
-
                                 const SizedBox(height: 20),
-
-                                // C. Selector de cantidad
                                 if (!isDesktop) ...[
                                   Row(
                                     children: [
@@ -439,30 +413,22 @@ class _StorefrontProductDetailScreenState
                                             setState(() => _quantity--);
                                           }
                                         },
-                                        onIncrease: () =>
-                                            setState(() => _quantity++),
+                                        onIncrease: () => setState(() => _quantity++),
                                       ),
                                     ],
                                   ),
                                   const SizedBox(height: 20),
                                 ],
-
-                                // D. Botón WhatsApp inline (solo móvil, cuando no hay precio)
-                                if (!isDesktop &&
-                                    !canBuy &&
-                                    whatsapp.isNotEmpty) ...[
+                                if (!isDesktop && !canBuy && whatsapp.isNotEmpty) ...[
                                   SizedBox(
                                     width: double.infinity,
                                     height: 50,
                                     child: FilledButton.icon(
-                                      onPressed: () =>
-                                          _openWhatsApp(whatsapp),
+                                      onPressed: () => _openWhatsApp(whatsapp),
                                       style: FilledButton.styleFrom(
-                                        backgroundColor:
-                                            const Color(0xFF25D366),
+                                        backgroundColor: const Color(0xFF25D366),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(14),
+                                          borderRadius: BorderRadius.circular(14),
                                         ),
                                       ),
                                       icon: const Icon(
@@ -480,18 +446,37 @@ class _StorefrontProductDetailScreenState
                                   ),
                                   const SizedBox(height: 24),
                                 ],
-
-                                // E. Descripción del producto
+                                if (isDesktop) ...[
+                                  StorefrontProductActionBar(
+                                    isDesktop: true,
+                                    canBuy: canBuy,
+                                    canWhatsapp: whatsapp.isNotEmpty,
+                                    quantity: _quantity,
+                                    primaryColor: primaryColor,
+                                    onDecrease: () {
+                                      if (_quantity > 1) {
+                                        setState(() => _quantity--);
+                                      }
+                                    },
+                                    onIncrease: () => setState(() => _quantity++),
+                                    onAddToCart: canBuy ? () => _addToCart() : null,
+                                    onBuyNow: canBuy
+                                        ? () => _addToCart(goToCart: true)
+                                        : null,
+                                    onWhatsapp: whatsapp.isNotEmpty
+                                        ? () => _openWhatsApp(whatsapp)
+                                        : null,
+                                  ),
+                                  const SizedBox(height: 24),
+                                ],
                                 if (description.isNotEmpty) ...[
                                   StorefrontProductInfoSection(
-                                    title: 'Descripción del producto',
+                                    title: 'Descripcion del producto',
                                     content: description,
                                     accentColor: secondaryColor,
                                   ),
                                   const SizedBox(height: 20),
                                 ],
-
-                                // Video del producto
                                 if (video.isNotEmpty) ...[
                                   Container(
                                     height: 1,
@@ -503,14 +488,11 @@ class _StorefrontProductDetailScreenState
                                     width: double.infinity,
                                     height: 50,
                                     child: FilledButton.icon(
-                                      onPressed: () =>
-                                          launchUrl(Uri.parse(video)),
+                                      onPressed: () => launchUrl(Uri.parse(video)),
                                       style: FilledButton.styleFrom(
-                                        backgroundColor:
-                                            StorefrontColors.primary,
+                                        backgroundColor: StorefrontColors.primary,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(14),
+                                          borderRadius: BorderRadius.circular(14),
                                         ),
                                       ),
                                       icon: const Icon(
@@ -528,8 +510,6 @@ class _StorefrontProductDetailScreenState
                                   ),
                                   const SizedBox(height: 24),
                                 ],
-
-                                // F. Productos relacionados
                                 StorefrontRelatedProductsSection(
                                   products: _relatedProducts,
                                   slug: widget.slug,
@@ -537,8 +517,6 @@ class _StorefrontProductDetailScreenState
                                   secondaryColor: secondaryColor,
                                   whatsapp: whatsapp,
                                 ),
-
-                                // Espacio inferior extra
                                 const SizedBox(height: 24),
                               ],
                             ),
@@ -549,8 +527,6 @@ class _StorefrontProductDetailScreenState
                   ),
                 ],
               ),
-
-              // Barra inferior fija (solo móvil)
               if (!isDesktop)
                 Positioned(
                   left: 0,
@@ -575,7 +551,6 @@ class _StorefrontProductDetailScreenState
   }
 }
 
-/// Chip pequeño para estado (Disponible, Oferta, Agotado)
 class _StatusChip extends StatelessWidget {
   final String label;
   final Color color;

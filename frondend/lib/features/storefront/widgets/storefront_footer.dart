@@ -176,18 +176,18 @@ class _BrandColumn extends StatelessWidget {
           'Tecnologia, instalacion y soporte en un solo lugar.',
           style: TextStyle(
             color: Colors.white,
-            fontSize: 24,
-            fontWeight: FontWeight.w900,
-            height: 1.08,
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            height: 1.15,
           ),
         ),
         const SizedBox(height: 8),
         Text(
-          'Compra online, contacta por WhatsApp y visita nuestra tienda con una ruta clara y rapida.',
+          'Compra online con soporte rapido y acceso directo a nuestros canales de contacto.',
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.72),
-            fontSize: 13,
-            height: 1.55,
+            fontSize: 12,
+            height: 1.45,
           ),
         ),
         const SizedBox(height: 16),
@@ -245,13 +245,6 @@ class _ContactColumn extends StatelessWidget {
               onTap: () => openUrl('mailto:$storefrontEmail'),
             ),
             _ContactCard(
-              icon: Icons.location_on_rounded,
-              title: 'Ubicacion',
-              value: 'Ver mapa',
-              color: const Color(0xFFEF4444),
-              onTap: StorefrontMapView.openStoreMap,
-            ),
-            _ContactCard(
               icon: Icons.camera_alt_rounded,
               title: 'Instagram',
               value: '@$storefrontInstagramHandle',
@@ -307,7 +300,7 @@ class _LocationColumn extends StatelessWidget {
           storefrontAddress,
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.76),
-            fontSize: 12.5,
+            fontSize: 11.5,
             height: 1.45,
           ),
         ),
@@ -320,7 +313,7 @@ class _LocationColumn extends StatelessWidget {
               onPressed: () =>
                   Navigator.pushNamed(context, '/tienda/$slug/ubicacion'),
               icon: const Icon(Icons.map_rounded),
-              label: const Text('Ver ubicacion'),
+              label: const Text('Ubicacion'),
               style: FilledButton.styleFrom(
                 backgroundColor: Colors.white,
                 foregroundColor: const Color(0xFF0F172A),
@@ -329,7 +322,7 @@ class _LocationColumn extends StatelessWidget {
             OutlinedButton.icon(
               onPressed: StorefrontMapView.openStoreMap,
               icon: const Icon(Icons.near_me_rounded),
-              label: const Text('Ir alla'),
+              label: const Text('Como llegar'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.white,
                 side: BorderSide(color: Colors.white.withValues(alpha: 0.18)),
