@@ -16,8 +16,8 @@ class _FooterColors {
 }
 
 /// Footer premium, compacto y profesional para FULLTECH SRL.
-/// Diseño oscuro elegante con mini mapa integrado, contactos rápidos
-/// y enlaces de políticas. Optimizado para conversión.
+/// Diseño oscuro elegante con contactos en grid, políticas reducidas
+/// y copyright. Optimizado para conversión.
 class StorefrontFooter extends StatelessWidget {
   final Map<String, dynamic> config;
   final Color primaryColor;
@@ -42,11 +42,11 @@ class StorefrontFooter extends StatelessWidget {
   static const String _whatsAppNumber = '8494314070';
   static const String _phoneNumber = '8295319442';
   static const String _email = 'fulltechsd@gmail.com';
-  static const String _instagramHandle = 'fulltechsrl';
-  static const String _facebookLabel = 'fulltech, srl';
-  static const String _instagramUrl = 'https://instagram.com/fulltechsrl';
-  static const String _facebookUrl =
-      'https://www.facebook.com/search/top/?q=fulltech%20srl';
+  static const String _instagramHandle = 'fulltech_srl';
+  static const String _facebookLabel = 'Fulltech SRL';
+  static const String _instagramUrl =
+      'https://www.instagram.com/fulltech_srl?igsh=Z2V5NWY2MDJzNmdh';
+  static const String _facebookUrl = 'https://www.facebook.com/fulltechs/';
 
   Future<void> _openUrl(String url) async {
     await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
@@ -75,9 +75,9 @@ class StorefrontFooter extends StatelessWidget {
           Padding(
             padding: EdgeInsets.fromLTRB(
               isDesktop ? 48 : 20,
-              isDesktop ? 40 : 28,
+              isDesktop ? 32 : 22,
               isDesktop ? 48 : 20,
-              isDesktop ? 32 : 24,
+              isDesktop ? 24 : 18,
             ),
             child: isDesktop
                 ? _buildDesktopLayout(context)
@@ -91,9 +91,9 @@ class StorefrontFooter extends StatelessWidget {
             width: double.infinity,
             padding: EdgeInsets.fromLTRB(
               isDesktop ? 48 : 20,
-              14,
+              12,
               isDesktop ? 48 : 20,
-              bottomPadding > 0 ? bottomPadding + 14 : 14,
+              bottomPadding > 0 ? bottomPadding + 12 : 12,
             ),
             decoration: BoxDecoration(
               border: Border(
@@ -102,31 +102,46 @@ class StorefrontFooter extends StatelessWidget {
                 ),
               ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '© ${DateTime.now().year} $_companyName',
-                  style: TextStyle(
-                    color: _FooterColors.textDim,
-                    fontSize: isDesktop ? 12 : 11,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                if (isDesktop)
-                  Row(
+            child: isDesktop
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _buildTrustBadge('Tienda física'),
-                      const SizedBox(width: 12),
-                      _buildTrustBadge('Garantía'),
-                      const SizedBox(width: 12),
-                      _buildTrustBadge('Instalación'),
-                      const SizedBox(width: 12),
-                      _buildTrustBadge('Soporte'),
+                      Text(
+                        '© ${DateTime.now().year} $_companyName',
+                        style: TextStyle(
+                          color: _FooterColors.textDim,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          _buildTrustBadge('Tienda física'),
+                          const SizedBox(width: 10),
+                          _buildTrustBadge('Garantía'),
+                          const SizedBox(width: 10),
+                          _buildTrustBadge('Instalación'),
+                          const SizedBox(width: 10),
+                          _buildTrustBadge('Soporte'),
+                        ],
+                      ),
+                    ],
+                  )
+                : Column(
+                    children: [
+                      // Políticas compactas en fila
+                      _buildPoliciesRow(context),
+                      const SizedBox(height: 10),
+                      Text(
+                        '© ${DateTime.now().year} $_companyName',
+                        style: TextStyle(
+                          color: _FooterColors.textDim,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ],
                   ),
-              ],
-            ),
           ),
         ],
       ),
@@ -134,7 +149,7 @@ class StorefrontFooter extends StatelessWidget {
   }
 
   // ==========================================
-  // LAYOUT DESKTOP - 4 COLUMNAS
+  // LAYOUT DESKTOP - 3 COLUMNAS
   // ==========================================
   Widget _buildDesktopLayout(BuildContext context) {
     return IntrinsicHeight(
@@ -148,10 +163,10 @@ class StorefrontFooter extends StatelessWidget {
           ),
           const SizedBox(width: 40),
 
-          // Col 2: Contacto rápido
+          // Col 2: Contacto en grid
           Expanded(
-            flex: 2,
-            child: _buildContactColumn(context),
+            flex: 3,
+            child: _buildContactGrid(context),
           ),
           const SizedBox(width: 40),
 
@@ -159,13 +174,6 @@ class StorefrontFooter extends StatelessWidget {
           Expanded(
             flex: 3,
             child: _buildLocationColumn(context),
-          ),
-          const SizedBox(width: 40),
-
-          // Col 4: Políticas
-          Expanded(
-            flex: 2,
-            child: _buildPoliciesColumn(context),
           ),
         ],
       ),
@@ -181,18 +189,14 @@ class StorefrontFooter extends StatelessWidget {
       children: [
         // Marca + mensaje
         _buildBrandColumn(context),
-        const SizedBox(height: 24),
+        const SizedBox(height: 20),
+
+        // Contacto en grid
+        _buildContactGrid(context),
+        const SizedBox(height: 20),
 
         // Mini mapa + ubicación
         _buildLocationColumn(context),
-        const SizedBox(height: 24),
-
-        // Contacto rápido
-        _buildContactColumn(context),
-        const SizedBox(height: 24),
-
-        // Políticas
-        _buildPoliciesColumn(context),
       ],
     );
   }
@@ -208,8 +212,8 @@ class StorefrontFooter extends StatelessWidget {
         Row(
           children: [
             Container(
-              width: 32,
-              height: 32,
+              width: 30,
+              height: 30,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
                   colors: [
@@ -219,59 +223,59 @@ class StorefrontFooter extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(7),
               ),
               alignment: Alignment.center,
               child: const Text(
                 'F',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.w900,
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             const Text(
               _companyName,
               style: TextStyle(
                 color: _FooterColors.textWhite,
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 0.5,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
 
         // Mensaje principal corto y vendedor
         const Text(
           'Tecnología, seguridad e instalación profesional.',
           style: TextStyle(
             color: _FooterColors.textWhite,
-            fontSize: 20,
+            fontSize: 18,
             fontWeight: FontWeight.w800,
             height: 1.15,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
 
         // Subtítulo
         Text(
           'Compra tus equipos, solicita soporte o visítanos en nuestra tienda física en Higüey.',
           style: TextStyle(
             color: _FooterColors.textMuted,
-            fontSize: 13,
-            height: 1.5,
+            fontSize: 12.5,
+            height: 1.4,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
 
         // Tags de servicios (compactos)
         Wrap(
-          spacing: 6,
-          runSpacing: 6,
+          spacing: 5,
+          runSpacing: 5,
           children: const [
             _ServiceTag(label: 'Seguridad'),
             _ServiceTag(label: 'Cámaras'),
@@ -286,59 +290,67 @@ class StorefrontFooter extends StatelessWidget {
   }
 
   // ==========================================
-  // COLUMNA 2: CONTACTO RÁPIDO
+  // CONTACTO EN GRID RESPONSIVE
   // ==========================================
-  Widget _buildContactColumn(BuildContext context) {
+  Widget _buildContactGrid(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final isMobile = width < 500;
+    // En móvil: 2 columnas; en desktop: 3 columnas
+    final crossAxisCount = isMobile ? 2 : 3;
+
+    final contactItems = [
+      _ContactGridItem(
+        icon: Icons.chat_rounded,
+        iconColor: _FooterColors.whatsappGreen,
+        label: 'WhatsApp',
+        value: '849-431-4070',
+        onTap: () => _openUrl(
+          'https://wa.me/18494314070?text=${Uri.encodeComponent('Hola FULLTECH SRL, quiero información.')}',
+        ),
+      ),
+      _ContactGridItem(
+        icon: Icons.call_rounded,
+        iconColor: _FooterColors.accentBlue,
+        label: 'Teléfono',
+        value: '829-531-9442',
+        onTap: () => _openUrl('tel:18295319442'),
+      ),
+      _ContactGridItem(
+        icon: Icons.email_rounded,
+        iconColor: Color(0xFFF97316),
+        label: 'Email',
+        value: _email,
+        onTap: () => _openUrl('mailto:$_email'),
+      ),
+      _ContactGridItem(
+        icon: Icons.camera_alt_rounded,
+        iconColor: Color(0xFFE1306C),
+        label: 'Instagram',
+        value: '@$_instagramHandle',
+        onTap: () => _openUrl(_instagramUrl),
+      ),
+      _ContactGridItem(
+        icon: Icons.thumb_up_alt_rounded,
+        iconColor: Color(0xFF1877F2),
+        label: 'Facebook',
+        value: _facebookLabel,
+        onTap: () => _openUrl(_facebookUrl),
+      ),
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionTitle('Contacto'),
-        const SizedBox(height: 14),
-
-        _ContactItem(
-          icon: Icons.chat_rounded,
-          iconColor: _FooterColors.whatsappGreen,
-          label: 'WhatsApp',
-          value: '849-431-4070',
-          onTap: () => _openUrl(
-            'https://wa.me/18494314070?text=${Uri.encodeComponent('Hola FULLTECH SRL, quiero información.')}',
-          ),
-        ),
-        const SizedBox(height: 10),
-
-        _ContactItem(
-          icon: Icons.call_rounded,
-          iconColor: _FooterColors.accentBlue,
-          label: 'Teléfono',
-          value: '829-531-9442',
-          onTap: () => _openUrl('tel:18295319442'),
-        ),
-        const SizedBox(height: 10),
-
-        _ContactItem(
-          icon: Icons.email_rounded,
-          iconColor: Color(0xFFF97316),
-          label: 'Email',
-          value: _email,
-          onTap: () => _openUrl('mailto:$_email'),
-        ),
-        const SizedBox(height: 10),
-
-        _ContactItem(
-          icon: Icons.camera_alt_rounded,
-          iconColor: Color(0xFFE1306C),
-          label: 'Instagram',
-          value: '@$_instagramHandle',
-          onTap: () => _openUrl(_instagramUrl),
-        ),
-        const SizedBox(height: 10),
-
-        _ContactItem(
-          icon: Icons.thumb_up_alt_rounded,
-          iconColor: Color(0xFF1877F2),
-          label: 'Facebook',
-          value: _facebookLabel,
-          onTap: () => _openUrl(_facebookUrl),
+        const SizedBox(height: 12),
+        GridView.count(
+          crossAxisCount: crossAxisCount,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 6,
+          crossAxisSpacing: 6,
+          childAspectRatio: 3.2,
+          children: contactItems,
         ),
       ],
     );
@@ -352,7 +364,7 @@ class StorefrontFooter extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionTitle('Ubicación'),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
 
         // Dirección
         Row(
@@ -360,23 +372,23 @@ class StorefrontFooter extends StatelessWidget {
           children: [
             Icon(
               Icons.location_on_rounded,
-              size: 16,
+              size: 15,
               color: _FooterColors.accentBlue,
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 5),
             Expanded(
               child: Text(
                 _address,
                 style: TextStyle(
                   color: _FooterColors.textMuted,
-                  fontSize: 13,
+                  fontSize: 12.5,
                   height: 1.4,
                 ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
 
         // Mini mapa interactivo
         Material(
@@ -385,7 +397,7 @@ class StorefrontFooter extends StatelessWidget {
             onTap: () => _openUrl(_mapQuery),
             borderRadius: BorderRadius.circular(10),
             child: Ink(
-              height: 130,
+              height: 110,
               decoration: BoxDecoration(
                 color: const Color(0xFF0D2A45),
                 borderRadius: BorderRadius.circular(10),
@@ -410,23 +422,23 @@ class StorefrontFooter extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
-                          width: 44,
-                          height: 44,
+                          width: 40,
+                          height: 40,
                           decoration: BoxDecoration(
                             color: _FooterColors.accentBlue.withValues(alpha: 0.2),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
                             Icons.location_on_rounded,
-                            size: 24,
+                            size: 22,
                             color: _FooterColors.accentBlue,
                           ),
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 4),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
+                            horizontal: 8,
+                            vertical: 3,
                           ),
                           decoration: BoxDecoration(
                             color: const Color(0xFF071B2E).withValues(alpha: 0.85),
@@ -439,7 +451,7 @@ class StorefrontFooter extends StatelessWidget {
                             'Beller 9, Higüey',
                             style: TextStyle(
                               color: _FooterColors.textMuted,
-                              fontSize: 10,
+                              fontSize: 9,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -449,12 +461,12 @@ class StorefrontFooter extends StatelessWidget {
                   ),
                   // Badge "Abrir mapa"
                   Positioned(
-                    top: 8,
-                    right: 8,
+                    top: 6,
+                    right: 6,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
+                        horizontal: 6,
+                        vertical: 3,
                       ),
                       decoration: BoxDecoration(
                         color: const Color(0xFF071B2E).withValues(alpha: 0.85),
@@ -468,15 +480,15 @@ class StorefrontFooter extends StatelessWidget {
                         children: [
                           Icon(
                             Icons.open_in_new_rounded,
-                            size: 10,
+                            size: 9,
                             color: _FooterColors.accentBlue,
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 3),
                           Text(
                             'Ver mapa',
                             style: TextStyle(
                               color: _FooterColors.accentBlue,
-                              fontSize: 9,
+                              fontSize: 8,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -490,26 +502,26 @@ class StorefrontFooter extends StatelessWidget {
           ),
         ),
 
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
 
         // Botón "Ir a la ubicación"
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
             onPressed: () => _openUrl(_mapQuery),
-            icon: const Icon(Icons.near_me_rounded, size: 16),
+            icon: const Icon(Icons.near_me_rounded, size: 14),
             label: const Text('Ir a la ubicación'),
             style: OutlinedButton.styleFrom(
               foregroundColor: _FooterColors.accentBlue,
               side: BorderSide(
                 color: _FooterColors.accentBlue.withValues(alpha: 0.4),
               ),
-              padding: const EdgeInsets.symmetric(vertical: 10),
+              padding: const EdgeInsets.symmetric(vertical: 8),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
               textStyle: const TextStyle(
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -520,63 +532,41 @@ class StorefrontFooter extends StatelessWidget {
   }
 
   // ==========================================
-  // COLUMNA 4: POLÍTICAS
+  // POLÍTICAS EN FILA HORIZONTAL COMPACTA
   // ==========================================
-  Widget _buildPoliciesColumn(BuildContext context) {
+  Widget _buildPoliciesRow(BuildContext context) {
     final policies = [
-      _PolicyLink(
-        label: 'Política de privacidad',
-        route: '/tienda/$slug/politica-privacidad',
-      ),
-      _PolicyLink(
-        label: 'Términos y condiciones',
-        route: '/tienda/$slug/terminos',
-      ),
-      _PolicyLink(
-        label: 'Política de garantía',
-        route: '/tienda/$slug/garantia',
-      ),
-      _PolicyLink(
-        label: 'Política de envío',
-        route: '/tienda/$slug/envios',
-      ),
-      _PolicyLink(
-        label: 'Devoluciones',
-        route: '/tienda/$slug/devoluciones',
-      ),
-      _PolicyLink(
-        label: 'Contacto',
-        route: '/tienda/$slug/contacto',
-      ),
+      _PolicyLink(label: 'Envío', route: '/tienda/$slug/envios'),
+      _PolicyLink(label: 'Garantía', route: '/tienda/$slug/garantia'),
+      _PolicyLink(label: 'Devoluciones', route: '/tienda/$slug/devoluciones'),
     ];
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionTitle('Políticas'),
-        const SizedBox(height: 14),
-        ...policies.map((policy) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: _buildPolicyLink(context, policy),
-            )),
-      ],
-    );
-  }
-
-  Widget _buildPolicyLink(BuildContext context, _PolicyLink policy) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.pushNamed(context, policy.route);
-      },
-      child: Text(
-        policy.label,
-        style: TextStyle(
-          color: _FooterColors.textMuted,
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
-          height: 1.3,
-        ),
-      ),
+    return Wrap(
+      spacing: 4,
+      runSpacing: 4,
+      alignment: WrapAlignment.center,
+      children: policies.map((policy) {
+        return GestureDetector(
+          onTap: () {
+            Navigator.pushNamed(context, policy.route);
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: _FooterColors.border.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              policy.label,
+              style: TextStyle(
+                color: _FooterColors.textMuted,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -589,7 +579,7 @@ class StorefrontFooter extends StatelessWidget {
       title,
       style: const TextStyle(
         color: _FooterColors.textWhite,
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: FontWeight.w800,
         letterSpacing: 0.3,
       ),
@@ -598,7 +588,7 @@ class StorefrontFooter extends StatelessWidget {
 
   Widget _buildTrustBadge(String label) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
         color: _FooterColors.border.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(4),
@@ -607,8 +597,92 @@ class StorefrontFooter extends StatelessWidget {
         label,
         style: TextStyle(
           color: _FooterColors.textDim,
-          fontSize: 10,
+          fontSize: 9,
           fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+// ==========================================
+// CONTACT GRID ITEM - Compacto para grid
+// ==========================================
+class _ContactGridItem extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final String value;
+  final VoidCallback onTap;
+
+  const _ContactGridItem({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: _FooterColors.border.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: _FooterColors.border.withValues(alpha: 0.15),
+              width: 0.5,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                alignment: Alignment.center,
+                child: Icon(icon, size: 13, color: iconColor),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      label,
+                      style: TextStyle(
+                        color: _FooterColors.textDim,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      value,
+                      style: const TextStyle(
+                        color: _FooterColors.textWhite,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -650,89 +724,14 @@ class _MapGridPainter extends CustomPainter {
       ..strokeWidth = 1.5;
 
     final center = Offset(size.width / 2, size.height / 2);
-    canvas.drawCircle(center, 40, radarPaint);
-    canvas.drawCircle(center, 28, radarPaint);
+    canvas.drawCircle(center, 36, radarPaint);
+    canvas.drawCircle(center, 24, radarPaint);
   }
 
   @override
   bool shouldRepaint(covariant _MapGridPainter oldDelegate) {
     return oldDelegate.gridColor != gridColor ||
         oldDelegate.accentColor != accentColor;
-  }
-}
-
-// ==========================================
-// CONTACT ITEM COMPACTO
-// ==========================================
-class _ContactItem extends StatelessWidget {
-
-  final IconData icon;
-  final Color iconColor;
-  final String label;
-  final String value;
-  final VoidCallback onTap;
-
-  const _ContactItem({
-    required this.icon,
-    required this.iconColor,
-    required this.label,
-    required this.value,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 2),
-          child: Row(
-            children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                alignment: Alignment.center,
-                child: Icon(icon, size: 14, color: iconColor),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: TextStyle(
-                        color: _FooterColors.textDim,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                    const SizedBox(height: 1),
-                    Text(
-                      value,
-                      style: const TextStyle(
-                        color: _FooterColors.textWhite,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
 
@@ -747,7 +746,7 @@ class _ServiceTag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
         color: _FooterColors.border.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(4),
@@ -760,7 +759,7 @@ class _ServiceTag extends StatelessWidget {
         label,
         style: TextStyle(
           color: _FooterColors.textMuted.withValues(alpha: 0.8),
-          fontSize: 10.5,
+          fontSize: 10,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.2,
         ),
