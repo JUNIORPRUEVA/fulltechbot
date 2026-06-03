@@ -278,44 +278,54 @@ class _StorefrontProductDetailScreenState
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
+      bottomNavigationBar: isDesktop
+          ? null
+          : StorefrontProductDetailBottomBar(
+              canBuy: canBuy,
+              canWhatsapp: whatsapp.isNotEmpty,
+              primaryColor: primaryColor,
+              onAddToCart: canBuy ? () => _addToCart() : null,
+              onBuyNow: canBuy ? () => _addToCart(goToCart: true) : null,
+              onWhatsapp: whatsapp.isEmpty
+                  ? null
+                  : () => _openWhatsApp(whatsapp),
+            ),
       body: SafeArea(
         top: false,
         bottom: false,
         child: FadeTransition(
           opacity: _fadeAnimation,
-          child: Stack(
-            children: [
-              CustomScrollView(
-                physics: const BouncingScrollPhysics(
-                  parent: AlwaysScrollableScrollPhysics(),
-                ),
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: Column(
-                      children: [
-                        StorefrontProductDetailHeroImage(
-                          product: product,
-                          images: gallery,
-                          slug: widget.slug,
-                          accentColor: secondaryColor,
-                          onBack: () => Navigator.pop(context),
-                          onCart: () => Navigator.pushNamed(
-                            context,
-                            '/tienda/${widget.slug}/carrito',
-                          ),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.fromLTRB(
-                            isDesktop ? 32 : 16,
-                            20,
-                            isDesktop ? 32 : 16,
-                            isDesktop ? 40 : 100,
-                          ),
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 800),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
+          child: CustomScrollView(
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
+            ),
+            slivers: [
+              SliverToBoxAdapter(
+                child: Column(
+                  children: [
+                    StorefrontProductDetailHeroImage(
+                      product: product,
+                      images: gallery,
+                      slug: widget.slug,
+                      accentColor: secondaryColor,
+                      onBack: () => Navigator.pop(context),
+                      onCart: () => Navigator.pushNamed(
+                        context,
+                        '/tienda/${widget.slug}/carrito',
+                      ),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        isDesktop ? 32 : 16,
+                        20,
+                        isDesktop ? 32 : 16,
+                        isDesktop ? 40 : 120,
+                      ),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 800),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                                 if (category.isNotEmpty)
                                   Padding(
                                     padding: const EdgeInsets.only(bottom: 10),
@@ -419,33 +429,29 @@ class _StorefrontProductDetailScreenState
                                   ),
                                   const SizedBox(height: 20),
                                 ],
-                                if (!isDesktop && !canBuy && whatsapp.isNotEmpty) ...[
-                                  SizedBox(
-                                    width: double.infinity,
-                                    height: 50,
-                                    child: FilledButton.icon(
-                                      onPressed: () => _openWhatsApp(whatsapp),
-                                      style: FilledButton.styleFrom(
-                                        backgroundColor: const Color(0xFF25D366),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(14),
-                                        ),
-                                      ),
-                                      icon: const Icon(
-                                        Icons.chat_outlined,
-                                        size: 20,
-                                      ),
-                                      label: const Text(
-                                        'Consultar por WhatsApp',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 15,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 24),
-                                ],
+                            if (!isDesktop) ...[
+                              StorefrontProductActionBar(
+                                isDesktop: false,
+                                canBuy: canBuy,
+                                canWhatsapp: whatsapp.isNotEmpty,
+                                quantity: _quantity,
+                                primaryColor: primaryColor,
+                                onDecrease: () {
+                                  if (_quantity > 1) {
+                                    setState(() => _quantity--);
+                                  }
+                                },
+                                onIncrease: () => setState(() => _quantity++),
+                                onAddToCart: canBuy ? () => _addToCart() : null,
+                                onBuyNow: canBuy
+                                    ? () => _addToCart(goToCart: true)
+                                    : null,
+                                onWhatsapp: whatsapp.isNotEmpty
+                                    ? () => _openWhatsApp(whatsapp)
+                                    : null,
+                              ),
+                              const SizedBox(height: 24),
+                            ],
                                 if (isDesktop) ...[
                                   StorefrontProductActionBar(
                                     isDesktop: true,
@@ -518,31 +524,13 @@ class _StorefrontProductDetailScreenState
                                   whatsapp: whatsapp,
                                 ),
                                 const SizedBox(height: 24),
-                              ],
-                            ),
-                          ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              if (!isDesktop)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: StorefrontProductDetailBottomBar(
-                    canBuy: canBuy,
-                    canWhatsapp: whatsapp.isNotEmpty,
-                    primaryColor: primaryColor,
-                    onAddToCart: canBuy ? () => _addToCart() : null,
-                    onBuyNow: canBuy ? () => _addToCart(goToCart: true) : null,
-                    onWhatsapp: whatsapp.isEmpty
-                        ? null
-                        : () => _openWhatsApp(whatsapp),
-                  ),
+                  ],
                 ),
+              ),
             ],
           ),
         ),
