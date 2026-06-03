@@ -35,14 +35,19 @@ class StorefrontImageResolver {
       return ResolvedStorefrontImage(value: clean, isAsset: true);
     }
 
-    final normalized = clean
-        .replaceAll('\\', '/')
-        .replaceFirst(RegExp(r'^/+'), '');
+    final normalized = clean.replaceAll('\\', '/').replaceFirst(RegExp(r'^/+'), '');
     if (normalized.isEmpty) {
       return null;
     }
 
-    final absolute = _resolveRelativeUrl(normalized, rawValue: clean);
+    String absolute;
+    if (_startsWithApiPath(normalized) || clean.startsWith('/')) {
+      absolute = _join(ApiConfig.apiBaseUrl, normalized);
+    } else if (ApiConfig.storagePublicUrl.trim().isNotEmpty) {
+      absolute = _join(ApiConfig.storagePublicUrl, normalized);
+    } else {
+      absolute = _join('${ApiConfig.apiBaseUrl}/api/storage/file', normalized);
+    }
 
     return ResolvedStorefrontImage(
       value: _addVersion(absolute, version),
@@ -95,62 +100,11 @@ class StorefrontImageResolver {
     return normalized.startsWith('assets/') || normalized.startsWith('web/');
   }
 
-  static String _resolveRelativeUrl(
-    String normalized, {
-    required String rawValue,
-  }) {
-    if (normalized.startsWith('api/storage/file/')) {
-      return _join(ApiConfig.apiBaseUrl, normalized);
-    }
-
-    if (normalized.startsWith('api/')) {
-      return _join(ApiConfig.apiBaseUrl, normalized);
-    }
-
-    final storageKey = _normalizeStorageKey(normalized);
-    if (storageKey != null) {
-      return _join('${ApiConfig.apiBaseUrl}/api/storage/file', storageKey);
-    }
-
-    if (rawValue.startsWith('/')) {
-      return _join(ApiConfig.apiBaseUrl, normalized);
-    }
-
-    if (ApiConfig.storagePublicUrl.trim().isNotEmpty) {
-      return _join(ApiConfig.storagePublicUrl, normalized);
-    }
-
-    return _join(ApiConfig.apiBaseUrl, normalized);
-  }
-
-  static String? _normalizeStorageKey(String value) {
-    final normalized = value
-        .replaceAll('\\', '/')
-        .replaceFirst(RegExp(r'^/+'), '');
-    if (normalized.isEmpty) {
-      return null;
-    }
-
-    if (normalized.startsWith('http://') ||
-        normalized.startsWith('https://') ||
-        normalized.startsWith('data:')) {
-      return null;
-    }
-
-    if (normalized.startsWith('api/storage/file/')) {
-      return normalized.replaceFirst('api/storage/file/', '');
-    }
-
-    if (normalized.startsWith('uploads/')) {
-      return normalized.replaceFirst('uploads/', '');
-    }
-
-    if (normalized.startsWith('catalogo/') ||
-        normalized.startsWith('storefront/')) {
-      return normalized;
-    }
-
-    return null;
+  static bool _startsWithApiPath(String value) {
+    return value.startsWith('uploads/') ||
+        value.startsWith('api/') ||
+        value.startsWith('catalogo/') ||
+        value.startsWith('storefront/');
   }
 
   static String _join(String base, String path) {

@@ -44,12 +44,12 @@ class MyApp extends StatelessWidget {
     }
 
     if (uri.path == '/tienda') {
-      final slug = uri.queryParameters['slug']?.trim();
-      if (slug == null || slug.isEmpty) {
-        return _route(settings, const StorefrontHomeScreen(slug: 'fulltech'));
-      }
-
-      return _route(settings, PublicEntryScreen(preferredSlug: slug));
+      return _route(
+        settings,
+        PublicEntryScreen(
+          preferredSlug: uri.queryParameters['slug'],
+        ),
+      );
     }
 
     if (uri.path == '/login' || uri.path == '/admin/login') {

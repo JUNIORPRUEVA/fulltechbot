@@ -9,8 +9,10 @@ import '../../public/widgets/public_store_layout.dart';
 import '../services/storefront_api_service.dart';
 import '../services/storefront_helpers.dart';
 import '../theme/storefront_theme.dart';
+import '../widgets/storefront_error_state.dart';
 import '../widgets/storefront_footer.dart';
 import '../widgets/storefront_product_card.dart';
+import '../widgets/storefront_skeleton.dart' hide StorefrontColors;
 import '../widgets/storefront_smart_image.dart';
 import '../widgets/storefront_trust_chips.dart';
 
@@ -130,6 +132,25 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     // ==========================================
     // PASO 4: Cargar categorías (no crítico)
     // ==========================================
+    Future.microtask(() async {
+      _perfLog('categories loading started');
+      try {
+        final categoriesResponse = await StorefrontApiService.getCategories(
+          widget.slug,
+        ).timeout(const Duration(seconds: 10));
+        if (mounted) {
+          setState(() {
+            final rawCategories = List<dynamic>.from(
+              categoriesResponse['data'] as List? ?? const [],
+            );
+            _categories = _buildDisplayCategories(rawCategories, []);
+          });
+          _perfLog('categories loaded');
+        }
+      } catch (e) {
+        _perfLog('categories failed: $e');
+      }
+    });
 
     // ==========================================
     // PASO 5: Cargar productos (lo más pesado, al final)

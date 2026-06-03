@@ -7,7 +7,6 @@
 
 const storefrontService = require('../services/storefront.service');
 const { resolveScopedBotId } = require('../services/botScope.service');
-const storageService = require('../services/storage.service');
 
 async function getDefaultStore(req, res) {
   try {
@@ -71,76 +70,6 @@ function setImageCacheHeaders(res) {
   });
 }
 
-function construirBaseUrl(req) {
-  const forwardedProto = req.headers['x-forwarded-proto'];
-  const protocol = forwardedProto || req.protocol || 'https';
-  return `${protocol}://${req.get('host')}`;
-}
-
-function normalizarMediaUrl(req, value) {
-  if (!value || typeof value !== 'string') {
-    return value;
-  }
-
-  const trimmedValue = value.trim();
-  if (!trimmedValue) {
-    return null;
-  }
-
-  if (/^https?:\/\//i.test(trimmedValue) || /^data:/i.test(trimmedValue)) {
-    return trimmedValue;
-  }
-
-  const key = storageService.normalizarKeyArchivo(trimmedValue);
-  return key ? `${construirBaseUrl(req)}/api/storage/file/${key}` : trimmedValue;
-}
-
-function normalizarProducto(req, product) {
-  if (!product) {
-    return product;
-  }
-
-  const gallery = Array.isArray(product.gallery)
-    ? product.gallery.map((item) => normalizarMediaUrl(req, item)).filter(Boolean)
-    : [];
-  const relatedProducts = Array.isArray(product.relatedProducts)
-    ? product.relatedProducts.map((item) => normalizarProducto(req, item))
-    : undefined;
-
-  return {
-    ...product,
-    imagen1: normalizarMediaUrl(req, product.imagen1),
-    imagen2: normalizarMediaUrl(req, product.imagen2),
-    imagen3: normalizarMediaUrl(req, product.imagen3),
-    video: normalizarMediaUrl(req, product.video),
-    imagen_destacada_url: normalizarMediaUrl(req, product.imagen_destacada_url),
-    gallery,
-    relatedProducts,
-  };
-}
-
-function normalizarBanner(req, banner) {
-  if (!banner) {
-    return banner;
-  }
-
-  return {
-    ...banner,
-    imagen_url: normalizarMediaUrl(req, banner.imagen_url),
-  };
-}
-
-function normalizarCategoria(req, category) {
-  if (!category) {
-    return category;
-  }
-
-  return {
-    ...category,
-    imagen: normalizarMediaUrl(req, category.imagen),
-  };
-}
-
 async function getAdminBotId(req) {
   return resolveScopedBotId(req.params.botId, { createIfMissing: true });
 }
@@ -175,7 +104,7 @@ async function getBanners(req, res) {
     }
 
     const banners = await storefrontService.getBanners(config.bot_id);
-    res.json({ ok: true, data: banners.map((banner) => normalizarBanner(req, banner)) });
+    res.json({ ok: true, data: banners });
   } catch (error) {
     handleError(res, error, 'Error al obtener banners');
   }
@@ -202,13 +131,7 @@ async function getProducts(req, res) {
       limit: parseInt(limit) || 20,
     });
 
-    res.json({
-      ok: true,
-      ...result,
-      items: Array.isArray(result.items)
-        ? result.items.map((item) => normalizarProducto(req, item))
-        : [],
-    });
+    res.json({ ok: true, ...result });
   } catch (error) {
     handleError(res, error, 'Error al obtener productos');
   }
@@ -230,7 +153,7 @@ async function getProductById(req, res) {
       return res.status(404).json({ ok: false, message: 'Producto no encontrado' });
     }
 
-    res.json({ ok: true, data: normalizarProducto(req, product) });
+    res.json({ ok: true, data: product });
   } catch (error) {
     handleError(res, error, 'Error al obtener producto');
   }
@@ -247,7 +170,7 @@ async function getCategories(req, res) {
     }
 
     const categories = await storefrontService.getStorefrontCategories(config.bot_id);
-    res.json({ ok: true, data: categories.map((category) => normalizarCategoria(req, category)) });
+    res.json({ ok: true, data: categories });
   } catch (error) {
     handleError(res, error, 'Error al obtener categorías');
   }

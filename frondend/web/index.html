@@ -329,13 +329,7 @@
       // ==========================================
       // 7. VERIFICAR VERSIÓN Y CARGAR
       // ==========================================
-      if (BUILD_VERSION !== '__FULLTECH_BUILD_VERSION__') {
-        localStorage.setItem(VERSION_KEY, BUILD_VERSION);
-        loadFlutter(BUILD_VERSION);
-        return;
-      }
-
-      fetchVersionWithTimeout(150)
+      fetchVersionWithTimeout(800)
 
         .then(function(payload) {
           var currentVersion =
