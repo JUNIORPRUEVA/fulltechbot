@@ -132,7 +132,7 @@ class _BrandColumn extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Image.asset(
-                'assets/logo_principal.jpeg',
+                'assets/logo_principal_small.png',
                 width: 36,
                 height: 36,
                 fit: BoxFit.contain,

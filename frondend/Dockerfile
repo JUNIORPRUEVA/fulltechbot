@@ -13,34 +13,25 @@ ARG BUILD_VERSION="2026.05.30.03"
 
 ENV CI=true
 
-# Copy pubspec first to cache dependencies
 COPY pubspec.* ./
 RUN flutter pub get
 
-# Copy project
 COPY . .
 
-# Generar version.json con la versión del build
 RUN echo "{\"version\":\"${BUILD_VERSION}\",\"build\":\"fulltech-store\",\"gitSha\":\"${GIT_SHA}\",\"updatedAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > web/version.json
 
-# Build the web app en modo release
-# --pwa-strategy=none: No generar service worker automático de Flutter
-# NOTA: --web-renderer fue eliminado en Flutter 3.29+
-# Ahora se usa el renderer por defecto (html para web, que es más rápido)
-# Canvaskit es más pesado de descargar (2-3MB extra) y tarda más en renderizar
-# HTML renderer carga más rápido y es mejor para contenido dinámico como tiendas
+# Dejamos que Flutter genere el build web moderno por defecto.
 RUN if [ -n "$API_BASE_URL" ]; then \
-      flutter build web --release --pwa-strategy=none --no-wasm-dry-run \
+      flutter build web --release --pwa-strategy=none \
         --dart-define=API_BASE_URL="$API_BASE_URL" \
         --dart-define=STORAGE_PUBLIC_URL="$STORAGE_PUBLIC_URL" \
         $FLUTTER_BUILD_ARGS; \
     else \
-      flutter build web --release --pwa-strategy=none --no-wasm-dry-run \
+      flutter build web --release --pwa-strategy=none \
         --dart-define=STORAGE_PUBLIC_URL="$STORAGE_PUBLIC_URL" \
         $FLUTTER_BUILD_ARGS; \
     fi
 
-# Reemplazar placeholder de versión en index.html
 RUN sed -i "s/__FULLTECH_BUILD_VERSION__/${BUILD_VERSION}/g" /app/build/web/index.html
 
 # ==========================================
@@ -50,10 +41,7 @@ FROM nginx:alpine
 
 LABEL org.opencontainers.image.source="FULLTECH_BOT/frondend"
 
-# Copiar build de Flutter
 COPY --from=build /app/build/web /usr/share/nginx/html
-
-# Copiar configuración Nginx personalizada
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80

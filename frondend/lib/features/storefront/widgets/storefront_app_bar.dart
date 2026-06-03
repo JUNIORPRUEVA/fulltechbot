@@ -143,7 +143,7 @@ class _StorefrontAppBarState extends State<StorefrontAppBar>
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: Image.asset(
-                      'assets/logo_principal.jpeg',
+                      'assets/logo_principal_small.png',
                       width: isDesktop ? 34 : 30,
                       height: isDesktop ? 34 : 30,
                       fit: BoxFit.contain,

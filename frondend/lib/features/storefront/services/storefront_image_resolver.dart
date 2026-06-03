@@ -15,6 +15,18 @@ class StorefrontImageResolver {
   /// Resuelve una URL de imagen aplicando versionado automático
   /// basado en el campo `actualizadoEn` del producto si está disponible.
   static ResolvedStorefrontImage? resolve(dynamic rawValue, {String? version}) {
+    return resolveForDisplay(rawValue, version: version);
+  }
+
+  static ResolvedStorefrontImage? resolveForDisplay(
+    dynamic rawValue, {
+    String? version,
+    int? width,
+    int? height,
+    int quality = 72,
+    String format = 'webp',
+    String fit = 'inside',
+  }) {
     if (rawValue == null) {
       return null;
     }
@@ -26,7 +38,15 @@ class StorefrontImageResolver {
 
     if (_isAbsoluteUrl(clean)) {
       return ResolvedStorefrontImage(
-        value: _addVersion(clean, version),
+        value: _optimize(
+          clean,
+          version: version,
+          width: width,
+          height: height,
+          quality: quality,
+          format: format,
+          fit: fit,
+        ),
         isAsset: false,
       );
     }
@@ -50,14 +70,38 @@ class StorefrontImageResolver {
     }
 
     return ResolvedStorefrontImage(
-      value: _addVersion(absolute, version),
+      value: _optimize(
+        absolute,
+        version: version,
+        width: width,
+        height: height,
+        quality: quality,
+        format: format,
+        fit: fit,
+      ),
       isAsset: false,
     );
   }
 
   /// Versión simple que solo devuelve la URL como String.
-  static String? resolveUrl(dynamic rawValue, {String? version}) {
-    final resolved = resolve(rawValue, version: version);
+  static String? resolveUrl(
+    dynamic rawValue, {
+    String? version,
+    int? width,
+    int? height,
+    int quality = 72,
+    String format = 'webp',
+    String fit = 'inside',
+  }) {
+    final resolved = resolveForDisplay(
+      rawValue,
+      version: version,
+      width: width,
+      height: height,
+      quality: quality,
+      format: format,
+      fit: fit,
+    );
     if (resolved == null || resolved.isAsset) {
       return resolved?.value;
     }
@@ -68,9 +112,24 @@ class StorefrontImageResolver {
   static List<String> resolveGallery(
     Iterable<dynamic> values, {
     String? version,
+    int? width,
+    int? height,
+    int quality = 72,
+    String format = 'webp',
+    String fit = 'inside',
   }) {
     return values
-        .map((item) => resolve(item, version: version))
+        .map(
+          (item) => resolveForDisplay(
+            item,
+            version: version,
+            width: width,
+            height: height,
+            quality: quality,
+            format: format,
+            fit: fit,
+          ),
+        )
         .whereType<ResolvedStorefrontImage>()
         .map((item) => item.value)
         .where((value) => value.trim().isNotEmpty)
@@ -84,8 +143,24 @@ class StorefrontImageResolver {
     return getProductVersion(product);
   }
 
-  static String _addVersion(String url, String? version) {
-    return buildImageUrl(url, version: version);
+  static String _optimize(
+    String url, {
+    String? version,
+    int? width,
+    int? height,
+    int quality = 72,
+    String format = 'webp',
+    String fit = 'inside',
+  }) {
+    return buildOptimizedImageUrl(
+      url,
+      version: version,
+      width: width,
+      height: height,
+      quality: quality,
+      format: format,
+      fit: fit,
+    );
   }
 
   static bool _isAbsoluteUrl(String value) {

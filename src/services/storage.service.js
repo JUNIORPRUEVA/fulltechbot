@@ -8,6 +8,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
+const sharp = require('sharp');
 
 const LOCAL_UPLOADS_DIR = path.resolve(__dirname, '../../uploads');
 
@@ -301,6 +302,70 @@ async function obtenerArchivo(keyOrUrl) {
   };
 }
 
+async function obtenerArchivoBuffer(keyOrUrl) {
+  const archivo = await obtenerArchivo(keyOrUrl);
+  const buffer = await bodyToBuffer(archivo.body);
+
+  return {
+    ...archivo,
+    body: buffer,
+  };
+}
+
+async function transformarImagen(buffer, options = {}) {
+  const {
+    width,
+    height,
+    quality = 72,
+    format = 'webp',
+    fit = 'inside',
+  } = options;
+
+  let pipeline = sharp(buffer, { animated: false }).rotate();
+
+  if (width || height) {
+    pipeline = pipeline.resize({
+      width,
+      height,
+      fit,
+      withoutEnlargement: true,
+    });
+  }
+
+  switch (format) {
+    case 'jpeg':
+    case 'jpg':
+      pipeline = pipeline.jpeg({
+        quality,
+        mozjpeg: true,
+      });
+      return {
+        buffer: await pipeline.toBuffer(),
+        contentType: 'image/jpeg',
+      };
+    case 'png':
+      pipeline = pipeline.png({
+        quality,
+        compressionLevel: 9,
+        palette: true,
+      });
+      return {
+        buffer: await pipeline.toBuffer(),
+        contentType: 'image/png',
+      };
+    case 'webp':
+    default:
+      pipeline = pipeline.webp({
+        quality,
+        effort: 4,
+      });
+      return {
+        buffer: await pipeline.toBuffer(),
+        contentType: 'image/webp',
+      };
+  }
+}
+
 async function eliminarArchivo(keyOrUrl) {
   const config = getStorageConfig();
   const key = normalizarKeyArchivo(keyOrUrl);
@@ -325,11 +390,40 @@ async function eliminarArchivo(keyOrUrl) {
   return true;
 }
 
+async function bodyToBuffer(body) {
+  if (Buffer.isBuffer(body)) {
+    return body;
+  }
+
+  if (body instanceof Uint8Array) {
+    return Buffer.from(body);
+  }
+
+  if (typeof body?.transformToByteArray === 'function') {
+    const bytes = await body.transformToByteArray();
+    return Buffer.from(bytes);
+  }
+
+  if (typeof body?.arrayBuffer === 'function') {
+    const arrayBuffer = await body.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  }
+
+  const chunks = [];
+  for await (const chunk of body) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+
+  return Buffer.concat(chunks);
+}
+
 module.exports = {
   LOCAL_UPLOADS_DIR,
   hasRemoteStorage,
   subirArchivo,
   obtenerArchivo,
+  obtenerArchivoBuffer,
+  transformarImagen,
   eliminarArchivo,
   normalizarKeyArchivo,
 };

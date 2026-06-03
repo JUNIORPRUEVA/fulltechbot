@@ -1,1 +1,6 @@
-{"app_name":"frondend","version":"__FULLTECH_BUILD_VERSION__","build_number":"__FULLTECH_BUILD_VERSION__","package_name":"frondend"}
+{
+  "version": "2026.06.02.01",
+  "build": "fulltech-store-pwa-v1",
+  "description": "FULLTECH SRL - Tienda Oficial - PWA con instalación inteligente v1",
+  "updatedAt": "2026-06-02T23:00:00-04:00"
+}

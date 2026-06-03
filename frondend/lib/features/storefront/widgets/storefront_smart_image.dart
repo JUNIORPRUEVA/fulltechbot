@@ -4,13 +4,12 @@ import 'package:flutter/material.dart';
 
 import '../services/storefront_image_resolver.dart';
 
-/// Widget inteligente para mostrar imágenes con:
-/// - Resolución automática de URLs (relativas/absolutas)
-/// - Versionado automático basado en updatedAt del producto
-/// - Cache de imágenes con CachedNetworkImage (rápido, no bloquea)
+/// Widget inteligente para mostrar imagenes con:
+/// - Resolucion automatica de URLs (relativas/absolutas)
+/// - Versionado automatico basado en updatedAt del producto
+/// - Peticiones optimizadas para web via backend de imagenes
+/// - Cache de imagenes con CachedNetworkImage
 /// - Placeholder elegante mientras carga
-/// - Error widget profesional
-/// - Precarga automática para imágenes visibles
 class StorefrontSmartImage extends StatelessWidget {
   final dynamic source;
   final BoxFit fit;
@@ -19,8 +18,9 @@ class StorefrontSmartImage extends StatelessWidget {
   final BorderRadius? borderRadius;
   final double? width;
   final double? height;
-  
-  /// Versión del producto (updatedAt) para versionado de cache
+  final int? requestWidth;
+  final int? requestHeight;
+  final int quality;
   final String? version;
 
   const StorefrontSmartImage({
@@ -32,14 +32,26 @@ class StorefrontSmartImage extends StatelessWidget {
     this.borderRadius,
     this.width,
     this.height,
+    this.requestWidth,
+    this.requestHeight,
+    this.quality = 72,
     this.version,
   });
 
   @override
   Widget build(BuildContext context) {
-    final resolved = StorefrontImageResolver.resolve(source, version: version);
+    final devicePixelRatio = MediaQuery.maybeDevicePixelRatioOf(context) ?? 1;
+    final targetWidth = requestWidth ?? _scaledDimension(width, devicePixelRatio);
+    final targetHeight = requestHeight ?? _scaledDimension(height, devicePixelRatio);
+    final resolved = StorefrontImageResolver.resolveForDisplay(
+      source,
+      version: version,
+      width: targetWidth,
+      height: targetHeight,
+      quality: quality,
+    );
     final fallback = placeholder ?? const _StorefrontImageFallback();
-    final errorWidgetLocal =
+    final resolvedErrorWidget =
         errorWidget ?? const _StorefrontImageFallback(isError: true);
 
     Widget child;
@@ -51,31 +63,24 @@ class StorefrontSmartImage extends StatelessWidget {
         fit: fit,
         width: width,
         height: height,
-        errorBuilder: (_, _, _) => errorWidgetLocal,
+        errorBuilder: (_, _, _) => resolvedErrorWidget,
       );
     } else {
-      // Usar CachedNetworkImage para cache eficiente de imágenes
-      // El versionado por URL (?v=...) asegura que si la imagen cambia,
-      // se descargue la nueva versión automáticamente
       child = CachedNetworkImage(
         imageUrl: resolved.value,
         fit: fit,
         width: width,
         height: height,
         placeholder: (context, url) => fallback,
-        errorWidget: (context, url, error) {
+        errorWidget: (_, url, error) {
           if (kDebugMode) {
             debugPrint('Storefront image failed: $url');
             debugPrint('Storefront image error: $error');
           }
-          return errorWidgetLocal;
+          return resolvedErrorWidget;
         },
-
-        // Cache en disco para que las imágenes carguen rápido
-        // incluso sin conexión (si ya se descargaron antes)
-        memCacheWidth: width?.toInt(),
-        memCacheHeight: height?.toInt(),
-        // Usar placeholder mientras carga desde cache/red
+        memCacheWidth: targetWidth,
+        memCacheHeight: targetHeight,
         fadeInDuration: const Duration(milliseconds: 150),
         fadeOutDuration: const Duration(milliseconds: 75),
       );
@@ -90,6 +95,14 @@ class StorefrontSmartImage extends StatelessWidget {
       child: child,
     );
   }
+}
+
+int? _scaledDimension(double? logicalSize, double devicePixelRatio) {
+  if (logicalSize == null || logicalSize <= 0) {
+    return null;
+  }
+
+  return (logicalSize * devicePixelRatio).round();
 }
 
 class _StorefrontImageFallback extends StatelessWidget {

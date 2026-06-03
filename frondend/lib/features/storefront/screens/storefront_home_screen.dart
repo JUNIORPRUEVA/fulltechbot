@@ -1274,6 +1274,9 @@ class _CategoryCard extends StatelessWidget {
                       source: category['imagen'],
                       fit: BoxFit.cover,
                       borderRadius: BorderRadius.circular(16),
+                      requestWidth: 320,
+                      requestHeight: 220,
+                      quality: 68,
                       placeholder: Center(
                         child: Icon(
                           Icons.category_outlined,
@@ -1429,6 +1432,9 @@ class _OfferProductCardState extends State<_OfferProductCard>
                       child: StorefrontSmartImage(
                         source: gallery.isNotEmpty ? gallery.first : null,
                         fit: BoxFit.cover,
+                        requestWidth: 560,
+                        requestHeight: 420,
+                        quality: 68,
                       ),
                     ),
                   ),
@@ -1878,6 +1884,9 @@ class _StorefrontSearchSheetState extends State<_StorefrontSearchSheet> {
                                     child: StorefrontSmartImage(
                                       source: image,
                                       fit: BoxFit.cover,
+                                      requestWidth: 128,
+                                      requestHeight: 128,
+                                      quality: 70,
                                     ),
                                   ),
                                 ),

@@ -6,35 +6,23 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="Tienda oficial FULLTECH SRL. Tecnología, seguridad y automatización.">
+  <meta name="description" content="Tienda oficial FULLTECH SRL. Tecnologia, seguridad y automatizacion.">
   <meta name="theme-color" content="#0F172A">
 
-  <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="FULLTECH">
-  <link rel="apple-touch-icon" href="logo_principal.jpeg">
-
-  <!-- Favicon - Logo real de FULLTECH -->
-  <link rel="icon" type="image/jpeg" href="favicon.png"/>
-  <link rel="shortcut icon" type="image/jpeg" href="favicon.png"/>
+  <link rel="apple-touch-icon" href="favicon.png">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="shortcut icon" type="image/png" href="favicon.png">
 
   <title>FULLTECH SRL</title>
   <link rel="manifest" href="manifest.json">
 
-  <!-- Meta tags anti-cache -->
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
-
   <style>
-    /* ============================================
-       SPLASH SCREEN - Se muestra inmediatamente
-       mientras Flutter carga. Sin pantalla blanca.
-       ============================================ */
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    
+
     html, body {
       width: 100%;
       height: 100%;
@@ -43,17 +31,15 @@
 
     #splash-screen {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      inset: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       background: linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #0F172A 100%);
       z-index: 9999;
-      transition: opacity 0.4s ease-out;
+      transition: opacity 0.35s ease-out;
+      overflow: hidden;
     }
 
     #splash-screen.hidden {
@@ -61,72 +47,11 @@
       pointer-events: none;
     }
 
-    .splash-logo {
-      width: 100px;
-      height: 100px;
-      border-radius: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 20px;
-      overflow: hidden;
-      box-shadow: 0 4px 20px rgba(37, 99, 235, 0.2);
-    }
-
-    .splash-logo img {
-      width: 100px;
-      height: 100px;
-      object-fit: contain;
-    }
-
-    .splash-title {
-      color: #FFFFFF;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      font-size: 28px;
-      font-weight: 900;
-      letter-spacing: -0.5px;
-      margin-bottom: 8px;
-    }
-
-    .splash-subtitle {
-      color: rgba(255, 255, 255, 0.6);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      font-size: 14px;
-      font-weight: 500;
-      margin-bottom: 32px;
-    }
-
-    .splash-loader {
-      width: 48px;
-      height: 48px;
-      border: 3px solid rgba(255, 255, 255, 0.1);
-      border-top-color: #2563EB;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-
-    .splash-message {
-      color: rgba(255, 255, 255, 0.4);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      font-size: 12px;
-      margin-top: 20px;
-      letter-spacing: 0.3px;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    /* Patrón de fondo sutil */
     .splash-pattern {
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
+      inset: 0;
+      opacity: 0.04;
       pointer-events: none;
-      opacity: 0.03;
     }
 
     .splash-pattern div {
@@ -138,12 +63,87 @@
     .splash-pattern .dot1 { width: 300px; height: 300px; top: -80px; right: -60px; }
     .splash-pattern .dot2 { width: 200px; height: 200px; bottom: -40px; left: -40px; }
     .splash-pattern .dot3 { width: 120px; height: 120px; top: 40%; left: 10%; }
+
+    .splash-logo {
+      width: 100px;
+      height: 100px;
+      border-radius: 24px;
+      overflow: hidden;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 20px rgba(37, 99, 235, 0.2);
+    }
+
+    .splash-logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .splash-title {
+      color: #FFFFFF;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 28px;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
+    }
+
+    .splash-subtitle {
+      color: rgba(255, 255, 255, 0.64);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 28px;
+    }
+
+    .splash-loader {
+      width: 48px;
+      height: 48px;
+      border: 3px solid rgba(255, 255, 255, 0.12);
+      border-top-color: #2563EB;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .splash-message {
+      color: rgba(255, 255, 255, 0.45);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 12px;
+      margin-top: 18px;
+      letter-spacing: 0.3px;
+      text-align: center;
+      max-width: 300px;
+      line-height: 1.45;
+      padding: 0 18px;
+    }
+
+    .splash-actions {
+      display: none;
+      margin-top: 16px;
+    }
+
+    .splash-actions.visible {
+      display: flex;
+    }
+
+    .splash-button {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 16px;
+      background: #2563EB;
+      color: #FFFFFF;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(37, 99, 235, 0.28);
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
-  <!-- ==========================================
-       SPLASH SCREEN - Visible inmediatamente
-       ========================================== -->
   <div id="splash-screen">
     <div class="splash-pattern">
       <div class="dot1"></div>
@@ -151,145 +151,89 @@
       <div class="dot3"></div>
     </div>
     <div class="splash-logo">
-      <img src="logo_principal.jpeg" alt="FULLTECH SRL" onerror="this.style.display='none'">
+      <img src="favicon.png" alt="FULLTECH SRL" onerror="this.style.display='none'">
     </div>
     <div class="splash-title">FULLTECH</div>
     <div class="splash-subtitle">Tienda oficial</div>
     <div class="splash-loader"></div>
-    <div class="splash-message">Tecnología, seguridad y automatización</div>
+    <div class="splash-message" id="splash-message">Tecnologia, seguridad y automatizacion.</div>
+    <div class="splash-actions" id="splash-actions">
+      <button type="button" class="splash-button" onclick="window.location.reload()">Recargar tienda</button>
+    </div>
   </div>
 
-  <!-- ==========================================
-       BOOTSTRAP CON VERSIONADO Y CACHE CONTROL
-       ========================================== -->
   <script>
-    (function() {
+    (function () {
       'use strict';
+
       var BUILD_VERSION = '__FULLTECH_BUILD_VERSION__';
       var VERSION_KEY = 'fulltech_app_version';
-      
-      // ==========================================
-      // 1. EXPONER FUNCIÓN GLOBAL PARA OCULTAR SPLASH
-      //    Flutter la llamará cuando esté listo
-      // ==========================================
-      window.fulltechHideSplash = function() {
+      var splashHidden = false;
+
+      function hideSplash() {
+        if (splashHidden) return;
+        splashHidden = true;
         var splash = document.getElementById('splash-screen');
         if (splash) {
           splash.classList.add('hidden');
         }
-      };
-
-      // ==========================================
-      // 2. EXPONER FUNCIÓN GLOBAL PARA RECARGAR
-      // ==========================================
-      window.fulltechReloadPage = function() {
-        window.location.reload();
-      };
-
-      // ==========================================
-      // 3. DETECCIÓN AUTOMÁTICA DE FLUTTER
-      //    Observa el DOM hasta que aparezca el canvas de Flutter
-      //    MÁXIMO 500ms para ocultar splash rápido
-      // ==========================================
-      function startFlutterDetection() {
-        var checkCount = 0;
-        var maxChecks = 5; // ~500ms máximo
-        
-        var checkInterval = setInterval(function() {
-          checkCount++;
-          
-          // Detectar el canvas de Flutter (flt-glass-pane o canvas)
-          var fltCanvas = document.querySelector('flt-glass-pane') || 
-                          document.querySelector('canvas');
-          
-          // También detectar si el splash ya fue ocultado por Flutter
-          var splash = document.getElementById('splash-screen');
-          if (!splash) {
-            clearInterval(checkInterval);
-            return;
-          }
-          
-          if (fltCanvas || checkCount >= maxChecks) {
-            clearInterval(checkInterval);
-            // Ocultar splash inmediatamente (sin delay)
-            window.fulltechHideSplash();
-          }
-        }, 100);
       }
 
-      // ==========================================
-      // 4. LOG DE RENDIMIENTO INICIAL
-      // ==========================================
-      var perfStart = Date.now();
-      console.log('[PERF] index.html loaded - ' + perfStart);
-      
-      // ==========================================
-      // 5. NAVEGACIÓN POR HASH - SIN REDIRECT BLOQUEANTE
-      //    Si la URL es raíz, establecer hash sin recargar
-      //    para que Flutter pueda manejarlo internamente
-      // ==========================================
-      var path = window.location.pathname || "/";
-      var hash = window.location.hash || "";
-      var isRootPath = path === "/" || path === "";
-      var isEmptyHash = hash === "" || hash === "#" || hash === "#/";
-      
-      if (isRootPath && isEmptyHash) {
-        // NO hacer window.location.replace - eso DETIENE la carga de Flutter
-        // En su lugar, establecer el hash sin recargar la página
-        console.log('[FULLTECH] Ruta raíz - estableciendo hash para tienda');
-        window.location.hash = '#/tienda/fulltech';
-        // NO return - continuar con la carga de Flutter
-      }
-      
-      // ==========================================
-      // 6. PWA INSTALL PROMPT BRIDGE
-      //    Expone funciones para que Flutter (dart:js) pueda
-      //    interactuar con el evento beforeinstallprompt
-      // ==========================================
-      window.fulltechPwaDeferredPrompt = null;
+      function showSlowLoadingState() {
+        var splash = document.getElementById('splash-screen');
+        if (!splash || splash.classList.contains('hidden')) return;
 
-      // Escuchar beforeinstallprompt y guardarlo
-      window.addEventListener('beforeinstallprompt', function(e) {
-        // Prevenir el prompt automático
-        e.preventDefault();
-        // Guardar el evento para uso posterior
-        window.fulltechPwaDeferredPrompt = e;
-        console.log('[PWA] beforeinstallprompt capturado y guardado');
-      });
-
-      // Función para que Flutter llame deferredPrompt.prompt()
-      window.fulltechPwaPromptInstall = function() {
-        var prompt = window.fulltechPwaDeferredPrompt;
-        if (!prompt) {
-          console.warn('[PWA] No hay deferredPrompt disponible');
-          return Promise.resolve({ outcome: 'not_available' });
+        var message = document.getElementById('splash-message');
+        var actions = document.getElementById('splash-actions');
+        if (message) {
+          message.textContent = 'La tienda esta tardando mas de lo normal. Puedes recargar mientras terminamos de iniciar.';
         }
-        return prompt.prompt().then(function() {
-          return prompt.userChoice.then(function(choiceResult) {
-            console.log('[PWA] userChoice:', choiceResult.outcome);
-            window.fulltechPwaDeferredPrompt = null;
-            return { outcome: choiceResult.outcome };
-          });
+        if (actions) {
+          actions.classList.add('visible');
+        }
+      }
+
+      function detectFlutterAndHideSplash() {
+        var splash = document.getElementById('splash-screen');
+        if (!splash) return;
+
+        function checkFlutterSurface() {
+          return document.querySelector('flt-glass-pane') || document.querySelector('canvas');
+        }
+
+        if (checkFlutterSurface()) {
+          hideSplash();
+          return;
+        }
+
+        var observer = new MutationObserver(function () {
+          if (checkFlutterSurface()) {
+            observer.disconnect();
+            hideSplash();
+          }
         });
-      };
 
-      // Función para verificar si beforeinstallprompt está disponible
-      window.fulltechPwaIsAvailable = function() {
-        return window.fulltechPwaDeferredPrompt !== null;
-      };
+        observer.observe(document.body, {
+          childList: true,
+          subtree: true,
+        });
 
-      // ==========================================
-      // 7. LIMPIEZA DE CACHE (solo si hay cambio de versión)
-      // ==========================================
+        setTimeout(function () {
+          if (checkFlutterSurface()) {
+            observer.disconnect();
+            hideSplash();
+          }
+        }, 500);
+      }
 
       function clearRuntimeCaches() {
         var tasks = [];
 
         if ('serviceWorker' in navigator) {
           tasks.push(
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            navigator.serviceWorker.getRegistrations().then(function (registrations) {
               return Promise.all(
-                registrations.map(function(registration) {
+                registrations.map(function (registration) {
                   return registration.unregister();
                 })
               );
@@ -299,9 +243,9 @@
 
         if (window.caches) {
           tasks.push(
-            caches.keys().then(function(cacheNames) {
+            caches.keys().then(function (cacheNames) {
               return Promise.all(
-                cacheNames.map(function(cacheName) {
+                cacheNames.map(function (cacheName) {
                   return caches.delete(cacheName);
                 })
               );
@@ -309,50 +253,36 @@
           );
         }
 
-        return Promise.all(tasks).catch(function(error) {
+        return Promise.all(tasks).catch(function (error) {
           console.warn('[FULLTECH] Error limpiando caches:', error);
         });
       }
 
-      // ==========================================
-      // 6. CARGA DE FLUTTER
-      // ==========================================
-      function loadFlutter(version) {
-        var script = document.createElement('script');
-        script.src = 'flutter_bootstrap.js?v=' + encodeURIComponent(version || Date.now().toString());
-        script.async = false;
-        script.onload = function() {
-          // Iniciar detección del canvas de Flutter
-          startFlutterDetection();
-        };
-        document.body.appendChild(script);
-      }
-
       function fetchVersionWithTimeout(timeoutMs) {
-        return new Promise(function(resolve, reject) {
+        return new Promise(function (resolve, reject) {
           var settled = false;
-          var timer = setTimeout(function() {
+          var timer = setTimeout(function () {
             if (settled) return;
             settled = true;
             reject(new Error('version.json timeout'));
           }, timeoutMs);
 
           fetch('version.json?ts=' + Date.now(), {
-            cache: 'no-store'
+            cache: 'no-store',
           })
-            .then(function(response) {
+            .then(function (response) {
               if (!response.ok) {
                 throw new Error('No se pudo cargar version.json');
               }
               return response.json();
             })
-            .then(function(payload) {
+            .then(function (payload) {
               if (settled) return;
               settled = true;
               clearTimeout(timer);
               resolve(payload);
             })
-            .catch(function(error) {
+            .catch(function (error) {
               if (settled) return;
               settled = true;
               clearTimeout(timer);
@@ -361,12 +291,52 @@
         });
       }
 
-      // ==========================================
-      // 7. VERIFICAR VERSIÓN Y CARGAR
-      // ==========================================
-      fetchVersionWithTimeout(800)
+      function loadFlutter(version) {
+        var script = document.createElement('script');
+        script.src = 'flutter_bootstrap.js?v=' + encodeURIComponent(version || Date.now().toString());
+        script.async = false;
+        script.onload = function () {
+          detectFlutterAndHideSplash();
+        };
+        document.body.appendChild(script);
+      }
 
-        .then(function(payload) {
+      window.fulltechHideSplash = hideSplash;
+      window.fulltechReloadPage = function () {
+        window.location.reload();
+      };
+      window.fulltechPwaDeferredPrompt = null;
+      window.fulltechPwaPromptInstall = function () {
+        var prompt = window.fulltechPwaDeferredPrompt;
+        if (!prompt) {
+          return Promise.resolve({ outcome: 'not_available' });
+        }
+        return prompt.prompt().then(function () {
+          return prompt.userChoice.then(function (choiceResult) {
+            window.fulltechPwaDeferredPrompt = null;
+            return { outcome: choiceResult.outcome };
+          });
+        });
+      };
+      window.fulltechPwaIsAvailable = function () {
+        return window.fulltechPwaDeferredPrompt !== null;
+      };
+
+      window.addEventListener('beforeinstallprompt', function (event) {
+        event.preventDefault();
+        window.fulltechPwaDeferredPrompt = event;
+      });
+
+      var path = window.location.pathname || '/';
+      var hash = window.location.hash || '';
+      var isRootPath = path === '/' || path === '';
+      var isEmptyHash = hash === '' || hash === '#' || hash === '#/';
+      if (isRootPath && isEmptyHash) {
+        window.location.hash = '#/tienda/fulltech';
+      }
+
+      fetchVersionWithTimeout(2500)
+        .then(function (payload) {
           var currentVersion =
             BUILD_VERSION !== '__FULLTECH_BUILD_VERSION__'
               ? BUILD_VERSION
@@ -374,8 +344,7 @@
           var lastVersion = localStorage.getItem(VERSION_KEY);
 
           if (lastVersion && lastVersion !== currentVersion) {
-            console.log('[FULLTECH] Nueva versión detectada:', currentVersion, '(anterior:', lastVersion + ')');
-            return clearRuntimeCaches().then(function() {
+            return clearRuntimeCaches().then(function () {
               localStorage.setItem(VERSION_KEY, currentVersion);
               loadFlutter(currentVersion);
             });
@@ -384,23 +353,16 @@
           localStorage.setItem(VERSION_KEY, currentVersion);
           loadFlutter(currentVersion);
         })
-        .catch(function(error) {
+        .catch(function (error) {
           console.warn('[FULLTECH] version.json lento o no disponible, cargando bootstrap directo.', error);
-          loadFlutter(Date.now().toString());
+          loadFlutter(
+            BUILD_VERSION !== '__FULLTECH_BUILD_VERSION__'
+              ? BUILD_VERSION
+              : Date.now().toString()
+          );
         });
 
-      // ==========================================
-      // 8. TIMEOUT DE SEGURIDAD - MÁXIMO 2 SEGUNDOS
-      //    Si Flutter no ha ocultado el splash en 2s,
-      //    lo ocultamos igual para que se vea el fondo
-      // ==========================================
-      setTimeout(function() {
-        var splash = document.getElementById('splash-screen');
-        if (splash && !splash.classList.contains('hidden')) {
-          window.fulltechHideSplash();
-          console.log('[PERF] Splash ocultado por timeout de seguridad (2s)');
-        }
-      }, 2000);
+      setTimeout(showSlowLoadingState, 8000);
     })();
   </script>
 </body>

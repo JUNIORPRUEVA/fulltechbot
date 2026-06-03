@@ -218,7 +218,7 @@ class _PublicMenuDrawer extends StatelessWidget {
                             ClipRRect(
                               borderRadius: BorderRadius.circular(12),
                               child: Image.asset(
-                                'assets/logo_principal.jpeg',
+                                'assets/logo_principal_small.png',
                                 width: 40,
                                 height: 40,
                                 fit: BoxFit.contain,

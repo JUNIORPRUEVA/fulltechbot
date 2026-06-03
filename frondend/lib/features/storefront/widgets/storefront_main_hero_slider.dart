@@ -670,7 +670,13 @@ class _HeroSlideBackground extends StatelessWidget {
       );
     }
 
-    return StorefrontSmartImage(source: resolved, fit: BoxFit.cover);
+    return StorefrontSmartImage(
+      source: resolved,
+      fit: BoxFit.cover,
+      requestWidth: 1600,
+      requestHeight: 840,
+      quality: 68,
+    );
   }
 }
 

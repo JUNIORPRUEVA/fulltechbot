@@ -72,6 +72,7 @@ flutter:
   assets:
     - assets/whatsappp.png
     - assets/logo_principal.jpeg
+    - assets/logo_principal_small.png
     - assets/facebook.png
     - assets/social.png
 
