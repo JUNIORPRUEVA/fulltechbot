@@ -70,28 +70,26 @@ class StorefrontProductActionBar extends StatelessWidget {
               label: const Text('Agregar al carrito'),
             ),
           ),
-          if (canWhatsapp) ...[
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: onWhatsapp,
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: StorefrontColors.whatsapp),
-                  foregroundColor: StorefrontColors.whatsapp,
-                ),
-                icon: const Icon(Icons.chat_outlined),
-                label: const Text('Consultar por WhatsApp'),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: canWhatsapp ? onWhatsapp : null,
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: StorefrontColors.whatsapp),
+                foregroundColor: StorefrontColors.whatsapp,
+                disabledForegroundColor: const Color(0xFF94A3B8),
               ),
+              icon: const Icon(Icons.chat_outlined),
+              label: const Text('Consultar por WhatsApp'),
             ),
-          ],
+          ),
         ],
       );
     }
 
     return Container(
-      constraints: const BoxConstraints(maxHeight: 76),
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.98),
         border: const Border(top: BorderSide(color: Color(0xFFE5E7EB))),
@@ -99,37 +97,71 @@ class StorefrontProductActionBar extends StatelessWidget {
       ),
       child: SafeArea(
         top: false,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: canBuy ? onAddToCart : null,
-                icon: const Icon(Icons.add_shopping_cart_outlined, size: 18),
-                label: const Text(
-                  'Agregar',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxWidth < 360;
+            final spacing = compact ? 6.0 : 8.0;
+            final fontSize = compact ? 11.0 : 12.0;
+            final iconSize = compact ? 16.0 : 18.0;
+            final verticalPadding = compact ? 12.0 : 13.0;
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: canWhatsapp ? onWhatsapp : null,
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: StorefrontColors.whatsapp),
+                      foregroundColor: StorefrontColors.whatsapp,
+                      disabledForegroundColor: const Color(0xFF94A3B8),
+                      padding: EdgeInsets.symmetric(vertical: verticalPadding),
+                    ),
+                    icon: Icon(Icons.chat_outlined, size: iconSize),
+                    label: Text(
+                      'WhatsApp',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: fontSize),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: FilledButton.icon(
-                onPressed: canBuy ? onBuyNow : null,
-                style: FilledButton.styleFrom(
-                  backgroundColor: primaryColor,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                SizedBox(width: spacing),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: canBuy ? onAddToCart : null,
+                    style: OutlinedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: verticalPadding),
+                    ),
+                    icon: Icon(Icons.add_shopping_cart_outlined, size: iconSize),
+                    label: Text(
+                      'Agregar',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: fontSize),
+                    ),
+                  ),
                 ),
-                icon: const Icon(Icons.shopping_bag_outlined, size: 18),
-                label: const Text(
-                  'Comprar',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                SizedBox(width: spacing),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: canBuy ? onBuyNow : null,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      padding: EdgeInsets.symmetric(vertical: verticalPadding),
+                    ),
+                    icon: Icon(Icons.shopping_bag_outlined, size: iconSize),
+                    label: Text(
+                      'Comprar',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: fontSize),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          ],
+              ],
+            );
+          },
         ),
       ),
     );
@@ -166,7 +198,7 @@ class _QuantitySelector extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Text(
               '$quantity',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
               ),

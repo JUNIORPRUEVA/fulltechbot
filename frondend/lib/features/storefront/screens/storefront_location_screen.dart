@@ -14,103 +14,49 @@ class StorefrontLocationScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.sizeOf(context).width >= 1024;
-    final horizontalPadding = isDesktop ? 28.0 : 16.0;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isDesktop = screenWidth >= 1024;
+    final horizontalPadding = isDesktop ? 28.0 : 14.0;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: const Text('Ubicacion de la tienda'),
+        title: const Text(
+          'Ubicacion de la tienda',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+        ),
         centerTitle: false,
       ),
       body: SafeArea(
         child: ListView(
           padding: EdgeInsets.fromLTRB(
             horizontalPadding,
-            18,
+            14,
             horizontalPadding,
-            28,
+            22,
           ),
           children: [
-            Container(
-              padding: const EdgeInsets.all(22),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF07192B), Color(0xFF103354)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(28),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF0F172A).withValues(alpha: 0.16),
-                    blurRadius: 24,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 7,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: const Text(
-                      storefrontLocationTitle,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Llega directo a FULLTECH sin pasos repetidos.',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 26,
-                      fontWeight: FontWeight.w900,
-                      height: 1.08,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Aqui tienes el mapa, la direccion exacta y los canales de contacto mas utiles para llegar o escribirnos.',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.78),
-                      fontSize: 13,
-                      height: 1.5,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 18),
+            _StoreImageCard(isDesktop: isDesktop),
+            const SizedBox(height: 14),
             SizedBox(
-              height: isDesktop ? 420 : 300,
+              height: isDesktop ? 410 : 280,
               child: StorefrontMapView(
-                height: isDesktop ? 420 : 300,
-                borderRadius: BorderRadius.circular(24),
+                height: isDesktop ? 410 : 280,
+                borderRadius: BorderRadius.circular(22),
                 onOpenExternal: StorefrontMapView.openStoreMap,
               ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 14),
             Container(
-              padding: const EdgeInsets.all(18),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(22),
                 border: Border.all(color: const Color(0xFFE7EDF5)),
                 boxShadow: [
                   BoxShadow(
                     color: const Color(0xFF0F172A).withValues(alpha: 0.04),
-                    blurRadius: 16,
+                    blurRadius: 14,
                     offset: const Offset(0, 8),
                   ),
                 ],
@@ -121,7 +67,7 @@ class StorefrontLocationScreen extends StatelessWidget {
                     icon: Icons.location_on_outlined,
                     title: 'Direccion',
                     subtitle: storefrontAddress,
-                    actionLabel: 'Abrir mapa',
+                    actionLabel: 'Mapa',
                     onTap: StorefrontMapView.openStoreMap,
                   ),
                   _ContactTile(
@@ -144,11 +90,77 @@ class StorefrontLocationScreen extends StatelessWidget {
                     icon: Icons.storefront_outlined,
                     title: 'Tienda online',
                     subtitle: 'Explora productos y ofertas',
-                    actionLabel: 'Ir a la tienda',
+                    actionLabel: 'Entrar',
                     onTap: () => Navigator.pushNamed(context, '/tienda/$slug'),
                     showDivider: false,
                   ),
                 ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StoreImageCard extends StatelessWidget {
+  final bool isDesktop;
+
+  const _StoreImageCard({required this.isDesktop});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFE7EDF5)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: Container(
+                width: double.infinity,
+                color: const Color(0xFFF8FAFC),
+                child: AspectRatio(
+                  aspectRatio: isDesktop ? 16 / 7 : 16 / 10,
+                  child: Image.asset(
+                    'assets/logo_principal.jpeg',
+                    fit: BoxFit.contain,
+                    alignment: Alignment.center,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              storefrontLocationTitle,
+              style: TextStyle(
+                color: Color(0xFF0F172A),
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              storefrontAddress,
+              style: const TextStyle(
+                color: Color(0xFF64748B),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                height: 1.35,
               ),
             ),
           ],
@@ -182,15 +194,15 @@ class _ContactTile extends StatelessWidget {
         Row(
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
                 color: const Color(0xFFF3F7FB),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(13),
               ),
-              child: Icon(icon, color: const Color(0xFF0F172A)),
+              child: Icon(icon, color: const Color(0xFF0F172A), size: 20),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -199,29 +211,44 @@ class _ContactTile extends StatelessWidget {
                     title,
                     style: const TextStyle(
                       color: Color(0xFF64748B),
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 2),
                   Text(
                     subtitle,
                     style: const TextStyle(
                       color: Color(0xFF0F172A),
-                      fontWeight: FontWeight.w800,
-                      height: 1.4,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      height: 1.3,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 12),
-            TextButton(onPressed: onTap, child: Text(actionLabel)),
+            const SizedBox(width: 8),
+            TextButton(
+              onPressed: onTap,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+              ),
+              child: Text(
+                actionLabel,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
           ],
         ),
         if (showDivider)
           const Padding(
-            padding: EdgeInsets.symmetric(vertical: 14),
+            padding: EdgeInsets.symmetric(vertical: 12),
             child: Divider(height: 1),
           ),
       ],
