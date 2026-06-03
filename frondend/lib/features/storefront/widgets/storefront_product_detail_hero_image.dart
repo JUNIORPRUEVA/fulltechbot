@@ -1,11 +1,9 @@
-import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/material.dart';
 
 import '../services/storefront_helpers.dart';
 import '../services/storefront_image_resolver.dart';
 
-/// Widget de imagen principal hero para el detalle del producto.
-/// Ocupa ~40% de la altura visible en móvil con bordes inferiores redondeados.
 class StorefrontProductDetailHeroImage extends StatefulWidget {
   final Map<String, dynamic> product;
   final List<String> images;
@@ -50,10 +48,15 @@ class _StorefrontProductDetailHeroImageState
   Widget build(BuildContext context) {
     final hasImages = widget.images.isNotEmpty;
     final productId = widget.product['id']?.toString() ?? '';
-    final version = StorefrontHelpers.getProductVersion(widget.product);
+    final version = StorefrontHelpers.getProductVersion(widget.product) ?? '';
     final mediaQuery = MediaQuery.of(context);
+    final screenWidth = mediaQuery.size.width;
     final topPadding = mediaQuery.padding.top;
     final heroHeight = mediaQuery.size.height * 0.42;
+    final useSwipeGallery = screenWidth >= 768;
+    final activeIndex = hasImages
+        ? _currentIndex.clamp(0, widget.images.length - 1)
+        : 0;
 
     return SizedBox(
       width: double.infinity,
@@ -61,7 +64,6 @@ class _StorefrontProductDetailHeroImageState
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // Imagen principal con Hero animation
           Hero(
             tag: 'product-image-$productId',
             child: ClipRRect(
@@ -70,57 +72,26 @@ class _StorefrontProductDetailHeroImageState
                 bottomRight: Radius.circular(32),
               ),
               child: hasImages
-                  ? PageView.builder(
-                      controller: _pageController,
-                      onPageChanged: (index) =>
-                          setState(() => _currentIndex = index),
-                      itemCount: widget.images.length,
-                      itemBuilder: (context, index) {
-                        final resolved = StorefrontImageResolver.resolve(
-                          widget.images[index],
+                  ? useSwipeGallery
+                      ? PageView.builder(
+                          controller: _pageController,
+                          onPageChanged: (index) =>
+                              setState(() => _currentIndex = index),
+                          itemCount: widget.images.length,
+                          itemBuilder: (context, index) {
+                            return _buildImage(
+                              widget.images[index],
+                              version: version,
+                            );
+                          },
+                        )
+                      : _buildImage(
+                          widget.images[activeIndex],
                           version: version,
-                        );
-                        final imageUrl = resolved?.value ?? '';
-
-                        if (imageUrl.isEmpty) {
-                          return _buildPlaceholder();
-                        }
-
-                        return CachedNetworkImage(
-                          imageUrl: imageUrl,
-                          fit: BoxFit.contain,
-                          placeholder: (_, _) => _buildPlaceholder(),
-                          errorWidget: (_, _, _) => _buildErrorImage(),
-                          fadeInDuration:
-                              const Duration(milliseconds: 200),
-                          fadeOutDuration:
-                              const Duration(milliseconds: 100),
-                          // Fondo claro para que la imagen respire
-                          imageBuilder: (context, imageProvider) =>
-                              Container(
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [
-                                  Color(0xFFF8FAFC),
-                                  Color(0xFFF1F5F9),
-                                ],
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                              ),
-                              image: DecorationImage(
-                                image: imageProvider,
-                                fit: BoxFit.contain,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    )
+                        )
                   : _buildPlaceholder(),
             ),
           ),
-
-          // Gradiente inferior para suavizar transición
           Positioned(
             left: 0,
             right: 0,
@@ -139,8 +110,6 @@ class _StorefrontProductDetailHeroImageState
               ),
             ),
           ),
-
-          // Botón de regresar - dentro de la imagen, arriba izquierda
           Positioned(
             top: topPadding + 8,
             left: 12,
@@ -149,8 +118,6 @@ class _StorefrontProductDetailHeroImageState
               onTap: widget.onBack,
             ),
           ),
-
-          // Botón de carrito - dentro de la imagen, arriba derecha
           Positioned(
             top: topPadding + 8,
             right: 12,
@@ -159,8 +126,6 @@ class _StorefrontProductDetailHeroImageState
               onTap: widget.onCart,
             ),
           ),
-
-          // Indicador de imágenes múltiples
           if (hasImages && widget.images.length > 1)
             Positioned(
               left: 0,
@@ -168,25 +133,25 @@ class _StorefrontProductDetailHeroImageState
               bottom: 16,
               child: _ImageIndicators(
                 count: widget.images.length,
-                currentIndex: _currentIndex,
+                currentIndex: activeIndex,
                 accentColor: widget.accentColor,
+                compact: !useSwipeGallery,
               ),
             ),
-
-          // Contador de imágenes
           if (hasImages && widget.images.length > 1)
             Positioned(
               right: 16,
               bottom: 40,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  '${_currentIndex + 1}/${widget.images.length}',
+                  useSwipeGallery
+                      ? '${activeIndex + 1}/${widget.images.length}'
+                      : '${widget.images.length} imagenes',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 12,
@@ -200,6 +165,40 @@ class _StorefrontProductDetailHeroImageState
     );
   }
 
+  Widget _buildImage(String source, {required String version}) {
+    final resolved = StorefrontImageResolver.resolve(
+      source,
+      version: version,
+    );
+    final imageUrl = resolved?.value ?? '';
+
+    if (imageUrl.isEmpty) {
+      return _buildPlaceholder();
+    }
+
+    return CachedNetworkImage(
+      imageUrl: imageUrl,
+      fit: BoxFit.contain,
+      placeholder: (_, _) => _buildPlaceholder(),
+      errorWidget: (_, _, _) => _buildErrorImage(),
+      fadeInDuration: const Duration(milliseconds: 200),
+      fadeOutDuration: const Duration(milliseconds: 100),
+      imageBuilder: (context, imageProvider) => Container(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+          image: DecorationImage(
+            image: imageProvider,
+            fit: BoxFit.contain,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildPlaceholder() {
     return Container(
       decoration: const BoxDecoration(
@@ -209,25 +208,13 @@ class _StorefrontProductDetailHeroImageState
           end: Alignment.bottomRight,
         ),
       ),
-      child: Center(
+      child: const Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.6),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Icon(
-                Icons.image_outlined,
-                size: 32,
-                color: Color(0xFF94A3B8),
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
+            _PlaceholderIcon(),
+            SizedBox(height: 12),
+            Text(
               'Cargando imagen',
               style: TextStyle(
                 color: Color(0xFF64748B),
@@ -275,7 +262,29 @@ class _StorefrontProductDetailHeroImageState
   }
 }
 
-/// Botón circular elegante para la parte superior de la imagen
+class _PlaceholderIcon extends StatelessWidget {
+  const _PlaceholderIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 64,
+      height: 64,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.white70,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: const Icon(
+          Icons.image_outlined,
+          size: 32,
+          color: Color(0xFF94A3B8),
+        ),
+      ),
+    );
+  }
+}
+
 class _TopButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
@@ -309,23 +318,27 @@ class _TopButton extends StatelessWidget {
   }
 }
 
-/// Indicadores de página para múltiples imágenes
 class _ImageIndicators extends StatelessWidget {
   final int count;
   final int currentIndex;
   final Color accentColor;
+  final bool compact;
 
   const _ImageIndicators({
     required this.count,
     required this.currentIndex,
     required this.accentColor,
+    this.compact = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final limit = compact ? 5 : 7;
+    final visibleCount = count > limit ? limit : count;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(count > 7 ? 7 : count, (index) {
+      children: List.generate(visibleCount, (index) {
         final active = index == currentIndex;
         return AnimatedContainer(
           duration: const Duration(milliseconds: 200),

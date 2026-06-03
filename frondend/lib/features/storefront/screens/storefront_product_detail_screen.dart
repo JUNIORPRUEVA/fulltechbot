@@ -119,7 +119,9 @@ class _StorefrontProductDetailScreenState
   void _precacheProductImages(Map<String, dynamic> product) {
     if (!mounted) return;
     final images = StorefrontHelpers.getProductImages(product);
-    for (final url in images) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final maxImagesToPrecache = screenWidth < 768 ? 1 : 3;
+    for (final url in images.take(maxImagesToPrecache)) {
       if (url.startsWith('http')) {
         precacheImage(NetworkImage(url), context);
       }
