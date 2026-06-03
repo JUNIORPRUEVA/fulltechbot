@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import '../../../core/constants/api_config.dart';
 
 /// Servicio de API para Storefront con estrategia siempre-fresca.
-/// 
+///
 /// - Siempre consulta API fresca (network-only) con headers anti-cache.
 /// - No cachea respuestas críticas (productos, precios, ofertas, stock).
 /// - Las imágenes se cachean con versionado por URL (v=updatedAt) en el SW.
@@ -16,21 +16,20 @@ class StorefrontApiService {
   static const Map<String, String> _slugAliases = {
     'fulltech-seguridad': 'fulltech',
   };
-  
-  // Headers anti-cache para todas las requests
-  static final Map<String, String> _noCacheHeaders = {
+
+  static const Map<String, String> _noCacheHeaders = {
     'Cache-Control': 'no-cache, no-store, must-revalidate',
     'Pragma': 'no-cache',
     'Expires': '0',
   };
-  
+
   // Cache en memoria SOLO para fallback offline (stale-while-revalidate)
   // NOTA: El catálogo NO se cachea en memoria para evitar datos viejos.
   // Cada vez que se abre la tienda, se consulta API fresca.
   // El cache de config es mínimo y solo para casos de error de red.
   static final Map<String, Map<String, dynamic>> _configCache = {};
-
-
+  static final Map<String, _StorefrontMemoryEntry<Map<String, dynamic>>>
+  _memoryGetCache = {};
 
   // ============================================
   // PUBLICAS
@@ -135,7 +134,8 @@ class StorefrontApiService {
       final wanted = categoria.trim().toLowerCase();
       filtered = filtered
           .where(
-            (item) => item['categoria']?.toString().trim().toLowerCase() == wanted,
+            (item) =>
+                item['categoria']?.toString().trim().toLowerCase() == wanted,
           )
           .toList();
     }
@@ -162,10 +162,16 @@ class StorefrontApiService {
     final safeLimit = limit <= 0 ? 20 : limit;
     final total = filtered.length;
     final totalPages = total == 0 ? 1 : (total / safeLimit).ceil();
-    final safePage = page < 1 ? 1 : page > totalPages ? totalPages : page;
+    final safePage = page < 1
+        ? 1
+        : page > totalPages
+        ? totalPages
+        : page;
     final start = (safePage - 1) * safeLimit;
     final end = start + safeLimit > total ? total : start + safeLimit;
-    final items = start >= total ? <Map<String, dynamic>>[] : filtered.sublist(start, end);
+    final items = start >= total
+        ? <Map<String, dynamic>>[]
+        : filtered.sublist(start, end);
 
     return {
       'ok': true,
@@ -179,7 +185,9 @@ class StorefrontApiService {
   }
 
   static Future<Map<String, dynamic>> getProduct(String slug, String id) async {
-    final response = await _getStorefront('/${_resolveSlug(slug)}/products/$id');
+    final response = await _getStorefront(
+      '/${_resolveSlug(slug)}/products/$id',
+    );
     if (_isSuccessful(response)) {
       return response;
     }
@@ -205,10 +213,7 @@ class StorefrontApiService {
 
     return {
       'ok': true,
-      'data': {
-        ...product,
-        'relatedProducts': relatedProducts,
-      },
+      'data': {...product, 'relatedProducts': relatedProducts},
       'source': 'bot-catalog-fallback',
     };
   }
@@ -229,14 +234,16 @@ class StorefrontApiService {
       counts.update(category, (value) => value + 1, ifAbsent: () => 1);
     }
 
-    final categories = counts.entries.map((entry) {
-      return {
-        'nombre': entry.key,
-        'slug': Uri.encodeComponent(entry.key.toLowerCase()),
-        'cantidad': entry.value,
-      };
-    }).toList()
-      ..sort((a, b) => (b['cantidad'] as int).compareTo(a['cantidad'] as int));
+    final categories =
+        counts.entries.map((entry) {
+          return {
+            'nombre': entry.key,
+            'slug': Uri.encodeComponent(entry.key.toLowerCase()),
+            'cantidad': entry.value,
+          };
+        }).toList()..sort(
+          (a, b) => (b['cantidad'] as int).compareTo(a['cantidad'] as int),
+        );
 
     return {'ok': true, 'data': categories, 'source': 'bot-catalog-fallback'};
   }
@@ -252,10 +259,7 @@ class StorefrontApiService {
     final resolvedSlug = _resolveSlug(slug);
     final res = await http.post(
       Uri.parse('$_baseUrl/$resolvedSlug/cart'),
-      headers: {
-        'Content-Type': 'application/json',
-        ..._noCacheHeaders,
-      },
+      headers: {'Content-Type': 'application/json', ..._noCacheHeaders},
       body: jsonEncode({'session_id': sessionId}),
     );
     return _decodeResponse(res);
@@ -286,10 +290,7 @@ class StorefrontApiService {
     final resolvedSlug = _resolveSlug(slug);
     final res = await http.post(
       Uri.parse('$_baseUrl/$resolvedSlug/cart/$sessionId/items'),
-      headers: {
-        'Content-Type': 'application/json',
-        ..._noCacheHeaders,
-      },
+      headers: {'Content-Type': 'application/json', ..._noCacheHeaders},
       body: jsonEncode({
         'producto_id': productoId,
         'nombre_producto': nombreProducto,
@@ -311,10 +312,7 @@ class StorefrontApiService {
     final resolvedSlug = _resolveSlug(slug);
     final res = await http.put(
       Uri.parse('$_baseUrl/$resolvedSlug/cart/$sessionId/items/$itemId'),
-      headers: {
-        'Content-Type': 'application/json',
-        ..._noCacheHeaders,
-      },
+      headers: {'Content-Type': 'application/json', ..._noCacheHeaders},
       body: jsonEncode({'cantidad': cantidad}),
     );
     return _decodeResponse(res);
@@ -352,10 +350,7 @@ class StorefrontApiService {
     final resolvedSlug = _resolveSlug(slug);
     final res = await http.post(
       Uri.parse('$_baseUrl/$resolvedSlug/checkout'),
-      headers: {
-        'Content-Type': 'application/json',
-        ..._noCacheHeaders,
-      },
+      headers: {'Content-Type': 'application/json', ..._noCacheHeaders},
       body: jsonEncode({
         'session_id': sessionId,
         'telefono_cliente': telefonoCliente,
@@ -385,10 +380,7 @@ class StorefrontApiService {
     final resolvedSlug = _resolveSlug(slug);
     final res = await http.post(
       Uri.parse('$_baseUrl/$resolvedSlug/whatsapp-order'),
-      headers: {
-        'Content-Type': 'application/json',
-        ..._noCacheHeaders,
-      },
+      headers: {'Content-Type': 'application/json', ..._noCacheHeaders},
       body: jsonEncode({
         'session_id': sessionId,
         'nombre_cliente': nombreCliente,
@@ -421,10 +413,7 @@ class StorefrontApiService {
   ) async {
     final res = await http.put(
       Uri.parse('$_baseUrl/admin/$botId/config'),
-      headers: {
-        'Content-Type': 'application/json',
-        ..._noCacheHeaders,
-      },
+      headers: {'Content-Type': 'application/json', ..._noCacheHeaders},
       body: jsonEncode(data),
     );
     return _decodeResponse(res);
@@ -444,10 +433,7 @@ class StorefrontApiService {
   ) async {
     final res = await http.post(
       Uri.parse('$_baseUrl/admin/$botId/banners'),
-      headers: {
-        'Content-Type': 'application/json',
-        ..._noCacheHeaders,
-      },
+      headers: {'Content-Type': 'application/json', ..._noCacheHeaders},
       body: jsonEncode(data),
     );
     return _decodeResponse(res);
@@ -460,10 +446,7 @@ class StorefrontApiService {
   ) async {
     final res = await http.put(
       Uri.parse('$_baseUrl/admin/$botId/banners/$id'),
-      headers: {
-        'Content-Type': 'application/json',
-        ..._noCacheHeaders,
-      },
+      headers: {'Content-Type': 'application/json', ..._noCacheHeaders},
       body: jsonEncode(data),
     );
     return _decodeResponse(res);
@@ -497,10 +480,7 @@ class StorefrontApiService {
   ) async {
     final res = await http.put(
       Uri.parse('$_baseUrl/admin/$botId/product-settings/$productoId'),
-      headers: {
-        'Content-Type': 'application/json',
-        ..._noCacheHeaders,
-      },
+      headers: {'Content-Type': 'application/json', ..._noCacheHeaders},
       body: jsonEncode(data),
     );
     return _decodeResponse(res);
@@ -545,10 +525,7 @@ class StorefrontApiService {
   ) async {
     final res = await http.post(
       Uri.parse('$_baseUrl/admin/$botId/delivery-zones'),
-      headers: {
-        'Content-Type': 'application/json',
-        ..._noCacheHeaders,
-      },
+      headers: {'Content-Type': 'application/json', ..._noCacheHeaders},
       body: jsonEncode(data),
     );
     return _decodeResponse(res);
@@ -561,10 +538,7 @@ class StorefrontApiService {
   ) async {
     final res = await http.put(
       Uri.parse('$_baseUrl/admin/$botId/delivery-zones/$id'),
-      headers: {
-        'Content-Type': 'application/json',
-        ..._noCacheHeaders,
-      },
+      headers: {'Content-Type': 'application/json', ..._noCacheHeaders},
       body: jsonEncode(data),
     );
     return _decodeResponse(res);
@@ -603,7 +577,8 @@ class StorefrontApiService {
       'direccion': null,
       'horario': null,
       'mensaje_principal': 'Tienda oficial FULLTECH SRL',
-      'mensaje_secundario': 'Compra facil, ofertas y productos para tu hogar, empresa y proyectos.',
+      'mensaje_secundario':
+          'Compra facil, ofertas y productos para tu hogar, empresa y proyectos.',
       'activo': true,
       'permitir_paypal': false,
       'permitir_whatsapp': true,
@@ -668,7 +643,6 @@ class StorefrontApiService {
     return items;
   }
 
-
   static Map<String, dynamic> _mapCatalogProduct(
     Map<String, dynamic> raw,
     Map<String, dynamic> bot,
@@ -679,11 +653,9 @@ class StorefrontApiService {
         precioOferta != null && precioOferta > 0 && precioOferta < precio
         ? precioOferta
         : null;
-    final gallery = [
-      raw['imagen1'],
-      raw['imagen2'],
-      raw['imagen3'],
-    ].where((item) => item != null && item.toString().trim().isNotEmpty).toList();
+    final gallery = [raw['imagen1'], raw['imagen2'], raw['imagen3']]
+        .where((item) => item != null && item.toString().trim().isNotEmpty)
+        .toList();
 
     return {
       'id': raw['id']?.toString() ?? '',
@@ -714,7 +686,8 @@ class StorefrontApiService {
       'instalacion_incluida': raw['instalacionIncluida'] == true,
       'precio_oferta_web': precioOfertaWeb,
       'descripcion_web': raw['descripcion']?.toString(),
-      'imagen_destacada_url': raw['imagen1'] ?? raw['imagen2'] ?? raw['imagen3'],
+      'imagen_destacada_url':
+          raw['imagen1'] ?? raw['imagen2'] ?? raw['imagen3'],
       'visible_en_tienda': true,
       'destacado': _isFeaturedProduct(raw),
       'permitir_compra_online': true,
@@ -725,12 +698,14 @@ class StorefrontApiService {
       'bot_slug': bot['slug']?.toString(),
       'bot_nombre': bot['nombre']?.toString(),
       // Incluir updatedAt para versionado de imágenes
-      'actualizadoEn': raw['actualizadoEn']?.toString() ?? raw['updatedAt']?.toString(),
+      'actualizadoEn':
+          raw['actualizadoEn']?.toString() ?? raw['updatedAt']?.toString(),
     };
   }
 
   static bool _isFeaturedProduct(Map<String, dynamic> product) {
-    final hasOffer = _toNullableDouble(
+    final hasOffer =
+        _toNullableDouble(
           product['precio_oferta_web'] ?? product['precioOferta'],
         ) !=
         null;
@@ -775,18 +750,16 @@ class StorefrontApiService {
       return orderCompare;
     }
 
-    return (a['titulo']?.toString() ?? '').compareTo(b['titulo']?.toString() ?? '');
+    return (a['titulo']?.toString() ?? '').compareTo(
+      b['titulo']?.toString() ?? '',
+    );
   }
 
   static int _compareOffers(Map<String, dynamic> a, Map<String, dynamic> b) {
-    final hasOfferA = _toNullableDouble(
-          a['precio_oferta_web'] ?? a['precioOferta'],
-        ) !=
-        null;
-    final hasOfferB = _toNullableDouble(
-          b['precio_oferta_web'] ?? b['precioOferta'],
-        ) !=
-        null;
+    final hasOfferA =
+        _toNullableDouble(a['precio_oferta_web'] ?? a['precioOferta']) != null;
+    final hasOfferB =
+        _toNullableDouble(b['precio_oferta_web'] ?? b['precioOferta']) != null;
     if (hasOfferA != hasOfferB) {
       return hasOfferB ? 1 : -1;
     }
@@ -807,26 +780,93 @@ class StorefrontApiService {
     Map<String, String>? queryParameters,
     Duration timeout = const Duration(seconds: 10),
   }) async {
-    final uri = Uri.parse('$_baseUrl$path').replace(queryParameters: queryParameters);
+    final uri = Uri.parse(
+      '$_baseUrl$path',
+    ).replace(queryParameters: queryParameters);
+    final cacheKey = uri.toString();
+    final cached = _getMemoryCache(cacheKey);
+    if (cached != null) {
+      return cached;
+    }
     try {
-      final res = await http.get(uri, headers: _noCacheHeaders).timeout(timeout);
-      return _decodeResponse(res);
+      final res = await http.get(uri).timeout(timeout);
+      final decoded = _decodeResponse(res);
+      if (_isSuccessful(decoded)) {
+        _setMemoryCache(cacheKey, decoded, _ttlForPath(path));
+      }
+      return decoded;
     } on TimeoutException {
-      return {'ok': false, 'message': 'La solicitud tardó demasiado. Intente de nuevo.', 'statusCode': 408};
+      return {
+        'ok': false,
+        'message': 'La solicitud tardó demasiado. Intente de nuevo.',
+        'statusCode': 408,
+      };
     } catch (e) {
       return {'ok': false, 'message': 'Error de conexión: $e', 'statusCode': 0};
     }
   }
 
   static Future<Map<String, dynamic>> _getJson(Uri uri) async {
+    final cacheKey = uri.toString();
+    final cached = _getMemoryCache(cacheKey);
+    if (cached != null) {
+      return cached;
+    }
     try {
-      final res = await http.get(uri, headers: _noCacheHeaders).timeout(const Duration(seconds: 10));
-      return _decodeResponse(res);
+      final res = await http.get(uri).timeout(const Duration(seconds: 10));
+      final decoded = _decodeResponse(res);
+      if (_isSuccessful(decoded)) {
+        _setMemoryCache(cacheKey, decoded, const Duration(minutes: 2));
+      }
+      return decoded;
     } on TimeoutException {
-      return {'ok': false, 'message': 'La solicitud tardó demasiado. Intente de nuevo.', 'statusCode': 408};
+      return {
+        'ok': false,
+        'message': 'La solicitud tardó demasiado. Intente de nuevo.',
+        'statusCode': 408,
+      };
     } catch (e) {
       return {'ok': false, 'message': 'Error de conexión: $e', 'statusCode': 0};
     }
+  }
+
+  static Map<String, dynamic>? _getMemoryCache(String key) {
+    final entry = _memoryGetCache[key];
+    if (entry == null) {
+      return null;
+    }
+    if (entry.expiresAt.isBefore(DateTime.now())) {
+      _memoryGetCache.remove(key);
+      return null;
+    }
+    return entry.value;
+  }
+
+  static void _setMemoryCache(
+    String key,
+    Map<String, dynamic> value,
+    Duration ttl,
+  ) {
+    _memoryGetCache[key] = _StorefrontMemoryEntry(
+      value: value,
+      expiresAt: DateTime.now().add(ttl),
+    );
+  }
+
+  static Duration _ttlForPath(String path) {
+    if (path.endsWith('/config') || path.endsWith('/categories')) {
+      return const Duration(minutes: 5);
+    }
+    if (path.endsWith('/banners')) {
+      return const Duration(minutes: 2);
+    }
+    if (path.contains('/products/')) {
+      return const Duration(minutes: 2);
+    }
+    if (path.endsWith('/products')) {
+      return const Duration(seconds: 45);
+    }
+    return const Duration(seconds: 30);
   }
 
   static Map<String, dynamic> _decodeResponse(http.Response res) {
@@ -840,10 +880,7 @@ class StorefrontApiService {
 
     final decoded = jsonDecode(res.body);
     if (decoded is Map<String, dynamic>) {
-      return {
-        ...decoded,
-        'statusCode': res.statusCode,
-      };
+      return {...decoded, 'statusCode': res.statusCode};
     }
 
     return {
@@ -900,4 +937,11 @@ class StorefrontApiService {
     }
     return int.tryParse(value?.toString() ?? '') ?? fallback;
   }
+}
+
+class _StorefrontMemoryEntry<T> {
+  final T value;
+  final DateTime expiresAt;
+
+  const _StorefrontMemoryEntry({required this.value, required this.expiresAt});
 }

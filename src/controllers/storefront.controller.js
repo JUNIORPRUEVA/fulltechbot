@@ -6,12 +6,32 @@
  */
 
 const storefrontService = require('../services/storefront.service');
+const storefrontCache = require('../services/storefrontCache.service');
 const { resolveScopedBotId } = require('../services/botScope.service');
+
+const CACHE_TTL = {
+  defaultStore: 5 * 60 * 1000,
+  config: 5 * 60 * 1000,
+  banners: 2 * 60 * 1000,
+  products: 60 * 1000,
+  product: 2 * 60 * 1000,
+  categories: 5 * 60 * 1000,
+};
 
 async function getDefaultStore(req, res) {
   try {
     const preferredSlug = req.query?.slug?.toString().trim() || null;
-    const result = await storefrontService.getDefaultPublicStore(preferredSlug);
+    const cacheKey = preferredSlug || '__default__';
+    setPublicCacheHeaders(res, {
+      browserSeconds: 60,
+      staleWhileRevalidateSeconds: 300,
+    });
+    const result = await storefrontCache.getOrSet(
+      'public_default_store',
+      cacheKey,
+      CACHE_TTL.defaultStore,
+      () => storefrontService.getDefaultPublicStore(preferredSlug),
+    );
 
     if (!result.store) {
       return res.status(404).json({
@@ -70,6 +90,17 @@ function setImageCacheHeaders(res) {
   });
 }
 
+function setPublicCacheHeaders(
+  res,
+  { browserSeconds = 30, staleWhileRevalidateSeconds = 120 } = {},
+) {
+  res.set({
+    'Cache-Control': `public, max-age=${browserSeconds}, stale-while-revalidate=${staleWhileRevalidateSeconds}`,
+    'CDN-Cache-Control': `public, max-age=${browserSeconds}, stale-while-revalidate=${staleWhileRevalidateSeconds}`,
+    'Vercel-CDN-Cache-Control': `public, max-age=${browserSeconds}, stale-while-revalidate=${staleWhileRevalidateSeconds}`,
+  });
+}
+
 async function getAdminBotId(req) {
   return resolveScopedBotId(req.params.botId, { createIfMissing: true });
 }
@@ -77,8 +108,16 @@ async function getAdminBotId(req) {
 async function getConfig(req, res) {
   try {
     const { slug } = req.params;
-    setNoCacheHeaders(res);
-    const config = await storefrontService.getConfigBySlug(slug);
+    setPublicCacheHeaders(res, {
+      browserSeconds: 60,
+      staleWhileRevalidateSeconds: 300,
+    });
+    const config = await storefrontCache.getOrSet(
+      'public_config',
+      slug,
+      CACHE_TTL.config,
+      () => storefrontService.getConfigBySlug(slug),
+    );
 
     if (!config) {
       return res.status(404).json({
@@ -96,14 +135,27 @@ async function getConfig(req, res) {
 async function getBanners(req, res) {
   try {
     const { slug } = req.params;
-    setNoCacheHeaders(res);
-    const config = await storefrontService.getConfigBySlug(slug);
+    setPublicCacheHeaders(res, {
+      browserSeconds: 60,
+      staleWhileRevalidateSeconds: 180,
+    });
+    const config = await storefrontCache.getOrSet(
+      'public_config',
+      slug,
+      CACHE_TTL.config,
+      () => storefrontService.getConfigBySlug(slug),
+    );
 
     if (!config) {
       return res.status(404).json({ ok: false, message: 'Tienda no encontrada' });
     }
 
-    const banners = await storefrontService.getBanners(config.bot_id);
+    const banners = await storefrontCache.getOrSet(
+      'public_banners',
+      `${slug}:${config.bot_id}`,
+      CACHE_TTL.banners,
+      () => storefrontService.getBanners(config.bot_id),
+    );
     res.json({ ok: true, data: banners });
   } catch (error) {
     handleError(res, error, 'Error al obtener banners');
@@ -113,15 +165,23 @@ async function getBanners(req, res) {
 async function getProducts(req, res) {
   try {
     const { slug } = req.params;
-    setNoCacheHeaders(res);
-    const config = await storefrontService.getConfigBySlug(slug);
+    setPublicCacheHeaders(res, {
+      browserSeconds: 20,
+      staleWhileRevalidateSeconds: 90,
+    });
+    const config = await storefrontCache.getOrSet(
+      'public_config',
+      slug,
+      CACHE_TTL.config,
+      () => storefrontService.getConfigBySlug(slug),
+    );
 
     if (!config) {
       return res.status(404).json({ ok: false, message: 'Tienda no encontrada' });
     }
 
     const { categoria, destacado, search, busqueda, page, limit, sort } = req.query;
-    const result = await storefrontService.getStorefrontProducts(config.bot_id, {
+    const filters = {
       categoria,
       destacado: destacado === 'true',
       search,
@@ -129,7 +189,13 @@ async function getProducts(req, res) {
       sort,
       page: parseInt(page) || 1,
       limit: parseInt(limit) || 20,
-    });
+    };
+    const result = await storefrontCache.getOrSet(
+      'public_products',
+      JSON.stringify({ slug, botId: config.bot_id, ...filters }),
+      CACHE_TTL.products,
+      () => storefrontService.getStorefrontProducts(config.bot_id, filters),
+    );
 
     res.json({ ok: true, ...result });
   } catch (error) {
@@ -140,14 +206,27 @@ async function getProducts(req, res) {
 async function getProductById(req, res) {
   try {
     const { slug, id } = req.params;
-    setNoCacheHeaders(res);
-    const config = await storefrontService.getConfigBySlug(slug);
+    setPublicCacheHeaders(res, {
+      browserSeconds: 45,
+      staleWhileRevalidateSeconds: 180,
+    });
+    const config = await storefrontCache.getOrSet(
+      'public_config',
+      slug,
+      CACHE_TTL.config,
+      () => storefrontService.getConfigBySlug(slug),
+    );
 
     if (!config) {
       return res.status(404).json({ ok: false, message: 'Tienda no encontrada' });
     }
 
-    const product = await storefrontService.getStorefrontProductById(config.bot_id, id);
+    const product = await storefrontCache.getOrSet(
+      'public_product',
+      `${slug}:${config.bot_id}:${id}`,
+      CACHE_TTL.product,
+      () => storefrontService.getStorefrontProductById(config.bot_id, id),
+    );
 
     if (!product) {
       return res.status(404).json({ ok: false, message: 'Producto no encontrado' });
@@ -162,14 +241,27 @@ async function getProductById(req, res) {
 async function getCategories(req, res) {
   try {
     const { slug } = req.params;
-    setNoCacheHeaders(res);
-    const config = await storefrontService.getConfigBySlug(slug);
+    setPublicCacheHeaders(res, {
+      browserSeconds: 60,
+      staleWhileRevalidateSeconds: 300,
+    });
+    const config = await storefrontCache.getOrSet(
+      'public_config',
+      slug,
+      CACHE_TTL.config,
+      () => storefrontService.getConfigBySlug(slug),
+    );
 
     if (!config) {
       return res.status(404).json({ ok: false, message: 'Tienda no encontrada' });
     }
 
-    const categories = await storefrontService.getStorefrontCategories(config.bot_id);
+    const categories = await storefrontCache.getOrSet(
+      'public_categories',
+      `${slug}:${config.bot_id}`,
+      CACHE_TTL.categories,
+      () => storefrontService.getStorefrontCategories(config.bot_id),
+    );
     res.json({ ok: true, data: categories });
   } catch (error) {
     handleError(res, error, 'Error al obtener categorías');
@@ -435,6 +527,7 @@ async function updateAdminConfig(req, res) {
   try {
     const botId = await getAdminBotId(req);
     const config = await storefrontService.upsertConfig(botId, req.body);
+    storefrontCache.clearAll();
 
     res.json({
       ok: true,
@@ -460,6 +553,7 @@ async function createAdminBanner(req, res) {
   try {
     const botId = await getAdminBotId(req);
     const banner = await storefrontService.createBanner(botId, req.body);
+    storefrontCache.clearAll();
     res.status(201).json({ ok: true, data: banner });
   } catch (error) {
     handleError(res, error, 'Error al crear banner');
@@ -475,6 +569,7 @@ async function updateAdminBanner(req, res) {
       return res.status(404).json({ ok: false, message: 'Banner no encontrado' });
     }
 
+    storefrontCache.clearAll();
     res.json({ ok: true, data: banner });
   } catch (error) {
     handleError(res, error, 'Error al actualizar banner');
@@ -490,6 +585,7 @@ async function deleteAdminBanner(req, res) {
       return res.status(404).json({ ok: false, message: 'Banner no encontrado' });
     }
 
+    storefrontCache.clearAll();
     res.json({ ok: true, message: 'Banner eliminado exitosamente' });
   } catch (error) {
     handleError(res, error, 'Error al eliminar banner');
@@ -511,6 +607,7 @@ async function updateAdminProductSetting(req, res) {
     const botId = await getAdminBotId(req);
     const { productoId } = req.params;
     const setting = await storefrontService.upsertProductSetting(botId, productoId, req.body);
+    storefrontCache.clearAll();
     res.json({ ok: true, data: setting });
   } catch (error) {
     handleError(res, error, 'Error al actualizar configuración de producto');
