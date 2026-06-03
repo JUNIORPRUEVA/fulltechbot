@@ -40,27 +40,21 @@ class MyApp extends StatelessWidget {
     // Sin depender de API, sin esperar resolución
     // ==========================================
     if (uri.path == '/') {
-      return _route(
-        settings,
-        const StorefrontHomeScreen(slug: 'fulltech'),
-      );
+      return _route(settings, const StorefrontHomeScreen(slug: 'fulltech'));
     }
 
     if (uri.path == '/tienda') {
-      return _route(
-        settings,
-        PublicEntryScreen(
-          preferredSlug: uri.queryParameters['slug'],
-        ),
-      );
+      final slug = uri.queryParameters['slug']?.trim();
+      if (slug == null || slug.isEmpty) {
+        return _route(settings, const StorefrontHomeScreen(slug: 'fulltech'));
+      }
+
+      return _route(settings, PublicEntryScreen(preferredSlug: slug));
     }
 
     if (uri.path == '/login' || uri.path == '/admin/login') {
       final redirectTo = uri.queryParameters['redirect'] ?? '/admin';
-      return _route(
-        settings,
-        AdminLoginScreen(redirectTo: redirectTo),
-      );
+      return _route(settings, AdminLoginScreen(redirectTo: redirectTo));
     }
 
     if (uri.pathSegments.isNotEmpty && uri.pathSegments.first == 'admin') {
@@ -68,10 +62,7 @@ class MyApp extends StatelessWidget {
     }
 
     if (uri.pathSegments.length == 2 && uri.pathSegments[0] == 'tienda') {
-      return _route(
-        settings,
-        StorefrontHomeScreen(slug: uri.pathSegments[1]),
-      );
+      return _route(settings, StorefrontHomeScreen(slug: uri.pathSegments[1]));
     }
 
     if (uri.pathSegments.length == 4 &&
@@ -138,10 +129,7 @@ class MyApp extends StatelessWidget {
         );
       }
 
-      return _route(
-        settings,
-        StorefrontCartScreen(slug: uri.pathSegments[1]),
-      );
+      return _route(settings, StorefrontCartScreen(slug: uri.pathSegments[1]));
     }
 
     if ((uri.path == '/checkout') ||
@@ -169,10 +157,7 @@ class MyApp extends StatelessWidget {
       final args = settings.arguments as Map<String, dynamic>?;
       return _route(
         settings,
-        StorefrontSuccessScreen(
-          slug: uri.pathSegments[1],
-          data: args,
-        ),
+        StorefrontSuccessScreen(slug: uri.pathSegments[1], data: args),
       );
     }
 
@@ -222,10 +207,7 @@ class MyApp extends StatelessWidget {
   }
 
   MaterialPageRoute<dynamic> _route(RouteSettings settings, Widget child) {
-    return MaterialPageRoute(
-      builder: (_) => child,
-      settings: settings,
-    );
+    return MaterialPageRoute(builder: (_) => child, settings: settings);
   }
 
   /// Ruta con transición suave para Hero animation en el detalle de producto.
@@ -237,13 +219,16 @@ class MyApp extends StatelessWidget {
         return FadeTransition(
           opacity: animation,
           child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 0.03),
-              end: Offset.zero,
-            ).animate(CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeOutCubic,
-            )),
+            position:
+                Tween<Offset>(
+                  begin: const Offset(0, 0.03),
+                  end: Offset.zero,
+                ).animate(
+                  CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  ),
+                ),
             child: child,
           ),
         );
@@ -264,21 +249,66 @@ class MyApp extends StatelessWidget {
       // Sin Google Fonts - usa system fonts para carga instantánea
       // Google Fonts descarga fuentes remotas y bloquea el primer frame
       textTheme: const TextTheme(
-        displayLarge: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
-        displayMedium: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
-        displaySmall: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
-        headlineLarge: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
-        headlineMedium: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
-        headlineSmall: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
-        titleLarge: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
-        titleMedium: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-        titleSmall: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-        bodyLarge: TextStyle(fontWeight: FontWeight.w400, color: Color(0xFF111827)),
-        bodyMedium: TextStyle(fontWeight: FontWeight.w400, color: Color(0xFF111827)),
-        bodySmall: TextStyle(fontWeight: FontWeight.w400, color: Color(0xFF6B7280)),
-        labelLarge: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF111827)),
-        labelMedium: TextStyle(fontWeight: FontWeight.w500, color: Color(0xFF111827)),
-        labelSmall: TextStyle(fontWeight: FontWeight.w500, color: Color(0xFF6B7280)),
+        displayLarge: TextStyle(
+          fontWeight: FontWeight.w900,
+          color: Color(0xFF0F172A),
+        ),
+        displayMedium: TextStyle(
+          fontWeight: FontWeight.w900,
+          color: Color(0xFF0F172A),
+        ),
+        displaySmall: TextStyle(
+          fontWeight: FontWeight.w800,
+          color: Color(0xFF0F172A),
+        ),
+        headlineLarge: TextStyle(
+          fontWeight: FontWeight.w800,
+          color: Color(0xFF0F172A),
+        ),
+        headlineMedium: TextStyle(
+          fontWeight: FontWeight.w800,
+          color: Color(0xFF0F172A),
+        ),
+        headlineSmall: TextStyle(
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF0F172A),
+        ),
+        titleLarge: TextStyle(
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF0F172A),
+        ),
+        titleMedium: TextStyle(
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF0F172A),
+        ),
+        titleSmall: TextStyle(
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF0F172A),
+        ),
+        bodyLarge: TextStyle(
+          fontWeight: FontWeight.w400,
+          color: Color(0xFF111827),
+        ),
+        bodyMedium: TextStyle(
+          fontWeight: FontWeight.w400,
+          color: Color(0xFF111827),
+        ),
+        bodySmall: TextStyle(
+          fontWeight: FontWeight.w400,
+          color: Color(0xFF6B7280),
+        ),
+        labelLarge: TextStyle(
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF111827),
+        ),
+        labelMedium: TextStyle(
+          fontWeight: FontWeight.w500,
+          color: Color(0xFF111827),
+        ),
+        labelSmall: TextStyle(
+          fontWeight: FontWeight.w500,
+          color: Color(0xFF6B7280),
+        ),
       ),
       colorScheme: ColorScheme.light(
         primary: primaryColor,
@@ -304,9 +334,7 @@ class MyApp extends StatelessWidget {
       ),
       cardTheme: CardThemeData(
         elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         color: Colors.white,
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -324,7 +352,10 @@ class MyApp extends StatelessWidget {
         ),
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 18,
+          vertical: 14,
+        ),
         labelStyle: const TextStyle(color: Color(0xFF6B7280)),
       ),
       filledButtonTheme: FilledButtonThemeData(
@@ -351,17 +382,13 @@ class MyApp extends StatelessWidget {
         space: 1,
       ),
       chipTheme: ChipThemeData(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         side: BorderSide.none,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -370,10 +397,7 @@ class MyApp extends StatelessWidget {
 class MainNavigation extends StatefulWidget {
   final int initialIndex;
 
-  const MainNavigation({
-    super.key,
-    this.initialIndex = 0,
-  });
+  const MainNavigation({super.key, this.initialIndex = 0});
 
   @override
   State<MainNavigation> createState() => _MainNavigationState();
@@ -431,10 +455,7 @@ class _MainNavigationState extends State<MainNavigation> {
 
     if (!botProvider.hayBotSeleccionado) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('FullTech Bot'),
-          centerTitle: false,
-        ),
+        appBar: AppBar(title: const Text('FullTech Bot'), centerTitle: false),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(32),
@@ -457,10 +478,7 @@ class _MainNavigationState extends State<MainNavigation> {
                 const SizedBox(height: 20),
                 const Text(
                   'No se pudo cargar FULLTECH SRL',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                  ),
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -478,7 +496,10 @@ class _MainNavigationState extends State<MainNavigation> {
                   icon: const Icon(Icons.refresh_rounded, size: 20),
                   label: const Text('Reintentar'),
                   style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 14,
+                    ),
                   ),
                 ),
               ],

@@ -9,10 +9,8 @@ import '../../public/widgets/public_store_layout.dart';
 import '../services/storefront_api_service.dart';
 import '../services/storefront_helpers.dart';
 import '../theme/storefront_theme.dart';
-import '../widgets/storefront_error_state.dart';
 import '../widgets/storefront_footer.dart';
 import '../widgets/storefront_product_card.dart';
-import '../widgets/storefront_skeleton.dart' hide StorefrontColors;
 import '../widgets/storefront_smart_image.dart';
 import '../widgets/storefront_trust_chips.dart';
 
@@ -52,13 +50,6 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
   List<dynamic> _offerProducts = [];
   List<dynamic> _products = [];
 
-  // Control de carga progresiva - TODOS comienzan como false
-  // El Home se muestra con skeletons donde no hay datos
-  bool _configLoaded = false;
-  bool _bannersLoaded = false;
-  bool _categoriesLoaded = false;
-  bool _productsLoaded = false;
-
   static final RegExp _combiningMarks = RegExp(r'[\u0300-\u036f]');
 
   @override
@@ -66,7 +57,7 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     super.initState();
     _perfLog('StorefrontHomeScreen.initState');
     _config = Map<String, dynamic>.from(_fallbackConfig);
-    
+
     // ==========================================
     // PASO 1: Mostrar Home INMEDIATAMENTE con skeleton
     // Sin esperar NADA de API
@@ -74,10 +65,10 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     // ==========================================
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _perfLog('StorefrontHomeScreen.firstFrame - Home visible');
-      
+
       // Ocultar splash HTML de inmediato
       _hideHtmlSplash();
-      
+
       // Iniciar carga en segundo plano inmediatamente
       unawaited(_loadHomeDataInBackground());
     });
@@ -99,21 +90,18 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     Future.microtask(() async {
       _perfLog('config loading started');
       try {
-        final configResponse = await StorefrontApiService.getConfig(widget.slug)
-            .timeout(const Duration(seconds: 10));
+        final configResponse = await StorefrontApiService.getConfig(
+          widget.slug,
+        ).timeout(const Duration(seconds: 10));
 
         if (configResponse['ok'] == true && mounted) {
           setState(() {
             _config = Map<String, dynamic>.from(configResponse['data'] as Map);
-            _configLoaded = true;
           });
           _perfLog('config loaded');
         }
       } catch (e) {
         _perfLog('config failed: $e');
-        if (mounted) {
-          setState(() => _configLoaded = true);
-        }
       }
     });
 
@@ -123,46 +111,25 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     Future.microtask(() async {
       _perfLog('banners loading started');
       try {
-        final bannersResponse = await StorefrontApiService.getBanners(widget.slug)
-            .timeout(const Duration(seconds: 10));
+        final bannersResponse = await StorefrontApiService.getBanners(
+          widget.slug,
+        ).timeout(const Duration(seconds: 10));
         if (mounted) {
           setState(() {
-            _banners = List<dynamic>.from(bannersResponse['data'] as List? ?? const []);
-            _bannersLoaded = true;
+            _banners = List<dynamic>.from(
+              bannersResponse['data'] as List? ?? const [],
+            );
           });
           _perfLog('banners loaded');
         }
       } catch (e) {
         _perfLog('banners failed: $e');
-        if (mounted) {
-          setState(() => _bannersLoaded = true);
-        }
       }
     });
 
     // ==========================================
     // PASO 4: Cargar categorías (no crítico)
     // ==========================================
-    Future.microtask(() async {
-      _perfLog('categories loading started');
-      try {
-        final categoriesResponse = await StorefrontApiService.getCategories(widget.slug)
-            .timeout(const Duration(seconds: 10));
-        if (mounted) {
-          setState(() {
-            final rawCategories = List<dynamic>.from(categoriesResponse['data'] as List? ?? const []);
-            _categories = _buildDisplayCategories(rawCategories, []);
-            _categoriesLoaded = true;
-          });
-          _perfLog('categories loaded');
-        }
-      } catch (e) {
-        _perfLog('categories failed: $e');
-        if (mounted) {
-          setState(() => _categoriesLoaded = true);
-        }
-      }
-    });
 
     // ==========================================
     // PASO 5: Cargar productos (lo más pesado, al final)
@@ -177,8 +144,11 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
             sort: 'featured',
             limit: 8,
           ).timeout(const Duration(seconds: 12)),
-          StorefrontApiService.getProducts(widget.slug, sort: 'offers', limit: 8)
-              .timeout(const Duration(seconds: 12)),
+          StorefrontApiService.getProducts(
+            widget.slug,
+            sort: 'offers',
+            limit: 8,
+          ).timeout(const Duration(seconds: 12)),
           StorefrontApiService.getProducts(
             widget.slug,
             page: 1,
@@ -193,9 +163,9 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
           List<dynamic>.from(productResults[0]['items'] as List? ?? const []),
         );
         final offerProducts = _dedupeProducts(
-          List<dynamic>.from(productResults[1]['items'] as List? ?? const []).where((
-            item,
-          ) {
+          List<dynamic>.from(
+            productResults[1]['items'] as List? ?? const [],
+          ).where((item) {
             final map = Map<String, dynamic>.from(item as Map);
             return map['precio_oferta_web'] != null ||
                 map['precioOferta'] != null;
@@ -218,10 +188,11 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
           final id = (item as Map)['id']?.toString() ?? '';
           return id.isEmpty || !highlightedIds.contains(id);
         }).toList();
-        final categories = _buildDisplayCategories(
-          List<dynamic>.from([]),
-          [...featuredProducts, ...offerProducts, ...catalogProducts],
-        );
+        final categories = _buildDisplayCategories(List<dynamic>.from([]), [
+          ...featuredProducts,
+          ...offerProducts,
+          ...catalogProducts,
+        ]);
 
         setState(() {
           _categories = categories;
@@ -231,14 +202,10 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
           }).toList();
           _offerProducts = offerProducts;
           _products = catalogOnlyProducts;
-          _productsLoaded = true;
         });
         _perfLog('products loaded');
       } catch (e) {
         _perfLog('products failed: $e');
-        if (mounted) {
-          setState(() => _productsLoaded = true);
-        }
       }
     });
 
@@ -246,7 +213,6 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
   }
 
   Color _getColor(String hex) {
-
     var normalized = hex.replaceAll('#', '');
     if (normalized.length == 6) normalized = 'FF$normalized';
     return Color(int.parse(normalized, radix: 16));
@@ -340,7 +306,9 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     final orderedKeys = <String>[
       ..._categories
           .whereType<Map>()
-          .map((item) => _normalizeCategoryKey(item['nombre']?.toString() ?? ''))
+          .map(
+            (item) => _normalizeCategoryKey(item['nombre']?.toString() ?? ''),
+          )
           .where((key) => key.isNotEmpty),
       ...grouped.keys,
     ];
@@ -354,8 +322,9 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
       if (items == null || items.length < 2) continue;
 
       items.sort((a, b) {
-        final scoreCompare =
-            _productShelfScore(b).compareTo(_productShelfScore(a));
+        final scoreCompare = _productShelfScore(
+          b,
+        ).compareTo(_productShelfScore(a));
         if (scoreCompare != 0) return scoreCompare;
         return (a['titulo']?.toString() ?? '').compareTo(
           b['titulo']?.toString() ?? '',
@@ -457,23 +426,22 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
       config['color_secundario']?.toString() ?? '#2563EB',
     );
     final whatsapp = config['whatsapp_numero']?.toString() ?? '';
-    final storeName = _normalizeStoreName(
-      config['nombre_tienda']?.toString(),
-    );
+    final storeName = _normalizeStoreName(config['nombre_tienda']?.toString());
     final isTablet = screenWidth >= 700 && screenWidth < 1100;
     final isDesktop = screenWidth >= 1100;
     final contentPadding = math.max(14.0, ((screenWidth - 1240) / 2) + 16);
     return PublicStoreLayout(
-
       slug: widget.slug,
       storeName: storeName,
       logoUrl: config['logo_url'],
       primaryColor: primaryColor,
       secondaryColor: secondaryColor,
-      heroTitle: config['mensaje_principal']?.toString().trim().isNotEmpty == true
+      heroTitle:
+          config['mensaje_principal']?.toString().trim().isNotEmpty == true
           ? config['mensaje_principal'].toString().trim()
           : 'Tienda oficial FULLTECH SRL',
-      heroSubtitle: config['mensaje_secundario']?.toString().trim().isNotEmpty == true
+      heroSubtitle:
+          config['mensaje_secundario']?.toString().trim().isNotEmpty == true
           ? config['mensaje_secundario'].toString().trim()
           : 'Explora ofertas, productos y soluciones para tu hogar, empresa y proyectos.',
       banners: _banners,
@@ -499,11 +467,19 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
         if (_offerProducts.isNotEmpty) ...[
           SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(contentPadding, 16, contentPadding, 8),
+              padding: EdgeInsets.fromLTRB(
+                contentPadding,
+                16,
+                contentPadding,
+                8,
+              ),
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         colors: [Color(0xFFDC2626), Color(0xFFF97316)],
@@ -522,7 +498,11 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.local_fire_department_rounded, size: 18, color: Colors.white),
+                        Icon(
+                          Icons.local_fire_department_rounded,
+                          size: 18,
+                          color: Colors.white,
+                        ),
                         SizedBox(width: 6),
                         Text(
                           'Ofertas del día',
@@ -540,7 +520,10 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
                   GestureDetector(
                     onTap: _openOffers,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: secondaryColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(999),
@@ -557,7 +540,11 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
                             ),
                           ),
                           const SizedBox(width: 2),
-                          Icon(Icons.arrow_forward_ios_rounded, size: 10, color: secondaryColor),
+                          Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 10,
+                            color: secondaryColor,
+                          ),
                         ],
                       ),
                     ),
@@ -598,7 +585,12 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
         if (_categories.isNotEmpty) ...[
           SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(contentPadding, 18, contentPadding, 4),
+              padding: EdgeInsets.fromLTRB(
+                contentPadding,
+                18,
+                contentPadding,
+                4,
+              ),
               child: Text(
                 'Categorías',
                 style: TextStyle(
@@ -643,7 +635,12 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
           for (final showcase in _categoryShowcases) ...[
             SliverToBoxAdapter(
               child: Padding(
-                padding: EdgeInsets.fromLTRB(contentPadding, 14, contentPadding, 4),
+                padding: EdgeInsets.fromLTRB(
+                  contentPadding,
+                  14,
+                  contentPadding,
+                  4,
+                ),
                 child: Row(
                   children: [
                     Text(
@@ -666,7 +663,10 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
                         }
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: secondaryColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(999),
@@ -683,7 +683,11 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
                               ),
                             ),
                             const SizedBox(width: 2),
-                            Icon(Icons.arrow_forward_ios_rounded, size: 9, color: secondaryColor),
+                            Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              size: 9,
+                              color: secondaryColor,
+                            ),
                           ],
                         ),
                       ),
@@ -696,11 +700,17 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
               child: SizedBox(
                 height: isDesktop ? 336 : (isTablet ? 314 : 292),
                 child: ListView.separated(
-                  padding: EdgeInsets.fromLTRB(contentPadding, 6, contentPadding, 0),
+                  padding: EdgeInsets.fromLTRB(
+                    contentPadding,
+                    6,
+                    contentPadding,
+                    0,
+                  ),
                   scrollDirection: Axis.horizontal,
                   physics: const BouncingScrollPhysics(),
                   itemCount:
-                      (showcase['products'] as List<dynamic>? ?? const []).length,
+                      (showcase['products'] as List<dynamic>? ?? const [])
+                          .length,
                   separatorBuilder: (_, __) => const SizedBox(width: 12),
                   itemBuilder: (context, index) {
                     final products =
@@ -735,7 +745,6 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
           ),
         ),
       ],
-
     );
   }
 
@@ -768,7 +777,11 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
       final key = _normalizeCategoryKey(rawName);
       final displayName = _displayCategoryName(rawName);
       final count = int.tryParse(category['cantidad']?.toString() ?? '0') ?? 0;
-      final image = _resolveCategoryImage(category['imagen'], displayName, products);
+      final image = _resolveCategoryImage(
+        category['imagen'],
+        displayName,
+        products,
+      );
 
       final existing = merged[key];
       if (existing == null) {
@@ -812,8 +825,9 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
 
     final categories = merged.values.toList()
       ..sort((a, b) {
-        final countCompare =
-            (b['cantidad'] as int? ?? 0).compareTo(a['cantidad'] as int? ?? 0);
+        final countCompare = (b['cantidad'] as int? ?? 0).compareTo(
+          a['cantidad'] as int? ?? 0,
+        );
         if (countCompare != 0) return countCompare;
         return (a['nombre']?.toString() ?? '').compareTo(
           b['nombre']?.toString() ?? '',
@@ -900,7 +914,6 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     };
   }
 
-
   String _normalizeCategoryKey(String value) {
     final lower = value.trim().toLowerCase();
     final decomposed = lower
@@ -917,14 +930,17 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
   bool _isHeroServiceKit(Map<String, dynamic> product) {
     final text = _heroSearchText(product);
     final hasImage =
-        (StorefrontHelpers.getPrimaryImage(product)?.trim().isNotEmpty ?? false);
+        (StorefrontHelpers.getPrimaryImage(product)?.trim().isNotEmpty ??
+        false);
     if (!hasImage) return false;
 
-    final isKitService = text.contains('kit servicio') ||
+    final isKitService =
+        text.contains('kit servicio') ||
         text.contains('kit de servicio') ||
         text.contains('servicio completo');
 
-    final isMotor = text.contains('motor de porton') ||
+    final isMotor =
+        text.contains('motor de porton') ||
         text.contains('motor para porton') ||
         text.contains('motores de porton') ||
         text.contains('motor corredizo') ||
@@ -932,7 +948,8 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
     final motorWithInstallation =
         isMotor && (text.contains('instalacion') || text.contains('incluye'));
 
-    final isCameraSystem = (text.contains('sistema de 4 camaras') ||
+    final isCameraSystem =
+        (text.contains('sistema de 4 camaras') ||
             text.contains('sistema 4 camaras') ||
             text.contains('kit 4 camaras') ||
             text.contains('sistema de 8 camaras') ||
@@ -952,7 +969,10 @@ class _StorefrontHomeScreenState extends State<StorefrontHomeScreen> {
             text.contains('sistema completo') ||
             text.contains('completo'));
 
-    return isKitService || motorWithInstallation || isCameraSystem || isPosSystem;
+    return isKitService ||
+        motorWithInstallation ||
+        isCameraSystem ||
+        isPosSystem;
   }
 
   String _heroFamily(Map<String, dynamic> product) {
@@ -1123,10 +1143,7 @@ class _CategoryCard extends StatelessWidget {
               '$count productos',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 11,
-                color: Color(0xFF64748B),
-              ),
+              style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
             ),
           ],
         ),
@@ -1260,7 +1277,10 @@ class _OfferProductCardState extends State<_OfferProductCard>
                     top: 8,
                     left: 8,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: hasStock
                             ? const Color(0xFF16A34A)
@@ -1268,7 +1288,9 @@ class _OfferProductCardState extends State<_OfferProductCard>
                         borderRadius: BorderRadius.circular(999),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF16A34A).withValues(alpha: 0.3),
+                            color: const Color(
+                              0xFF16A34A,
+                            ).withValues(alpha: 0.3),
                             blurRadius: 6,
                             offset: const Offset(0, 2),
                           ),
@@ -1299,7 +1321,10 @@ class _OfferProductCardState extends State<_OfferProductCard>
                           );
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 5,
+                          ),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
                               colors: [Color(0xFFDC2626), Color(0xFFF97316)],
@@ -1309,7 +1334,9 @@ class _OfferProductCardState extends State<_OfferProductCard>
                             borderRadius: BorderRadius.circular(999),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFFDC2626).withValues(alpha: 0.4),
+                                color: const Color(
+                                  0xFFDC2626,
+                                ).withValues(alpha: 0.4),
                                 blurRadius: 8,
                                 offset: const Offset(0, 2),
                               ),
@@ -1318,7 +1345,11 @@ class _OfferProductCardState extends State<_OfferProductCard>
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.local_fire_department_rounded, size: 11, color: Colors.white),
+                              const Icon(
+                                Icons.local_fire_department_rounded,
+                                size: 11,
+                                color: Colors.white,
+                              ),
                               const SizedBox(width: 3),
                               Text(
                                 '-$discount%',
@@ -1439,7 +1470,8 @@ class _OfferProductCardState extends State<_OfferProductCard>
       final phone = widget.whatsapp?.replaceAll(RegExp(r'[^\d]'), '') ?? '';
       if (phone.isNotEmpty) {
         final title = widget.product['titulo']?.toString() ?? 'Producto';
-        final url = 'https://wa.me/$phone?text=${Uri.encodeComponent('Hola FULLTECH, quiero cotizar: $title')}';
+        final url =
+            'https://wa.me/$phone?text=${Uri.encodeComponent('Hola FULLTECH, quiero cotizar: $title')}';
         await launchUrl(Uri.parse(url));
       }
       return;
@@ -1468,7 +1500,9 @@ class _OfferProductCardState extends State<_OfferProductCard>
           content: Text('$title agregado al carrito'),
           duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
     } catch (_) {
@@ -1531,7 +1565,8 @@ class _StorefrontSearchSheetState extends State<_StorefrontSearchSheet> {
         _filteredProducts = widget.initialProducts.where((product) {
           final title = (product['titulo']?.toString() ?? '').toLowerCase();
           final desc = (product['descripcion']?.toString() ?? '').toLowerCase();
-          final category = (product['categoria']?.toString() ?? '').toLowerCase();
+          final category = (product['categoria']?.toString() ?? '')
+              .toLowerCase();
           return title.contains(trimmed) ||
               desc.contains(trimmed) ||
               category.contains(trimmed);
@@ -1598,7 +1633,10 @@ class _StorefrontSearchSheetState extends State<_StorefrontSearchSheet> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: widget.primaryColor, width: 1.5),
+                  borderSide: BorderSide(
+                    color: widget.primaryColor,
+                    width: 1.5,
+                  ),
                 ),
               ),
             ),
@@ -1686,10 +1724,13 @@ class _StorefrontSearchSheetState extends State<_StorefrontSearchSheet> {
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        title.isEmpty ? 'Producto sin nombre' : title,
+                                        title.isEmpty
+                                            ? 'Producto sin nombre'
+                                            : title,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
@@ -1724,4 +1765,3 @@ class _StorefrontSearchSheetState extends State<_StorefrontSearchSheet> {
     );
   }
 }
-           
