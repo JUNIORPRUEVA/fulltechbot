@@ -153,11 +153,11 @@ class _StorefrontAppBarState extends State<StorefrontAppBar>
                   ),
                 ),
 
-              // Buscador: solo icono que se expande
+              // Buscador expandido - ocupa todo el espacio disponible
               if (_searchExpanded)
                 Expanded(
                   child: Container(
-                    height: 40,
+                    height: 42,
                     margin: const EdgeInsets.only(right: 8),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF1F5F9),
@@ -169,28 +169,28 @@ class _StorefrontAppBarState extends State<StorefrontAppBar>
                     ),
                     child: Row(
                       children: [
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 14),
                         Icon(
                           Icons.search_rounded,
-                          size: 18,
+                          size: 20,
                           color: widget.primaryColor,
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: TextField(
                             autofocus: true,
                             decoration: const InputDecoration(
                               hintText: 'Buscar productos...',
                               border: InputBorder.none,
-                              isDense: true,
-                              contentPadding: EdgeInsets.zero,
+                              isDense: false,
+                              contentPadding: EdgeInsets.symmetric(vertical: 10),
                               hintStyle: TextStyle(
                                 color: Color(0xFF94A3B8),
-                                fontSize: 14,
+                                fontSize: 15,
                               ),
                             ),
                             style: const TextStyle(
-                              fontSize: 14,
+                              fontSize: 15,
                               fontWeight: FontWeight.w500,
                               color: Color(0xFF0F172A),
                             ),
@@ -201,16 +201,17 @@ class _StorefrontAppBarState extends State<StorefrontAppBar>
                             },
                           ),
                         ),
-                        IconButton(
-                          onPressed: () {
-                            setState(() => _searchExpanded = false);
-                          },
-                          icon: const Icon(Icons.close_rounded, size: 18),
-                          color: const Color(0xFF94A3B8),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                            minWidth: 32,
-                            minHeight: 32,
+                        SizedBox(
+                          width: 40,
+                          height: 40,
+                          child: IconButton(
+                            onPressed: () {
+                              setState(() => _searchExpanded = false);
+                            },
+                            icon: const Icon(Icons.close_rounded, size: 20),
+                            color: const Color(0xFF64748B),
+                            padding: EdgeInsets.zero,
+                            splashRadius: 20,
                           ),
                         ),
                       ],

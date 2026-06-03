@@ -157,27 +157,36 @@ class _BrandColumn extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Logo / Nombre
+        // Logo real + Nombre
         Row(
           children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF3B82F6), Color(0xFF60A5FA)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              alignment: Alignment.center,
-              child: const Text(
-                'F',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset(
+                'assets/logo_principal.jpeg',
+                width: 32,
+                height: 32,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF3B82F6), Color(0xFF60A5FA)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  alignment: Alignment.center,
+                  child: const Text(
+                    'F',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -203,17 +212,17 @@ class _BrandColumn extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 14),
-        // Redes sociales
+        // Redes sociales con iconos reales
         Row(
           children: [
-            _SocialIcon(
-              icon: Icons.facebook_rounded,
+            _SocialIconImage(
+              asset: 'assets/facebook.png',
               url: 'https://www.facebook.com/fulltechs/',
               color: const Color(0xFF1877F2),
             ),
             const SizedBox(width: 10),
-            _SocialIcon(
-              icon: Icons.camera_alt_rounded,
+            _SocialIconImage(
+              asset: 'assets/social.png',
               url:
                   'https://www.instagram.com/fulltech_srl?igsh=Z2V5NWY2MDJzNmdh',
               color: const Color(0xFFE4405F),
@@ -471,15 +480,15 @@ class _LocationColumn extends StatelessWidget {
 }
 
 // ==========================================
-// ICONO DE RED SOCIAL
+// ICONO DE RED SOCIAL (Imagen PNG real)
 // ==========================================
-class _SocialIcon extends StatelessWidget {
-  final IconData icon;
+class _SocialIconImage extends StatelessWidget {
+  final String asset;
   final String url;
   final Color color;
 
-  const _SocialIcon({
-    required this.icon,
+  const _SocialIconImage({
+    required this.asset,
     required this.url,
     required this.color,
   });
@@ -504,7 +513,20 @@ class _SocialIcon extends StatelessWidget {
               color: color.withValues(alpha: 0.2),
             ),
           ),
-          child: Icon(icon, size: 18, color: color),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.asset(
+              asset,
+              width: 22,
+              height: 22,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) => Icon(
+                Icons.public_rounded,
+                size: 18,
+                color: color,
+              ),
+            ),
+          ),
         ),
       ),
     );

@@ -69,6 +69,9 @@ flutter:
 
   assets:
     - assets/whatsappp.png
+    - assets/logo_principal.jpeg
+    - assets/facebook.png
+    - assets/social.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:

@@ -61,20 +61,21 @@
     }
 
     .splash-logo {
-      width: 80px;
-      height: 80px;
-      background: rgba(37, 99, 235, 0.15);
+      width: 100px;
+      height: 100px;
       border-radius: 24px;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 24px;
-      border: 1px solid rgba(37, 99, 235, 0.2);
+      margin-bottom: 20px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(37, 99, 235, 0.2);
     }
 
-    .splash-logo svg {
-      width: 44px;
-      height: 44px;
+    .splash-logo img {
+      width: 100px;
+      height: 100px;
+      object-fit: contain;
     }
 
     .splash-title {
@@ -149,11 +150,7 @@
       <div class="dot3"></div>
     </div>
     <div class="splash-logo">
-      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#2563EB" stroke-width="1.5" stroke-linejoin="round"/>
-        <path d="M2 17L12 22L22 17" stroke="#2563EB" stroke-width="1.5" stroke-linejoin="round"/>
-        <path d="M2 12L12 17L22 12" stroke="#2563EB" stroke-width="1.5" stroke-linejoin="round"/>
-      </svg>
+      <img src="logo_principal.jpeg" alt="FULLTECH SRL" onerror="this.style.display='none'">
     </div>
     <div class="splash-title">FULLTECH</div>
     <div class="splash-subtitle">Tienda oficial</div>
