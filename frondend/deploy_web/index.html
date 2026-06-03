@@ -258,6 +258,27 @@
         });
       }
 
+      function forceServiceWorkerCleanup() {
+        if (!('serviceWorker' in navigator)) {
+          return Promise.resolve(false);
+        }
+
+        return navigator.serviceWorker.getRegistrations()
+          .then(function (registrations) {
+            if (!registrations.length) {
+              return false;
+            }
+
+            return clearRuntimeCaches().then(function () {
+              return true;
+            });
+          })
+          .catch(function (error) {
+            console.warn('[FULLTECH] No se pudo verificar service workers activos.', error);
+            return false;
+          });
+      }
+
       function fetchVersionWithTimeout(timeoutMs) {
         return new Promise(function (resolve, reject) {
           var settled = false;
@@ -335,7 +356,10 @@
         window.location.hash = '#/tienda/fulltech';
       }
 
-      fetchVersionWithTimeout(2500)
+      forceServiceWorkerCleanup()
+        .then(function () {
+          return fetchVersionWithTimeout(2500);
+        })
         .then(function (payload) {
           var currentVersion =
             BUILD_VERSION !== '__FULLTECH_BUILD_VERSION__'
