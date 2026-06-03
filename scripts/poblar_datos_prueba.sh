@@ -2,7 +2,7 @@
 # Script para poblar datos de prueba de clientes y conversaciones
 # Uso: bash scripts/poblar_datos_prueba.sh
 
-BASE_URL="https://fulltech-bot-fulltechbot-app.gcdndd.easypanel.host"
+BASE_URL="https://ai-business-platform-fulltechbot-backend.onqyr1.easypanel.host"
 BOT_ID="bot_fulltech_seguridad"
 
 echo "=== POBLANDO DATOS DE PRUEBA ==="

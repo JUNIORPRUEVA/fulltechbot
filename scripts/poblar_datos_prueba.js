@@ -4,7 +4,7 @@
  * Uso: node scripts/poblar_datos_prueba.js
  */
 
-const BASE_URL = 'https://fulltech-bot-fulltechbot-app.gcdndd.easypanel.host';
+const BASE_URL = 'https://ai-business-platform-fulltechbot-backend.onqyr1.easypanel.host';
 const BOT_ID = 'bot_fulltech_seguridad';
 
 async function apiPost(path, data) {

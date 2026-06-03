@@ -10,7 +10,7 @@ class ApiConfig {
   );
 
   static const String _cloudBackendUrl =
-      'https://fulltech-bot-fulltechbot-app.gcdndd.easypanel.host';
+      'https://ai-business-platform-fulltechbot-backend.onqyr1.easypanel.host';
 
   static String get apiBaseUrl {
     final compiled = _normalizeBaseUrl(_compiledBaseUrl);
